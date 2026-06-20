@@ -12,10 +12,22 @@
 import OpenAI from "openai";
 import { VISION_PROMPT } from "./prompts";
 
-const siliconflow = new OpenAI({
-  apiKey: process.env.SILICONFLOW_API_KEY,
-  baseURL: "https://api.siliconflow.cn/v1",
-});
+// ⭐ Lazy init（避免 build time 缺 SILICONFLOW_API_KEY 报错）
+let _client: OpenAI | null = null;
+function getClient(): OpenAI {
+  if (!_client) {
+    if (!process.env.SILICONFLOW_API_KEY) {
+      throw new Error(
+        "SILICONFLOW_API_KEY 未配置。请在 .env 中添加（密钥不 commit 到 git）。",
+      );
+    }
+    _client = new OpenAI({
+      apiKey: process.env.SILICONFLOW_API_KEY,
+      baseURL: "https://api.siliconflow.cn/v1",
+    });
+  }
+  return _client;
+}
 
 export type VisionResult = {
   subject: string;
@@ -58,7 +70,7 @@ export async function recognizeHandout(
   }));
   contentBlocks.push({ type: "text", text: VISION_PROMPT });
 
-  const response = await siliconflow.chat.completions.create({
+  const response = await getClient().chat.completions.create({
     model: "Qwen/Qwen3-VL-8B-Instruct",
     messages: [
       {

@@ -219,14 +219,14 @@ export default function LoginPage() {
             还没有账号？
             <Link
               href="/register"
-              className="text-accent font-medium hover:text-accent-hover ml-1"
+              className="text-accent-text font-medium hover:text-accent-hover ml-1"
             >
               立即注册
             </Link>
           </div>
         </div>
 
-        <p className="text-center text-xs text-ink-subtle mt-6">
+        <p className="text-center text-xs text-ink-muted mt-6">
           登录即同意{" "}
           <Link href="#" className="hover:text-ink-muted">
             服务条款

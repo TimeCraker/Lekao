@@ -11,10 +11,22 @@
 import OpenAI from "openai";
 import { TEXT_PROMPT } from "./prompts";
 
-const deepseek = new OpenAI({
-  apiKey: process.env.DEEPSEEK_API_KEY,
-  baseURL: "https://api.deepseek.com/v1",
-});
+// ⭐ Lazy init（避免 build time 缺 DEEPSEEK_API_KEY 报错）
+let _client: OpenAI | null = null;
+function getClient(): OpenAI {
+  if (!_client) {
+    if (!process.env.DEEPSEEK_API_KEY) {
+      throw new Error(
+        "DEEPSEEK_API_KEY 未配置。请在 .env 中添加（密钥不 commit 到 git）。",
+      );
+    }
+    _client = new OpenAI({
+      apiKey: process.env.DEEPSEEK_API_KEY,
+      baseURL: "https://api.deepseek.com/v1",
+    });
+  }
+  return _client;
+}
 
 export type TemplateType = "summary" | "feedback";
 
@@ -59,7 +71,7 @@ export function generateStream(
   return new ReadableStream({
     async start(controller) {
       try {
-        const stream = await deepseek.chat.completions.create({
+        const stream = await getClient().chat.completions.create({
           model: "deepseek-v4-flash",
           messages: [
             {
@@ -106,7 +118,7 @@ export async function generate(input: GenerationInput): Promise<GenerationResult
     template: input.template,
   });
 
-  const response = await deepseek.chat.completions.create({
+  const response = await getClient().chat.completions.create({
     model: "deepseek-v4-flash",
     messages: [
       {

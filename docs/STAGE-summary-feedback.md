@@ -192,6 +192,8 @@ if (user.lekao_gift_coin > 0) {
 | 流式响应在 Next.js 16 App Router 兼容 | API 实现踩坑 | 用 `ReadableStream` + `Response.body` 流式 |
 | 用户余额不足但已生成 | 扣费失败回滚 | 阶段 4 必须先扣费成功才生成（避免空跑） |
 | 服务器 3.6GB OOM（AI 调用内存） | 进程崩溃 | 调用时 `--max-old-space-size=512` + 限并发 |
+| **并发扣费 race（PG READ COMMITTED + read-then-write）** | 同一用户并发 5 个请求可能双扣到负数 | ✅ **已修**（阶段 4 hotfix）：改用 `updateMany` + `where lekao_gift_coin > 0` 原子条件 update，PG 保证不会双扣到负数 |
+| **Stream 中途失败 lost-coin（已扣未交付）** | vision/stream 失败时 coin 已扣，用户没拿到内容 | 🟡 **已知未修**：需加 `lekao_coin_ledger` 三阶段表（pending → settled / refunded），生产部署前补，超出本阶段范围 |
 
 ---
 
