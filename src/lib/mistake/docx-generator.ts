@@ -123,8 +123,11 @@ export async function generateStudentDocx(args: GenerateArgs): Promise<Blob> {
     a.date.localeCompare(b.date),
   );
 
-  // 4. 加载所有图片到内存
-  const imageCache = new Map<string, { blob: Blob; buffer: ArrayBuffer }>();
+  // 4. 加载所有图片到内存 + 测真实宽高（docx ImageRun 不能 height:0）
+  const imageCache = new Map<
+    string,
+    { blob: Blob; buffer: Uint8Array; width: number; height: number }
+  >();
   for (const section of historySections) {
     for (const slotJson of [section.classroomSlotsJson, section.homeworkSlotsJson]) {
       const slots: QNumberSlot[] = JSON.parse(slotJson);
@@ -132,8 +135,24 @@ export async function generateStudentDocx(args: GenerateArgs): Promise<Blob> {
         if (slot.imageBlobId && !imageCache.has(slot.imageBlobId)) {
           const record = await loadImage(slot.imageBlobId);
           if (record) {
-            const buffer = await record.blob.arrayBuffer();
-            imageCache.set(slot.imageBlobId, { blob: record.blob, buffer });
+            const buffer = new Uint8Array(await record.blob.arrayBuffer());
+            // 测真实宽高（fallback 800x600 防 createImageBitmap 失败）
+            let width = 800;
+            let height = 600;
+            try {
+              const bitmap = await createImageBitmap(record.blob);
+              width = bitmap.width;
+              height = bitmap.height;
+              bitmap.close();
+            } catch {
+              // HEIC 等异常格式走 fallback
+            }
+            imageCache.set(slot.imageBlobId, {
+              blob: record.blob,
+              buffer,
+              width,
+              height,
+            });
           }
         }
       }
@@ -363,7 +382,7 @@ async function buildContentChildren({
   imageCache,
 }: {
   historySections: SavedSection[];
-  imageCache: Map<string, { blob: Blob; buffer: ArrayBuffer }>;
+  imageCache: Map<string, { blob: Blob; buffer: Uint8Array; width: number; height: number }>;
 }): Promise<Paragraph[]> {
   const children: Paragraph[] = [];
 
@@ -383,7 +402,7 @@ async function buildContentChildren({
 
 async function buildSectionChildren(
   section: SavedSection,
-  imageCache: Map<string, { blob: Blob; buffer: ArrayBuffer }>,
+  imageCache: Map<string, { blob: Blob; buffer: Uint8Array; width: number; height: number }>,
 ): Promise<Paragraph[]> {
   const children: Paragraph[] = [];
 
@@ -426,8 +445,8 @@ async function buildSectionChildren(
       .map((slot, idx) => ({ slot, idx: idx + 1 }))
       .filter(({ slot }) => hasSlotContent(slot));
 
-    for (const { slot, idx } of numberedSlots) {
-      children.push(...(await buildSlotParagraphs(slot, idx, "classroom", imageCache)));
+    for (const { slot } of numberedSlots) {
+      children.push(...(await buildSlotParagraphs(slot, "classroom", imageCache)));
     }
   }
 
@@ -453,8 +472,8 @@ async function buildSectionChildren(
       .map((slot, idx) => ({ slot, idx: idx + 1 }))
       .filter(({ slot }) => hasSlotContent(slot));
 
-    for (const { slot, idx } of numberedSlots) {
-      children.push(...(await buildSlotParagraphs(slot, idx, "homework", imageCache)));
+    for (const { slot } of numberedSlots) {
+      children.push(...(await buildSlotParagraphs(slot, "homework", imageCache)));
     }
   }
 
@@ -473,18 +492,16 @@ function hasSlotContent(slot: QNumberSlot): boolean {
 
 async function buildSlotParagraphs(
   slot: QNumberSlot,
-  idx: number,
   _qType: "classroom" | "homework",
-  imageCache: Map<string, { blob: Blob; buffer: ArrayBuffer }>,
+  imageCache: Map<string, { blob: Blob; buffer: Uint8Array; width: number; height: number }>,
 ): Promise<Paragraph[]> {
   const paragraphs: Paragraph[] = [];
 
-  // 题号行：1. **1（2 8）**
+  // 题号行：只显示题号本身（不加 idx. 列表编号，Round 2026-06-20 修）
   paragraphs.push(
     new Paragraph({
       spacing: { before: 200, after: 80 },
       children: [
-        new TextRun({ text: `${idx}. `, size: 24, color: COLOR.black, font: FONT.cnBody }),
         new TextRun({
           text: slot.qNumber,
           bold: true,
@@ -496,11 +513,18 @@ async function buildSlotParagraphs(
     }),
   );
 
-  // 图片
+  // 图片（Round 2026-06-20 修：transformation.height 必须 > 0，否则 docx 忽略整张图）
   if (slot.imageBlobId) {
     const cached = imageCache.get(slot.imageBlobId);
     if (cached) {
       try {
+        const MAX_WIDTH = 500;
+        const scale = Math.min(1, MAX_WIDTH / cached.width);
+        const width = Math.round(cached.width * scale);
+        const height = Math.round(cached.height * scale);
+        const imageType: "jpg" | "png" = cached.blob.type.includes("png")
+          ? "png"
+          : "jpg";
         paragraphs.push(
           new Paragraph({
             alignment: AlignmentType.CENTER,
@@ -508,12 +532,9 @@ async function buildSlotParagraphs(
             children: [
               new ImageRun({
                 data: cached.buffer,
-                transformation: {
-                  // 限制图片宽度 ≤ 500px（约 13.2cm），保持比例
-                  width: Math.min(500, (cached.blob as Blob & { width?: number }).width ?? 500),
-                  height: 0, // height 自动按比例
-                },
-                type: cached.blob.type.includes("png") ? "png" : "jpg",
+                transformation: { width, height },
+                type: imageType,
+                fallback: { type: imageType, data: cached.buffer },
               } as never),
             ],
           }),
