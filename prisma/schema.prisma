@@ -26,8 +26,8 @@ model User {
   password        String? // bcrypt hash
   name            String?
   role            String   @default("user") // user | admin
-  t_coin          Int      @default(0) // 充值 T-Coin (ResumeAIX/Lekao 共享)
-  lekao_gift_coin Int      @default(-1) // ⭐ Lekao 赠送 (默认 -1, signIn 延迟初始化为 5)
+  t_coin          Int      @default(0) @map("tCoin") // 充值 T-Coin (ResumeAIX/Lekao 共享) · PG 列名 tCoin
+  lekao_gift_coin Int      @default(-1) @map("lekaoGiftCoin") // ⭐ Lekao 赠送 (默认 -1, signIn 延迟初始化为 5) · PG 列名 lekaoGiftCoin
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
