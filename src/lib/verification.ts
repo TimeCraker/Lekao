@@ -6,8 +6,7 @@ const CODE_LENGTH = 6;
 const EXPIRES_MINUTES = 10;
 const SEND_COOLDOWN_SECONDS = 60;
 const BCRYPT_COST = 10;
-const MAX_ATTEMPTS = 5; // 5 次错码后锁定 1 小时
-const LOCKOUT_MINUTES = 60;
+const MAX_ATTEMPTS = 5; // 5 次错码后锁定整个验证码到 expiresAt, 用户需重新发码
 
 /**
  * 生成 6 位数字验证码
@@ -96,17 +95,12 @@ export async function verifyCode(
     return { ok: false, reason: "验证码已失效，请重新获取" };
   }
 
-  // 防暴力: 锁定检查 (attempts >= MAX + 未过期 锁定 1 小时)
+  // 防暴力: 锁定检查 (attempts >= MAX → 整个验证码锁到 expiresAt, 用户需重新发码)
   if (record.attempts >= MAX_ATTEMPTS) {
-    const lockExpiry = new Date(
-      record.expiresAt.getTime() - LOCKOUT_MINUTES * 60 * 1000,
-    );
-    if (lockExpiry > new Date()) {
-      return {
-        ok: false,
-        reason: `验证码已被锁定，请重新获取`,
-      };
-    }
+    return {
+      ok: false,
+      reason: `验证码已被锁定，请重新获取`,
+    };
   }
 
   // ⭐ bcrypt 比对 (codeHash 优先, 老 code 字段 fallback 兼容)
