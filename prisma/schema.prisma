@@ -20,12 +20,21 @@ datasource db {
 // ============================================
 // ⚠️ 只读引用 (ResumeAIX 管, Lekao 永远不 migrate)
 // ============================================
+
+// PG 共享 enum (ResumeAIX 定义, Lekao 引用一致以避免转换错)
+enum UserRole {
+  USER
+  ADMIN
+
+  @@map("UserRole")
+}
+
 model User {
   id              String   @id @default(cuid())
   email           String   @unique
   password        String? // bcrypt hash
   name            String?
-  role            String   @default("user") // user | admin
+  role            UserRole @default(USER) @map("role") // PG enum "UserRole" (USER/ADMIN)
   t_coin          Int      @default(0) @map("tCoin") // 充值 T-Coin (ResumeAIX/Lekao 共享) · PG 列名 tCoin
   lekao_gift_coin Int      @default(-1) @map("lekaoGiftCoin") // ⭐ Lekao 赠送 (默认 -1, signIn 延迟初始化为 5) · PG 列名 lekaoGiftCoin
   createdAt       DateTime @default(now())
