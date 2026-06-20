@@ -142,6 +142,15 @@ if (user.lekao_gift_coin > 0) {
 - 余额 0（lekao_gift_coin）+ 5（t_coin）→ 第 6 次扣 t_coin → 第 11 次报余额不足
 - 生成成功后 PG 中能看到新行
 
+**实施状态（2026-06-20 完成）**：
+- ✅ `src/lib/coin.ts`：`deductCoin(userId)` 用 `prisma.$transaction` 原子扣费（先 gift → 再 paid），返回 `{success, source, newGift, newPaid}` 或 `{success:false, reason}`
+- ✅ `src/lib/coin.ts`：`getCoinBalance(userId)` 查余额
+- ✅ API 路由集成：参数校验后立即扣费 → 余额不足返 402 + 友好提示 → 不调 AI
+- ✅ 流式响应包裹 `__META__` 含 `coinDeducted` 信息
+- ✅ 流结束后调用 `parseSummaryOutput` 落盘 `lekao_classSummaries` / `lekaoClassFeedbacks`
+- ✅ 落盘失败仅 console.error（用户已得到输出，不回滚扣费）
+- ⏳ 客户端 402 处理已具备（throw → error 状态显示余额不足文案）
+
 ### 阶段 5 · Lighthouse + 真实讲义 E2E
 **估时**：≈1.5h
 **产出**：
