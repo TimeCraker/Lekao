@@ -478,11 +478,23 @@ DATABASE_URL="postgresql://postgres:postgres@localhost:5434/resumeaix?connection
 - systemd ExecStart：`pnpm start --port 3007` (从 `/home/ubuntu/Lekao/`)
 - 不是 monorepo：`packages/db/`，prisma schema 在 `prisma/schema.prisma`
 
-### 7. Prisma 6 client 字段命名（实战踩坑）
+### 7. Prisma 字段映射（实战踩坑 3 次 — 2026-06-20）
 
-- Prisma 6.x client 生成的字段是 **snake_case**（`lekao_gift_coin` / `t_coin`），不是 camelCase
-- TS 报错 "Property does not exist" → 改 schema 用 `@map` 或 sed 全局替换 TS 文件
-- `next-auth.d.ts` 类型扩展也要用 snake_case 字段名
+**铁律**：Prisma schema 字段名 = client 字段名（写啥用啥）；PG 列名 = `@map` 指向 / 默认按字段名生成。
+
+- **坑 A**（snake ↔ camel）：Lekao schema 写 `t_coin` 没 `@map` → 默认生成 PG 列 `t_coin`（不存在！PG 是 `tCoin`）❌
+  - 修复：Lekao schema 加 `@map("tCoin") @map("lekaoGiftCoin")`，client 字段 snake_case 但 PG 列 camelCase
+- **坑 B**（缺业务表）：Lekao 没有 init migration → 服务器报 `table verification_codes does not exist`
+  - 修复：手写 `prisma/migrations/<timestamp>_init/migration.sql`（4 张表 CREATE TABLE IF NOT EXISTS）+ `prisma migrate deploy`
+  - `prisma migrate dev` 跑不通（被 PG 已有 ResumeAIX 表的 baseline 检查挡），**必须手写 SQL**
+- **坑 C**（enum 不匹配）：Lekao schema `role String` vs PG `role "UserRole" enum` → 报 "incompatible value USER"
+  - 修复：声明 `enum UserRole { USER ADMIN }` + `role UserRole @default(USER) @map("role")`
+  - TS 用法：`user.role === "USER"` (Prisma enum 在 client 里仍是字符串)
+- `next-auth.d.ts` 类型扩展也要用 snake_case 字段名（如果 client 字段是 snake_case）
+
+**Why**：Lekao 与 ResumeAIX 共享 `users` 表，ResumeAIX 的 schema 决定 PG 列名 + 类型，Lekao 只读引用必须**字段名 + @map + enum 一一对齐**。
+
+**How to apply**：新加字段引用 shared users 表 → **必查 ResumeAIX schema 当前字段类型 + @map + enum 定义**，不要假设。
 
 ## 故障排查
 
@@ -492,6 +504,9 @@ DATABASE_URL="postgresql://postgres:postgres@localhost:5434/resumeaix?connection
 | 公网 502 | 腾讯云服务挂了 | SSH 到腾讯云 `systemctl status lekao-web` |
 | 公网 504 | 阿里云反代连不上腾讯云 :3007 | 改 aliyun-proxy.conf 用 `:80` 端口分流（不是 `:3007`） |
 | 公网 200 但页面 500 | Next.js 启动报错 | `journalctl -u lekao-web -n 100`（看 Prisma 字段缺失 / SMTP 未配） |
+| API `column users.t_coin does not exist` | Lekao schema `t_coin` 没 `@map("tCoin")` | schema 加 `@map("tCoin") @map("lekaoGiftCoin")` |
+| API `table verification_codes does not exist` | Lekao 没 init migration | 写 migration.sql + `prisma migrate deploy` |
+| API `Error converting field role expected String found USER` | role String vs PG enum | schema 声明 `enum UserRole { USER ADMIN }` |
 | `prisma migrate` 报 `lekao_gift_coin` 字段不存在 | ResumeAIX PR (T1) 未 merge | 等 T1 完成（PRD §3.4.1）|
 | `lekao_gift_coin` 一直是 -1 / 0 | signIn callback 漏写延迟初始化 | 检查 `src/lib/auth.ts` §3.4.1.2 模式 |
 | Prisma 连接池爆（`max_connections` 满） | `.env` 没设 `connection_limit=4` | 改 .env + restart service |
@@ -505,6 +520,17 @@ DATABASE_URL="postgresql://postgres:postgres@localhost:5434/resumeaix?connection
 
 ## 演化记录
 
+### 2026-06-20（第 6 轮更新 · Prisma 字段映射 3 连修）
+- **Bug 排查**：注册页"服务器错误"→ send-code 报 3 个连续 Prisma error
+  - `column users.t_coin does not exist` → schema 加 `@map("tCoin") @map("lekaoGiftCoin")`
+  - `table verification_codes does not exist` → 手写 init migration（4 张业务表）
+  - `incompatible value USER` for role enum → schema 声明 `enum UserRole { USER ADMIN }`
+- **3 个新 commit**：`ce6196e`（schema+migration）+ `ec5c39a`（role enum）
+- **memory 校正**：之前说 "Prisma 6 client 字段 snake_case" 是错的，正确说法 = "字段名 = client 名 + @map 指向 PG 列名"
+- **实战教训**：
+  - `prisma migrate dev` 跑不动（baseline mismatch）→ **必须手写 migration.sql + `migrate deploy`**
+  - 共享 users 表字段映射铁律：必查 ResumeAIX schema 当前 `@map` + enum 定义
+
 ### 2026-06-20（第 5 轮更新 · Phase 1 全部完成）
 - **T1-T15 全部完成**：5 个 commit, 公网可访问, Lighthouse 95/100/100/100
 - **A11y token 矩阵化修复**：Lighthouse a11y 95 → 100（color-contrast 0 failures）
@@ -513,7 +539,7 @@ DATABASE_URL="postgresql://postgres:postgres@localhost:5434/resumeaix?connection
   - 腾讯云 3007 端口入站被安全组挡 → 阿里云反代必须走 :80（nginx server_name 分流）
   - `git bundle create HEAD` 不带 ref → 必须 `git bundle create <file> main`
   - bundle fetch 用 `main:main-new`（不带 `refs/heads/` 前缀）
-  - Prisma 6 client 字段 snake_case（不是 camelCase）
+  - Prisma 6 client 字段 snake_case（不是 camelCase）→ **已校正**
   - WCAG AA: 柔和 brand color (blue-500) 在白背景 3.67:1 < 4.5:1 → 加 `--accent-text` (blue-700) token
 - **commit 节奏**：用户原则"每个大阶段完成后才 commit" → T9-T13 / T14 / T15 各 1 commit
 
