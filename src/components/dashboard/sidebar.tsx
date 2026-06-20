@@ -26,7 +26,9 @@ export function Sidebar() {
         <div className="w-9 h-9 rounded-xl bg-accent-text text-white flex items-center justify-center text-lg font-bold font-mono">
           L
         </div>
-        <span className="text-lg font-semibold text-ink">Lekao</span>
+        <span className="text-lg font-semibold text-ink">
+          Lekao <span className="text-ink-mute font-normal">Agent</span>
+        </span>
       </Link>
 
       {/* Nav */}

@@ -11,7 +11,7 @@ export function Footer() {
               L
             </div>
             <span className="text-base font-semibold text-ink-on-dark">
-              Lekao
+              Lekao <span className="text-ink-on-dark-mute font-normal">Agent</span>
             </span>
           </div>
 
@@ -36,7 +36,7 @@ export function Footer() {
         </div>
 
         <div className="mt-8 pt-6 border-t border-hairline-dark text-center text-xs text-ink-on-dark-muted">
-          © 2026 Lekao · 鄂ICP备 2026015662 号 · 让培训机构助教省 1-2 小时/课
+          © 2026 Lekao Agent · 鄂ICP备 2026015662 号 · 让助教告别重复冗余工作
         </div>
       </div>
     </footer>

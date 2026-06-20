@@ -10,7 +10,7 @@ export function Navbar() {
             L
           </div>
           <span className="text-lg font-semibold text-ink tracking-tight">
-            Lekao
+            Lekao <span className="text-ink-mute font-normal">Agent</span>
           </span>
         </Link>
 

@@ -91,7 +91,9 @@ export default function LoginPage() {
           <div className="w-10 h-10 rounded-xl bg-accent-text text-white flex items-center justify-center text-xl font-bold font-mono">
             L
           </div>
-          <span className="text-xl font-semibold text-ink">Lekao</span>
+          <span className="text-xl font-semibold text-ink">
+            Lekao <span className="text-ink-mute font-normal">Agent</span>
+          </span>
         </Link>
 
         {/* Card */}

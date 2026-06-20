@@ -1,26 +1,36 @@
 "use client";
 
 import { motion } from "motion/react";
+import {
+  MistakeIcon,
+  SummaryIcon,
+  FeedbackIcon,
+  FreeIcon,
+  CoinIcon,
+} from "./icons";
 
 const FEATURES = [
   {
-    icon: "📋",
+    Icon: MistakeIcon,
     title: "错题集生成",
-    description: "Excel 上传 + 拖拽图片 = 5 分钟出全班的错题 Word 文档",
+    description:
+      "Excel 上传 + 拖拽图片 = 5 分钟出全班的错题 Word 文档，拒绝手动誊抄",
     priceTag: { type: "free" as const, label: "免费" },
     href: "/dashboard/mistake",
   },
   {
-    icon: "📝",
+    Icon: SummaryIcon,
     title: "课堂小结",
-    description: "AI 按 BRD 硬约束格式生成 10 条建议 + 小结，一键复制",
+    description:
+      "AI 按 BRD 硬约束格式生成 10 条建议 + 小结，一键复制，告别熬夜整理",
     priceTag: { type: "coin" as const, label: "1 币/次" },
     href: "/dashboard/summary",
   },
   {
-    icon: "💬",
+    Icon: FeedbackIcon,
     title: "课堂反馈",
-    description: "上传讲义图片 + 简单描述，AI 生成专业家长反馈",
+    description:
+      "上传讲义图片 + 简单描述，AI 生成专业家长反馈，省下重复写作的时间",
     priceTag: { type: "coin" as const, label: "1 币/次" },
     href: "/dashboard/feedback",
   },
@@ -36,7 +46,7 @@ export function FeatureCards() {
             三大核心功能
           </h2>
           <p className="text-lg text-ink-muted">
-            让 AI 帮你完成重复工作，把时间留给学生
+            AI 接管重复工作，让你专注真正重要的事
           </p>
         </div>
 
@@ -52,13 +62,13 @@ export function FeatureCards() {
 }
 
 function FeatureCard({
-  icon,
+  Icon,
   title,
   description,
   priceTag,
   href,
 }: {
-  icon: string;
+  Icon: React.ComponentType<{ className?: string }>;
   title: string;
   description: string;
   priceTag: { type: "free" | "coin"; label: string };
@@ -71,7 +81,9 @@ function FeatureCard({
       whileHover={{ scale: 1.02 }}
       transition={{ type: "spring", stiffness: 300, damping: 20 }}
     >
-      <div className="text-5xl mb-4">{icon}</div>
+      <div className="w-14 h-14 mb-5 rounded-xl bg-accent-soft text-accent-text flex items-center justify-center group-hover:scale-105 transition-transform">
+        <Icon className="w-7 h-7" />
+      </div>
       <h3 className="text-xl font-semibold text-ink mb-2">{title}</h3>
       <p className="text-sm text-ink-muted leading-relaxed mb-6 min-h-[3rem]">
         {description}
@@ -95,14 +107,16 @@ function PriceTag({
 }) {
   if (type === "free") {
     return (
-      <span className="inline-flex items-center px-2.5 py-1 bg-success-soft text-success-text text-xs font-semibold rounded-full">
-        ✦ {label}
+      <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-success-soft text-success-text text-xs font-semibold rounded-full">
+        <FreeIcon className="w-3 h-3" />
+        {label}
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center px-2.5 py-1 bg-accent-soft text-accent-ink text-xs font-semibold rounded-full">
-      🪙 {label}
+    <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-accent-soft text-accent-ink text-xs font-semibold rounded-full">
+      <CoinIcon className="w-3 h-3" />
+      {label}
     </span>
   );
 }

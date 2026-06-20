@@ -14,17 +14,17 @@ export function Hero() {
         {/* Badge */}
         <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-white/60 backdrop-blur-sm border border-hairline rounded-full text-sm text-ink-mute mb-8">
           <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-          AI 智能助教助手 · 内测中
+          Lekao Agent · 内测中
         </div>
 
         {/* 巨型 H1 · 字符级 3D */}
-        <HeroTitle>每次课省 1-2 小时</HeroTitle>
+        <HeroTitle>把时间还给学生</HeroTitle>
 
         {/* Subtitle */}
         <p className="mt-8 text-xl md:text-2xl text-ink-muted max-w-2xl mx-auto leading-relaxed">
-          AI 智能助教助手，专为培训机构设计
+          AI 智能助手，专为培训机构设计
           <br />
-          让助教从抄错题、写小结、写反馈里解放出来
+          让助教从抄错题、写小结、写反馈的重复冗余工作里解放出来
         </p>
 
         {/* CTA */}
@@ -45,7 +45,7 @@ export function Hero() {
 
         {/* Trust signal */}
         <p className="mt-10 text-sm text-ink-subtle">
-          无需信用卡 · 注册即送 5 枚 T-Coin · 永久免费基础功能
+          注册即送 5 枚 T-Coin · 永久免费基础功能
         </p>
       </div>
     </section>
