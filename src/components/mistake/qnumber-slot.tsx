@@ -4,9 +4,10 @@
  * 单个题号槽位 (Step 3 · T18)
  * 来源：STAGE spec §6.2 + PRD §3.5.5 题号槽位详情
  *
- * 3 种输入方式（PRD §8.3.2 决策 8）：
+ * 4 种输入方式（PRD §8.3.2 决策 8 + Round 2026-06-20 拖拽升级）：
  * - 点击上传图片
  * - Ctrl+V 粘贴图片（监听 paste 事件）
+ * - 拖拽图片到槽位上传（dragenter/dragover/drop 事件）
  * - 纯文字输入
  *
  * 全对槽：标记后跳过图片/文字（PRD §8.3.2 决策 13）
@@ -54,6 +55,8 @@ export function QNumberSlot({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [pasteHint, setPasteHint] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const dragCounter = useRef(0); // 避免 dragenter/dragleave 闪烁
   const fileInputRef = useRef<HTMLInputElement>(null);
   const slotRef = useRef<HTMLDivElement>(null);
 
@@ -112,6 +115,87 @@ export function QNumberSlot({
 
     el.addEventListener("paste", handlePaste);
     return () => el.removeEventListener("paste", handlePaste);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slot.isMarkedAllCorrect]);
+
+  // 监听拖拽上传（Round 2026-06-20 新增）
+  // 关键点：
+  // - dragCounter 避免子元素触发 dragenter/dragleave 导致闪烁
+  // - 必须 preventDefault 全部 dragover/drop，否则浏览器会跳转到图片预览页
+  // - 仅接受 image/* 类型，其他文件过滤掉
+  useEffect(() => {
+    const el = slotRef.current;
+    if (!el) return;
+
+    function handleDragEnter(e: DragEvent) {
+      if (slot.isMarkedAllCorrect) return;
+      e.preventDefault();
+      e.stopPropagation();
+      dragCounter.current += 1;
+      if (e.dataTransfer?.types.includes("Files")) {
+        setDragOver(true);
+      }
+    }
+
+    function handleDragOver(e: DragEvent) {
+      // 必须 preventDefault 才能触发 drop
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.dataTransfer) {
+        e.dataTransfer.dropEffect = "copy";
+      }
+    }
+
+    function handleDragLeave(e: DragEvent) {
+      e.preventDefault();
+      e.stopPropagation();
+      dragCounter.current = Math.max(0, dragCounter.current - 1);
+      if (dragCounter.current === 0) {
+        setDragOver(false);
+      }
+    }
+
+    function handleDrop(e: DragEvent) {
+      e.preventDefault();
+      e.stopPropagation();
+      dragCounter.current = 0;
+      setDragOver(false);
+
+      if (slot.isMarkedAllCorrect) return;
+
+      const files = Array.from(e.dataTransfer?.files ?? []);
+      const imageFiles = files.filter((f) => f.type.startsWith("image/"));
+      const nonImageCount = files.length - imageFiles.length;
+
+      if (imageFiles.length === 0) {
+        if (nonImageCount > 0) {
+          alert(
+            `拖入了 ${nonImageCount} 个非图片文件。请拖入 PNG / JPG / JPEG / WebP 格式的图片。`,
+          );
+        }
+        return;
+      }
+
+      // 每个槽只支持一张图：取第一张，其他提示
+      if (imageFiles.length > 1) {
+        console.warn(
+          `[qnumber-slot] 拖入了 ${imageFiles.length} 张图片，仅取第一张`,
+        );
+      }
+      handleImageFile(imageFiles[0]);
+    }
+
+    el.addEventListener("dragenter", handleDragEnter);
+    el.addEventListener("dragover", handleDragOver);
+    el.addEventListener("dragleave", handleDragLeave);
+    el.addEventListener("drop", handleDrop);
+
+    return () => {
+      el.removeEventListener("dragenter", handleDragEnter);
+      el.removeEventListener("dragover", handleDragOver);
+      el.removeEventListener("dragleave", handleDragLeave);
+      el.removeEventListener("drop", handleDrop);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slot.isMarkedAllCorrect]);
 
@@ -225,6 +309,7 @@ export function QNumberSlot({
         rounded-xl border p-5 transition outline-none
         focus:border-accent focus:ring-2 focus:ring-accent/20
         ${isMarked ? "bg-success-soft/30 border-success/30" : "bg-white border-hairline"}
+        ${dragOver ? "border-accent ring-2 ring-accent/30 bg-accent-soft/30" : ""}
       `}
       data-slot-key={slotKey(qType, qNumber)}
     >
@@ -287,13 +372,20 @@ export function QNumberSlot({
               >
                 删除
               </button>
+              <div className="absolute bottom-2 left-2 px-2.5 py-1 rounded-md bg-black/60 text-white text-xs">
+                拖入新图可替换
+              </div>
             </div>
           ) : (
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading}
-              className="w-full rounded-lg border-2 border-dashed border-hairline hover:border-accent hover:bg-accent-soft/20 transition p-8 text-center"
+              className={`w-full rounded-lg border-2 border-dashed transition p-8 text-center ${
+                dragOver
+                  ? "border-accent bg-accent-soft/40 scale-[0.98]"
+                  : "border-hairline hover:border-accent hover:bg-accent-soft/20"
+              }`}
             >
               <div className="mb-1 inline-flex items-center justify-center w-12 h-12 rounded-xl bg-accent-soft text-accent-text">
                 {uploading ? (
@@ -303,10 +395,14 @@ export function QNumberSlot({
                 )}
               </div>
               <div className="text-sm text-ink-mute">
-                {uploading ? "压缩中…" : "点击上传 或 Ctrl+V 粘贴"}
+                {uploading
+                  ? "压缩中…"
+                  : dragOver
+                  ? "松开即可上传"
+                  : "点击上传 · Ctrl+V 粘贴 · 拖拽图片"}
               </div>
               <div className="text-xs text-ink-subtle mt-1">
-                PNG / JPG / JPEG · 自动压到 500KB
+                PNG / JPG / JPEG / WebP · 自动压到 500KB
               </div>
             </button>
           )}
