@@ -545,25 +545,36 @@ function SlotColumn({
 
 function TemplateHint() {
   return (
-    <div className="mt-6 rounded-xl border border-accent-line bg-accent-soft/30 p-5 flex items-start gap-4">
-      <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center text-xl shadow-sm shrink-0">
-        📥
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="font-medium text-accent-ink text-sm">
-          没有 Excel 模板？
+    <div className="mt-6 rounded-xl border border-accent-line bg-accent-soft/30 p-5">
+      <div className="flex items-start gap-4">
+        <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center text-xl shadow-sm shrink-0">
+          📥
         </div>
-        <div className="text-xs text-ink-muted mt-1">
-          列名包含「姓名」「堂测错题」「作业错题」即可识别，支持模糊匹配
+        <div className="flex-1 min-w-0">
+          <div className="font-medium text-accent-ink text-sm">
+            没有反馈表 / 想直接手写？
+          </div>
+          <div className="text-xs text-ink-muted mt-1">
+            Excel 列名包含「姓名」「堂测错题」「作业错题」即可自动识别（模糊匹配）
+          </div>
         </div>
       </div>
-      <a
-        href="/templates/lekao-mistake-template-v1.xlsx"
-        download
-        className="px-3 py-1.5 bg-accent-text text-white text-xs font-medium rounded-md hover:bg-accent-hover transition whitespace-nowrap"
-      >
-        下载模板
-      </a>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <a
+          href="/templates/lekao-mistake-template-v1.xlsx"
+          download
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-accent-text text-white text-xs font-medium rounded-md hover:bg-accent-hover transition"
+        >
+          📊 下载 Excel 录入模板
+        </a>
+        <a
+          href="/templates/lekao-mistake-word-template-v1.docx"
+          download
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-accent-line text-accent-ink text-xs font-medium rounded-md hover:bg-accent-soft transition"
+        >
+          📝 下载 Word 错题集模板
+        </a>
+      </div>
     </div>
   );
 }
