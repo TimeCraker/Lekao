@@ -29,6 +29,11 @@ export type VisionResult = {
  *
  * @param imageDataUrls - data URL 数组（data:image/png;base64,...），支持多图
  * @returns VisionResult - {subject, topic, keyPoints[], rawText}
+ *
+ * ⭐ 安全加固（2026-06-20 commit review）：
+ * - subject 必须在 9 个学科 allowlist 内（防 prompt injection）
+ * - topic/keyPoints/rawText 长度截断 + 控制字符过滤
+ * - keyPoints 数量上限 + 总长度上限
  */
 export async function recognizeHandout(
   imageDataUrls: string[],
@@ -84,11 +89,64 @@ export async function recognizeHandout(
     parsed = JSON.parse(jsonMatch[0]);
   }
 
-  // 字段兜底（防止模型漏字段）
-  return {
-    subject: parsed.subject || "未知",
-    topic: parsed.topic || "未知",
-    keyPoints: Array.isArray(parsed.keyPoints) ? parsed.keyPoints : [],
-    rawText: parsed.rawText || "",
-  };
+  // ⭐ 字段清洗（防 prompt injection）
+  return sanitizeVisionResult(parsed);
+}
+
+// ============================================
+// ⭐ 安全：视觉模型输出校验与清洗（防 prompt injection）
+// ============================================
+
+const ALLOWED_SUBJECTS = new Set([
+  "数学",
+  "物理",
+  "化学",
+  "生物",
+  "英语",
+  "语文",
+  "地理",
+  "历史",
+  "政治",
+]);
+
+const MAX_SUBJECT_LEN = 10;
+const MAX_TOPIC_LEN = 50;
+const MAX_KEYPOINT_LEN = 50;
+const MAX_RAW_TEXT_LEN = 500;
+const MAX_KEYPOINTS_COUNT = 10;
+const MAX_KEYPOINTS_TOTAL = 300;
+
+/** 过滤控制字符 + 限制长度（保留中文/英文/数字/常见标点） */
+function clamp(s: unknown, max: number): string {
+  if (typeof s !== "string") return "";
+  // 过滤控制字符（保留 \t \n \r）
+  const cleaned = s.replace(/[\x00-\x08\x0B-\x1F\x7F]/g, "").trim();
+  return cleaned.length > max ? cleaned.slice(0, max) : cleaned;
+}
+
+function sanitizeVisionResult(raw: Partial<VisionResult>): VisionResult {
+  // subject: 必须在 9 个学科 allowlist 内
+  const subjectRaw = clamp(raw.subject, MAX_SUBJECT_LEN);
+  const subject = ALLOWED_SUBJECTS.has(subjectRaw) ? subjectRaw : "未知";
+
+  // topic: 截断到 50 字符
+  const topic = clamp(raw.topic, MAX_TOPIC_LEN) || "未知";
+
+  // keyPoints: 数组过滤 + 每项截断 + 总长度截断
+  const rawPoints = Array.isArray(raw.keyPoints) ? raw.keyPoints : [];
+  const points: string[] = [];
+  let totalLen = 0;
+  for (const p of rawPoints) {
+    if (points.length >= MAX_KEYPOINTS_COUNT) break;
+    const c = clamp(p, MAX_KEYPOINT_LEN);
+    if (!c) continue;
+    if (totalLen + c.length > MAX_KEYPOINTS_TOTAL) break;
+    points.push(c);
+    totalLen += c.length;
+  }
+
+  // rawText: 截断到 500 字符
+  const rawText = clamp(raw.rawText, MAX_RAW_TEXT_LEN);
+
+  return { subject, topic, keyPoints: points, rawText };
 }
