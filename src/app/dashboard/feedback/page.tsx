@@ -2,6 +2,7 @@ import Link from "next/link";
 import { SummaryWorkflow } from "@/components/summary/summary-workflow";
 import { TopBar } from "@/components/dashboard/sidebar";
 import { CoinIcon } from "@/components/icons";
+import { UsageGuideButton } from "@/components/usage-guide/trigger-button";
 
 export default function FeedbackPage() {
   return (
@@ -10,10 +11,13 @@ export default function FeedbackPage() {
         title="堂测反馈"
         description="上传讲义图片 → AI 自动识别学科、章节、知识点 → 生成堂测批改反馈"
         rightExtra={
-          <span className="hidden md:inline-flex items-center gap-1 px-2.5 py-1 bg-accent-soft text-accent-ink text-xs font-semibold rounded-full border border-accent/20">
-            <CoinIcon className="w-3 h-3" />
-            1 币 / 次
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="hidden md:inline-flex items-center gap-1 px-2.5 py-1 bg-accent-soft text-accent-ink text-xs font-semibold rounded-full border border-accent/20">
+              <CoinIcon className="w-3 h-3" />
+              1 币 / 次
+            </span>
+            <UsageGuideButton module="feedback" />
+          </div>
         }
       />
 
