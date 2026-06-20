@@ -64,9 +64,22 @@ if ($LASTEXITCODE -ne 0) { throw "git bundle failed" }
 Write-Host "`n==> [2/7] 上传 bundle ..." -ForegroundColor Cyan
 Invoke-ScpFrom @($bundle) "/tmp/lekao-deploy.bundle"
 
-# ─── [3/7] 服务器 git clone ───
-Write-Host "`n==> [3/7] 服务器 git clone ..." -ForegroundColor Cyan
-Invoke-Ssh "mkdir -p $RemoteRoot && git clone /tmp/lekao-deploy.bundle $RemoteRoot 2>&1 && rm -f /tmp/lekao-deploy.bundle && cd $RemoteRoot && git checkout main 2>&1 | tail -3"
+# ─── [3/7] 服务器 fetch bundle + reset ───
+# 既有目录用 bundle fetch + reset（避免覆盖已有 .git）
+# 首次部署需先手动：mkdir + git init + git remote add + git fetch
+Write-Host "`n==> [3/7] 服务器 fetch bundle + reset ..." -ForegroundColor Cyan
+$RemoteCmd = @"
+  if [ ! -d $RemoteRoot/.git ]; then
+    echo 'ERROR: '$RemoteRoot' 不是 git 仓库，请手动 git init + 配置' && exit 1
+  fi
+  cd $RemoteRoot
+  git fetch /tmp/lekao-deploy.bundle main:refs/heads/main-new 2>&1
+  git reset --hard main-new 2>&1
+  git branch -D main-new 2>&1
+  rm -f /tmp/lekao-deploy.bundle
+  git log --oneline -1
+"@
+Invoke-Ssh $RemoteCmd
 
 # ─── [4/7] 写服务器 .env (替换 NEXTAUTH_URL 为公网) ───
 Write-Host "`n==> [4/7] 写服务器 .env ..." -ForegroundColor Cyan
