@@ -57,7 +57,7 @@ Write-Host "    公网: $PublicUrl (port $Port)"
 Write-Host "`n==> [1/7] 本地 git bundle ..." -ForegroundColor Cyan
 $bundle = Join-Path $env:TEMP "lekao-deploy.bundle"
 if (Test-Path $bundle) { Remove-Item $bundle -Force }
-git -C $LekaoRoot bundle create $bundle --all
+git -C $LekaoRoot bundle create $bundle main
 if ($LASTEXITCODE -ne 0) { throw "git bundle failed" }
 
 # ─── [2/7] 上传 bundle ───
