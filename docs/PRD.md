@@ -1237,6 +1237,7 @@ npx prisma migrate deploy --schema=packages/db/prisma/schema.prisma
 - ✅ **Phase 1 T1-T15 全部完成**（2026-06-20 v0.5）
 - ✅ 部署到 `https://lekao.asterforge.top` 公网可访问
 - ✅ Lighthouse mobile = 95/100/100/100（perf/a11y/bp/seo）
+- ✅ **安全加固 3 项已完成**（v0.5.1 - finding 1+2+3, 2026-06-20）
 - ⏳ Phase 2 错题集 T16-T25 未做（用户决策已固化到 PRD + BRD + STAGE spec）
 - ⏳ Phase 2 课堂小结 + 反馈 T26-T35 未做
 - ⏳ Phase 2 T-Coin 充值 + 管理员后台 T36-T40 未做
@@ -1250,6 +1251,15 @@ npx prisma migrate deploy --schema=packages/db/prisma/schema.prisma
 | `a6a726f` | T9-T13 页面 + 模板 + admin 入口 |
 | `c369d8c` | T14 部署腾讯云 :3007 (systemd + 阿里云反代) |
 | `1e1d3ec` | T15 Lighthouse (a11y token 矩阵化修复 color-contrast) |
+
+**Phase 1.1 安全加固 commit 历史**（v0.5.1）：
+| Commit | 内容 |
+|--------|------|
+| `ce6196e` | fix(db): schema 字段 @map + 4 张业务表 init migration |
+| `ec5c39a` | fix(db): role 字段声明 UserRole enum |
+| `720f88b` | feat(security): verification_codes bcrypt + CHECK 约束 (3 项加固) |
+| `ae895cf` | fix(db): verification_codes.code 列改 nullable |
+| `713cb06` | fix(security): 5 次错码锁定逻辑 - attempts>=MAX 直接锁 |
 
 **Phase 2 启动条件**（已满足）：
 - ✅ 用户在另一窗口做脚手架（T10-T14 部署）— 完成
@@ -1265,3 +1275,31 @@ npx prisma migrate deploy --schema=packages/db/prisma/schema.prisma
 **执行分工**：
 - 用户：选 Phase 2 方向 + 必要时审批（review 效果/重大决策）
 - Claude：按 stage spec 走 + 跑命令 + 批量改文件
+
+### 8.5 安全加固清单（v0.5.1 · 2026-06-20 · 已完成 3/4）
+
+**来源**：后台 `security-guidance` 钩子在 commit `ce6196e` 提交后自动扫描 4 个 finding。
+
+**已修复（3 项 · commit `720f88b` / `ae895cf` / `713cb06`）**：
+
+| # | 风险 | 修复方案 | commit |
+|---|------|---------|--------|
+| 1 | **HIGH** verification_codes 存明文 code | bcrypt(code, cost=10) 存 codeHash，bcrypt.compare 验码，5 次错码锁定 | `720f88b` |
+| 2 | MEDIUM tCoinUsed 列没 CHECK 约束 | DB 层 `CHECK (tCoinUsed >= 1)` 防负数 | `720f88b` |
+| 3 | MEDIUM purpose/code/email 长度+取值无约束 | DB 层 CHECK：purpose IN (3 值) + code 长度 4-16 + codeHash 长度 4-256 + email 长度 3-320 + attempts 0-20 | `720f88b` |
+
+**附加修复**：
+- `ae895cf` fix: code 列改 nullable（之前 NOT NULL 导致 INSERT codeHash 不写 code 失败）
+- `713cb06` fix: 锁定逻辑改为 attempts>=MAX 直接锁（之前 expiresAt-LOCKOUT 算错时间锁不住）
+
+**推迟（1 项 · 等 Phase 2 公开模板功能再做）**：
+
+| # | 风险 | 内容 | 触发条件 |
+|---|------|------|---------|
+| 4 | MEDIUM lekao_templates 公开查询无 RLS | 缺 partial index `WHERE isPublic = true` + RLS policy | Phase 2 模板功能上线前 |
+
+**验证结果**（端到端实测）：
+- ✅ DB 中 code 字段 = NULL，codeHash = `$2b$10$` bcrypt 格式
+- ✅ bcrypt.compare 验码正确（错码 attempts++ → 第 6 次起返回 "已被锁定"）
+- ✅ CHECK 约束生效（INSERT tCoinUsed=0 被 `lekao_class_summaries_tcoin_check` 拒绝）
+- ✅ 唯一 partial index 防并发发码竞态（`email+purpose WHERE used=false`）

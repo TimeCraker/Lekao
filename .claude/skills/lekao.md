@@ -517,8 +517,23 @@ DATABASE_URL="postgresql://postgres:postgres@localhost:5434/resumeaix?connection
 | build 时 OOM | 3.6GB 内存不够 | 限制 `NODE_OPTIONS=--max-old-space-size=1536` |
 | git fetch bundle 报 "couldn't find remote ref main" | bundle 没带 refs/heads/main | `git bundle create <file> main` （用 branch 名不是 HEAD） |
 | 阿里云 serverblock 报 "conflicting server name" | aliyun-proxy.conf 已有同名 server | `rm` 新加 serverblock + `sed` 改 aliyun-proxy.conf 内的 lekao 段 |
+| 改了 .ts 文件但服务器跑的还是老代码 | 部署只跑了 `prisma generate` 没跑 `pnpm build` | 改 .ts 后必须 `rm -rf .next && NODE_OPTIONS=--max-old-space-size=1536 pnpm build` + restart |
+| INSERT 报 `Null constraint violation on code` | schema `code String?` 但 PG 列还是 NOT NULL | migration 必须 `ALTER COLUMN code DROP NOT NULL`（schema 改 nullable 不自动同步 PG）|
 
 ## 演化记录
+
+### 2026-06-20（第 7 轮更新 · 安全加固 3 项 + 2 个 deploy 坑）
+- **后台安全审查 finding 1+2+3 立即修**（用户拍板"那就不用加了直接修"）：
+  - `720f88b` feat: verification_codes bcrypt + CHECK 约束（5 个 CHECK + unique partial index）
+  - `ae895cf` fix: code 列改 nullable（之前 NOT NULL 导致 INSERT 失败）
+  - `713cb06` fix: 5 次错码锁定逻辑（之前 expiresAt-LOCKOUT 算错时间锁不住）
+- **2 个 deploy 实战坑**（新增故障排查表）：
+  - 改了 .ts 文件但服务器跑老代码 → deploy 必须 `rm -rf .next && pnpm build`，只跑 `prisma generate` 不够
+  - schema `code String?` 没同步 PG 列约束 → migration 必须显式 `ALTER COLUMN DROP NOT NULL`
+- **端到端验证**：
+  - DB: code NULL + codeHash `$2b$10$` + attempts 5 锁住
+  - CHECK: tCoinUsed=0 被拒 + purpose enum 限制 + email 长度 320 + codeHash 长度 256
+  - bcrypt.compare 比对正常，5 次错码后第 6 次起返回 "已被锁定"
 
 ### 2026-06-20（第 6 轮更新 · Prisma 字段映射 3 连修）
 - **Bug 排查**：注册页"服务器错误"→ send-code 报 3 个连续 Prisma error
