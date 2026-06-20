@@ -1,0 +1,111 @@
+// ============================================
+// Lekao - Prisma schema (PRD §3.4)
+// ============================================
+// ⚠️ 共享 users 表归 ResumeAIX 管，Lekao 只读引用
+// ⚠️ 绝不能 prisma db push --force (会误删 ResumeAIX 用户数据)
+// ⚠️ 部署只用 prisma migrate deploy (带历史 migration 文件)
+//
+// DB: PostgreSQL :5434/resumeaix (与 ResumeAIX 共享实例)
+// .env DATABASE_URL 必须带 ?connection_limit=4&pool_timeout=20
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// ⚠️ 只读引用 (ResumeAIX 管, Lekao 永远不 migrate)
+// ============================================
+model User {
+  id              String   @id @default(cuid())
+  email           String   @unique
+  password        String? // bcrypt hash
+  name            String?
+  role            String   @default("user") // user | admin
+  t_coin          Int      @default(0) // 充值 T-Coin (ResumeAIX/Lekao 共享)
+  lekao_gift_coin Int      @default(-1) // ⭐ Lekao 赠送 (默认 -1, signIn 延迟初始化为 5)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // 反向关系 (Lekao 业务表挂在 userId 上)
+  classSummaries LekaoClassSummary[]
+  classFeedbacks LekaoClassFeedback[]
+
+  @@map("users")
+}
+
+// ============================================
+// Lekao 业务表 (Lekao 自己的 migration)
+// ============================================
+
+// 课堂小结历史 (付费数据, 必须落盘防客诉)
+model LekaoClassSummary {
+  id           String   @id @default(cuid())
+  userId       String
+  subject      String // 学科: 数学 / 物理 / 化学
+  topic        String // 精准提炼的专题名称
+  templateId   String? // 使用的模板 ID
+  inputImages  String[] // 输入图片 URL (COS)
+  feedbackText String   @db.Text // 10 条建议
+  summaryText  String   @db.Text // 总体小结
+  tCoinUsed    Int      @default(1)
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+  @@map("lekao_class_summaries")
+}
+
+// 课堂反馈历史 (付费数据, 必须落盘防客诉)
+model LekaoClassFeedback {
+  id           String   @id @default(cuid())
+  userId       String
+  subject      String
+  topic        String
+  templateId   String?
+  inputImages  String[]
+  description  String?  @db.Text // 助教简单描述
+  feedbackText String   @db.Text // AI 生成的反馈
+  tCoinUsed    Int      @default(1)
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+  @@map("lekao_class_feedbacks")
+}
+
+// 模板 (平台预设 + 用户自定义)
+model LekaoTemplate {
+  id        String   @id @default(cuid())
+  userId    String? // null 表示平台预设
+  name      String
+  type      String // summary | feedback
+  subject   String? // 适用学科 (null 表示通用)
+  content   String   @db.Text
+  isPublic  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, type])
+  @@map("lekao_templates")
+}
+
+// 验证码记录 (防刷)
+model VerificationCode {
+  id        String   @id @default(cuid())
+  email     String
+  code      String
+  purpose   String // register | login | reset
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([email, purpose, expiresAt])
+  @@map("verification_codes")
+}

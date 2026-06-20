@@ -1,0 +1,112 @@
+@import "tailwindcss";
+
+/* ============================================
+ * PRD §2.2 Color Tokens · 浅蓝白主题
+ * ============================================ */
+:root {
+  /* ─── Canvas + Ink ─── */
+  --canvas:        #fafbfc;   /* 主背景 · 浅蓝白 */
+  --canvas-alt:    #f1f5f9;   /* 次背景 · 略深蓝白 */
+  --ink:           #0a0f1a;   /* 主文字 · 深蓝黑 */
+  --ink-mute:      #1e293b;   /* 次文字 */
+  --ink-muted:     #475569;   /* 辅助文字 · slate-600 */
+  --ink-subtle:    #94a3b8;   /* 弱化文字 · slate-400 */
+
+  /* ─── Hairline + Divider ─── */
+  --hairline:      #e2e8f0;   /* slate-200 */
+  --divider:       #cbd5e1;   /* slate-300 */
+
+  /* ─── Accent · 浅蓝主色 ─── */
+  --accent:        #3b82f6;   /* blue-500 · CTA 主色 */
+  --accent-hover:  #2563eb;   /* blue-600 */
+  --accent-soft:   #dbeafe;   /* blue-100 · 标签背景 */
+  --accent-ink:    #1e40af;   /* blue-800 · 文字专用 */
+  --accent-line:   rgba(59, 130, 246, 0.32);
+
+  /* ─── 语义色 ─── */
+  --success:       #10b981;   /* green-500 */
+  --warning:       #f59e0b;   /* amber-500 */
+  --danger:        #ef4444;   /* red-500 */
+
+  /* ─── 暗色区域 ─── */
+  --page-dark:        #0f172a;   /* slate-900 */
+  --surface-dark-1:   #1e293b;   /* slate-800 */
+  --surface-dark-2:   #334155;   /* slate-700 */
+  --hairline-dark:    rgba(248, 250, 252, 0.08);
+  --ink-on-dark:      #f8fafc;
+  --ink-on-dark-muted: #cbd5e1;
+
+  /* ─── 阴影 ─── */
+  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 4px 16px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 8px 32px rgba(15, 23, 42, 0.10);
+  --shadow-card-hover: 0 8px 24px rgba(15, 23, 42, 0.12);
+
+  /* ─── 圆角 ─── */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+}
+
+/* ============================================
+ * Tailwind 4 @theme (把 CSS vars 暴露给 utilities)
+ * bg-canvas / text-ink / border-hairline 等
+ * ============================================ */
+@theme inline {
+  --color-canvas:        var(--canvas);
+  --color-canvas-alt:    var(--canvas-alt);
+  --color-ink:           var(--ink);
+  --color-ink-mute:      var(--ink-mute);
+  --color-ink-muted:     var(--ink-muted);
+  --color-ink-subtle:    var(--ink-subtle);
+  --color-hairline:      var(--hairline);
+  --color-divider:       var(--divider);
+  --color-accent:        var(--accent);
+  --color-accent-hover:  var(--accent-hover);
+  --color-accent-soft:   var(--accent-soft);
+  --color-accent-ink:    var(--accent-ink);
+  --color-success:       var(--success);
+  --color-warning:       var(--warning);
+  --color-danger:        var(--danger);
+  --color-page-dark:     var(--page-dark);
+  --color-surface-dark-1: var(--surface-dark-1);
+  --color-surface-dark-2: var(--surface-dark-2);
+  --color-ink-on-dark:   var(--ink-on-dark);
+  --color-ink-on-dark-muted: var(--ink-on-dark-muted);
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+    "PingFang SC", "Helvetica Neue", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", "Menlo", "Cascadia Code", monospace;
+}
+
+/* ============================================
+ * PRD §2.3 字体系统
+ * ============================================ */
+body {
+  font-family: var(--font-sans);
+  font-feature-settings: "ss01", "ss02";
+  -webkit-font-smoothing: antialiased;
+  background: var(--canvas);
+  color: var(--ink);
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+  font-feature-settings: "ss01", "ss02";
+}
+
+/* ============================================
+ * PRD §2.5.6 prefers-reduced-motion 双层守卫 (CSS 层)
+ * JS 层: 各组件 useReducedMotion() hook
+ * ============================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
