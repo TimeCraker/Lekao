@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { CheckIcon } from "@/components/icons";
 
 /**
  * Profile 操作区 (客户端组件)
@@ -69,7 +70,10 @@ export function ProfileActions({ currentName }: { currentName: string }) {
               取消
             </button>
             {status === "saved" && (
-              <span className="text-success-text text-sm">✓ 已保存</span>
+              <span className="inline-flex items-center gap-1 text-success-text text-sm">
+                <CheckIcon className="w-3.5 h-3.5" />
+                已保存
+              </span>
             )}
           </div>
           <p className="text-xs text-ink-subtle">

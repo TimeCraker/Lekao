@@ -9,7 +9,9 @@ import {
   CoinIcon,
   ClockIcon,
   FreeIcon,
-} from "@/components/landing/icons";
+  LightbulbIcon,
+  ArrowLeftIcon,
+} from "@/components/icons";
 
 export default async function ProfilePage() {
   const session = await auth();
@@ -37,14 +39,15 @@ export default async function ProfilePage() {
   const totalCoin = tCoin + (giftInitialised ? giftCoin : 0);
 
   return (
-    <div className="p-8 md:p-12 max-w-4xl">
+    <div className="px-8 md:px-12 py-10 max-w-4xl">
       {/* Header · 返回 + 标题 */}
       <div className="mb-10">
         <Link
           href="/dashboard"
           className="inline-flex items-center gap-1 text-sm text-ink-muted hover:text-accent-text transition mb-4"
         >
-          ← 返回概览
+          <ArrowLeftIcon className="w-3.5 h-3.5" />
+          返回控制台
         </Link>
         <h1 className="text-3xl md:text-4xl font-bold text-ink tracking-tight">
           个人中心
@@ -139,8 +142,11 @@ export default async function ProfilePage() {
 
       {/* 安全提示 */}
       <div className="bg-accent-soft border border-accent-line rounded-2xl p-6 text-sm text-ink-mute">
-        <strong className="text-ink">💡 T-Coin 扣费顺序</strong>
-        <p className="mt-2 leading-relaxed">
+        <div className="flex items-center gap-2 mb-2">
+          <LightbulbIcon className="w-4 h-4 text-accent-text" />
+          <strong className="text-ink">T-Coin 扣费顺序</strong>
+        </div>
+        <p className="leading-relaxed">
           每次生成课堂小结或反馈，先扣除 <strong>赠送 T-Coin</strong>，余额不足再扣除
           {" "}<strong>充值 T-Coin</strong>。
           赠送币用完后，注册赠送的 5 枚不再补发；充值币可通过 T-Coin

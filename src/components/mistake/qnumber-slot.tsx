@@ -21,6 +21,12 @@ import {
   slotKey,
 } from "@/lib/mistake/image-store";
 import type { QNumberSlot as QNumberSlotData } from "@/lib/mistake/types";
+import {
+  CheckIcon,
+  ResetIcon,
+  UploadIcon,
+  LightbulbIcon,
+} from "@/components/icons";
 
 export interface QNumberSlotProps {
   qNumber: string;
@@ -245,7 +251,8 @@ export function QNumberSlot({
           `}
           aria-pressed={isMarked}
         >
-          ✓ 全对
+          <CheckIcon className="w-3.5 h-3.5 mr-1 inline-block" />
+          全对
         </button>
       </div>
 
@@ -288,8 +295,12 @@ export function QNumberSlot({
               disabled={uploading}
               className="w-full rounded-lg border-2 border-dashed border-hairline hover:border-accent hover:bg-accent-soft/20 transition p-8 text-center"
             >
-              <div className="text-3xl mb-1" aria-hidden>
-                {uploading ? "⏳" : "📷"}
+              <div className="mb-1 inline-flex items-center justify-center w-12 h-12 rounded-xl bg-accent-soft text-accent-text">
+                {uploading ? (
+                  <ResetIcon className="w-6 h-6 animate-spin" />
+                ) : (
+                  <UploadIcon className="w-6 h-6" />
+                )}
               </div>
               <div className="text-sm text-ink-mute">
                 {uploading ? "压缩中…" : "点击上传 或 Ctrl+V 粘贴"}
@@ -332,8 +343,9 @@ export function QNumberSlot({
 
           {/* 粘贴提示 */}
           {pasteHint && (
-            <div className="mt-2 text-xs text-accent animate-pulse">
-              💡 已激活 Ctrl+V 粘贴，截图后可直接粘贴
+            <div className="mt-2 text-xs text-accent animate-pulse inline-flex items-center gap-1">
+              <LightbulbIcon className="w-3 h-3" />
+              已激活 Ctrl+V 粘贴，截图后可直接粘贴
             </div>
           )}
         </>

@@ -3,6 +3,12 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { stripMarkdown } from "@/lib/summary/parser";
+import {
+  SummaryIcon,
+  FeedbackIcon,
+  DocumentIcon,
+  CheckIcon,
+} from "@/components/icons";
 
 type Props = {
   feedback: string;
@@ -59,7 +65,7 @@ export function OutputCard({
     <div className="space-y-4">
       {feedback && (
         <SectionBlock
-          emoji={template === "summary" ? "📝" : "📊"}
+          Icon={template === "summary" ? SummaryIcon : FeedbackIcon}
           title={feedbackTitle || (template === "summary" ? "课堂反馈" : "堂测反馈")}
           content={feedback}
           isCopied={copiedKey === "feedback"}
@@ -71,7 +77,7 @@ export function OutputCard({
 
       {summary && (
         <SectionBlock
-          emoji="📋"
+          Icon={DocumentIcon}
           title={summaryTitle || (template === "summary" ? "课堂总体小结" : "堂测总体反馈")}
           content={summary}
           isCopied={copiedKey === "summary"}
@@ -85,7 +91,7 @@ export function OutputCard({
 }
 
 function SectionBlock({
-  emoji,
+  Icon,
   title,
   content,
   isCopied,
@@ -93,7 +99,7 @@ function SectionBlock({
   copyLabel,
   variant,
 }: {
-  emoji: string;
+  Icon: React.ComponentType<{ className?: string }>;
   title: string;
   content: string;
   isCopied: boolean;
@@ -123,7 +129,12 @@ function SectionBlock({
         )}
       >
         <div className="flex items-center gap-2">
-          <span className="text-lg">{emoji}</span>
+          <Icon
+            className={cn(
+              "w-[18px] h-[18px]",
+              variant === "feedback" ? "text-accent-text" : "text-success-text",
+            )}
+          />
           <span
             className={cn(
               "font-semibold text-sm",
@@ -146,10 +157,13 @@ function SectionBlock({
           )}
         >
           {isCopied ? (
-            <>✓ 已复制</>
+            <>
+              <CheckIcon className="w-3 h-3" />
+              已复制
+            </>
           ) : (
             <>
-              📋 复制（{copyLabel}）
+              复制（{copyLabel}）
             </>
           )}
         </button>

@@ -36,6 +36,15 @@ import type {
   MistakeStep,
   QNumberSlot,
 } from "@/lib/mistake/types";
+import {
+  CheckIcon,
+  EyeIcon,
+  WordIcon,
+  ExcelIcon,
+  DownloadIcon,
+  LightbulbIcon,
+  ArrowLeftIcon,
+} from "@/components/icons";
 import { ExcelUploader } from "./excel-uploader";
 import { SheetSelector } from "./sheet-selector";
 import { ConfirmCover, type ConfirmCoverValue } from "./confirm-cover";
@@ -220,23 +229,15 @@ export function MistakeWorkflow() {
   }, []);
 
   return (
-    <div className="p-6 md:p-10 max-w-6xl">
-      {/* 顶部：标题 + 返回 */}
-      <div className="mb-8 flex items-start justify-between gap-4">
-        <div>
-          <div className="mb-2 text-sm text-ink-subtle">错题集生成</div>
-          <h1 className="text-3xl md:text-4xl font-bold text-ink tracking-tight">
-            班级错题 → Word 文档
-          </h1>
-          <p className="text-ink-muted mt-2 text-sm">
-            上传 Excel 错题表 → 选择学科 → 确认封面信息 → 填题号图片/文字 → 导出本地 Word
-          </p>
-        </div>
+    <div className="px-6 md:px-10 py-8 max-w-6xl">
+      {/* 顶部：返回链接（页面标题已交给 TopBar） */}
+      <div className="mb-6 flex items-center justify-end">
         <Link
           href="/dashboard"
-          className="text-sm text-ink-muted hover:text-ink transition whitespace-nowrap"
+          className="inline-flex items-center gap-1 text-sm text-ink-muted hover:text-ink transition whitespace-nowrap"
         >
-          ← 返回工作台
+          <ArrowLeftIcon className="w-3.5 h-3.5" />
+          返回控制台
         </Link>
       </div>
 
@@ -386,9 +387,7 @@ export function MistakeWorkflow() {
                           />
                           <span className="truncate">{s.name}</span>
                           {s.isAllCorrect && (
-                            <span className="ml-auto text-xs text-success-text">
-                              ✓
-                            </span>
+                            <CheckIcon className="ml-auto w-3.5 h-3.5 text-success-text" />
                           )}
                         </label>
                       ))}
@@ -410,9 +409,10 @@ export function MistakeWorkflow() {
                         }
                       }}
                       disabled={studentSelection.size === 0}
-                      className="text-sm px-4 py-2 rounded-md bg-canvas-alt text-ink-mute hover:bg-accent-soft hover:text-accent-ink transition disabled:opacity-50"
+                      className="inline-flex items-center gap-1.5 text-sm px-4 py-2 rounded-md bg-canvas-alt text-ink-mute hover:bg-accent-soft hover:text-accent-ink transition disabled:opacity-50"
                     >
-                      👁 预览 Word 效果
+                      <EyeIcon className="w-3.5 h-3.5" />
+                      预览 Word 效果
                     </button>
                   </div>
                   {finalCollection && (
@@ -498,7 +498,7 @@ function StepIndicator({ step }: { step: MistakeStep }) {
                   }
                 `}
               >
-                {isDone ? "✓" : i + 1}
+                {isDone ? <CheckIcon className="w-3 h-3" /> : i + 1}
               </span>
               {s.label}
             </div>
@@ -609,8 +609,8 @@ function TemplateHint() {
   return (
     <div className="mt-6 rounded-xl border border-accent-line bg-accent-soft/30 p-5">
       <div className="flex items-start gap-4">
-        <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center text-xl shadow-sm shrink-0">
-          📥
+        <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center shadow-sm shrink-0">
+          <LightbulbIcon className="w-5 h-5 text-accent-text" />
         </div>
         <div className="flex-1 min-w-0">
           <div className="font-medium text-accent-ink text-sm">
@@ -627,14 +627,16 @@ function TemplateHint() {
           download
           className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-accent-text text-white text-xs font-medium rounded-md hover:bg-accent-hover transition"
         >
-          📊 下载 Excel 录入模板
+          <ExcelIcon className="w-3.5 h-3.5" />
+          下载 Excel 录入模板
         </a>
         <a
           href="/templates/lekao-mistake-word-template-v1.docx"
           download
           className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-accent-line text-accent-ink text-xs font-medium rounded-md hover:bg-accent-soft transition"
         >
-          📝 下载 Word 错题集模板
+          <WordIcon className="w-3.5 h-3.5" />
+          下载 Word 错题集模板
         </a>
       </div>
     </div>

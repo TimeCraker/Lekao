@@ -24,6 +24,10 @@ import {
 } from "@/lib/mistake/fs-access";
 import { generateBatchDocx } from "@/lib/mistake/docx-generator";
 import type { MistakeCollection, QNumberSlot } from "@/lib/mistake/types";
+import {
+  CheckIcon,
+  DownloadIcon,
+} from "@/components/icons";
 
 export interface ExportBarProps {
   collection: MistakeCollection;
@@ -209,11 +213,12 @@ export function ExportBar({
       {/* 文件夹授权状态 */}
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2 text-sm">
-          <span aria-hidden>📂</span>
+          <DownloadIcon className="w-4 h-4 text-ink-subtle" />
           <span className="text-ink-mute">本地文件夹：</span>
           {dirHandle ? (
-            <span className="font-medium text-success-text">
-              ✓ 已授权「{dirHandle.name}」
+            <span className="inline-flex items-center gap-1 font-medium text-success-text">
+              <CheckIcon className="w-3.5 h-3.5" />
+              已授权「{dirHandle.name}」
             </span>
           ) : (
             <span className="text-ink-muted">未授权</span>
@@ -233,9 +238,10 @@ export function ExportBar({
               type="button"
               onClick={authorize}
               disabled={exporting}
-              className="text-sm px-4 py-1.5 rounded-md bg-canvas-alt text-ink hover:bg-accent-soft hover:text-accent-ink transition"
+              className="inline-flex items-center gap-1.5 text-sm px-4 py-1.5 rounded-md bg-canvas-alt text-ink hover:bg-accent-soft hover:text-accent-ink transition"
             >
-              🔓 授权文件夹
+              <DownloadIcon className="w-3.5 h-3.5" />
+              授权文件夹
             </button>
           )
         ) : (
@@ -261,7 +267,7 @@ export function ExportBar({
           >
             {exporting && progress
               ? `导出中 ${progress.done}/${progress.total}${progress.currentStudent ? ` · ${progress.currentStudent}` : ""}`
-              : `📤 导出 ${studentNames.length} 份错题集 docx`}
+              : `导出 ${studentNames.length} 份错题集 docx`}
           </button>
         )}
 
@@ -274,7 +280,7 @@ export function ExportBar({
           >
             {exporting && progress
               ? `下载中 ${progress.done}/${progress.total}`
-              : `📥 直接下载 ${studentNames.length} 份 docx`}
+              : `直接下载 ${studentNames.length} 份 docx`}
           </button>
         )}
       </div>
@@ -302,8 +308,8 @@ export function ExportBar({
           }`}
         >
           {result.failed === 0
-            ? `✅ 成功导出 ${result.success} 份 docx`
-            : `⚠️ ${result.success} 成功 · ${result.failed} 失败`}
+            ? `成功导出 ${result.success} 份 docx`
+            : `${result.success} 成功 · ${result.failed} 失败`}
           {result.errors.length > 0 && (
             <details className="mt-2">
               <summary className="cursor-pointer text-xs">

@@ -6,7 +6,8 @@ import {
   FeedbackIcon,
   CoinIcon,
   FreeIcon,
-} from "@/components/landing/icons";
+  ArrowRightIcon,
+} from "@/components/icons";
 import { CoinCounter } from "./coin-counter";
 
 type FeatureIcon = React.ComponentType<{ className?: string }>;
@@ -52,9 +53,12 @@ export default async function DashboardPage() {
   const name = session?.user?.name ?? "用户";
 
   return (
-    <div className="p-8 md:p-12 max-w-6xl">
+    <div className="px-8 md:px-12 py-10 max-w-6xl">
       {/* Welcome */}
       <header className="mb-10">
+        <div className="text-xs font-medium text-ink-subtle uppercase tracking-wider mb-2">
+          控制台
+        </div>
         <h1 className="text-3xl md:text-4xl font-bold text-ink tracking-tight">
           欢迎回来，{name}
         </h1>
@@ -145,9 +149,7 @@ function QuickCard({
         </span>
         <span className="text-accent-text text-sm font-medium inline-flex items-center gap-1 opacity-70 group-hover:opacity-100 group-hover:gap-2 transition-all">
           开始
-          <span className="inline-block transition-transform group-hover:translate-x-1">
-            →
-          </span>
+          <ArrowRightIcon className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
         </span>
       </div>
     </Link>

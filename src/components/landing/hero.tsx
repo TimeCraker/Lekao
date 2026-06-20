@@ -1,9 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { motion, type Variants } from "motion/react";
 import { MeshGradientBg } from "./mesh-gradient";
 import { HeroTitle } from "./hero-title";
+import { ArrowRightIcon, FreeIcon } from "@/components/icons";
+
+const ACCOUNT_KEY = "lekao-account-exists";
 
 const fadeUp: Variants = {
   hidden: { opacity: 0, y: 20 },
@@ -19,9 +23,15 @@ const fadeUp: Variants = {
 };
 
 export function Hero() {
+  const [freeStartHref, setFreeStartHref] = useState("/register");
+
+  useEffect(() => {
+    const has = localStorage.getItem(ACCOUNT_KEY) === "true";
+    setFreeStartHref(has ? "/login" : "/register");
+  }, []);
+
   return (
     <section className="relative min-h-[88vh] flex items-center justify-center overflow-hidden">
-      {/* 流体 mesh gradient 背景 (scoped 到容器) */}
       <MeshGradientBg />
 
       <div className="relative z-10 max-w-5xl mx-auto px-6 py-32 text-center">
@@ -37,7 +47,7 @@ export function Hero() {
           Lekao Agent · 内测中
         </motion.div>
 
-        {/* 巨型 H1 · 字符级 3D */}
+        {/* 巨型 H1 */}
         <motion.div
           variants={fadeUp}
           initial="hidden"
@@ -68,20 +78,21 @@ export function Hero() {
           custom={3}
           className="mt-12 flex flex-wrap items-center justify-center gap-4"
         >
+          {/* 登录 = 蓝色实心 */}
           <Link
-            href="/register"
+            href="/login"
             className="group px-8 py-3.5 bg-accent-text text-white text-base font-medium rounded-xl hover:bg-accent-hover transition shadow-md hover:shadow-lg flex items-center gap-2"
           >
-            免费开始 · 送 5 T-Coin
-            <span className="inline-block transition-transform group-hover:translate-x-1">
-              →
-            </span>
+            登录
+            <ArrowRightIcon className="w-4 h-4 transition-transform group-hover:translate-x-1" />
           </Link>
+          {/* 免费开始 = 白色边框 */}
           <Link
-            href="#features"
-            className="px-8 py-3.5 bg-white/60 backdrop-blur-sm border border-hairline text-ink text-base font-medium rounded-xl hover:bg-white hover:border-accent/40 transition"
+            href={freeStartHref}
+            className="px-8 py-3.5 bg-white/60 backdrop-blur-sm border border-hairline text-ink text-base font-medium rounded-xl hover:bg-white hover:border-accent/40 transition flex items-center gap-2"
           >
-            查看演示
+            <FreeIcon className="w-4 h-4 text-accent-text" />
+            免费开始 · 送 5 T-Coin
           </Link>
         </motion.div>
 

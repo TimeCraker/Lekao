@@ -14,6 +14,7 @@
 import { useCallback, useState } from "react";
 import { useReducedMotion } from "motion/react";
 import { parseWorkbook } from "@/lib/mistake/excel-parser";
+import { UploadIcon, ResetIcon } from "@/components/icons";
 
 export interface ExcelUploaderProps {
   onWorkbookReady: (
@@ -103,7 +104,13 @@ export function ExcelUploader({ onWorkbookReady }: ExcelUploaderProps) {
           aria-label="选择 Excel 文件"
           disabled={loading}
         />
-        <div className="text-5xl mb-3" aria-hidden>📤</div>
+        <div className="mb-3 inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-accent-soft text-accent-text">
+          {loading ? (
+            <ResetIcon className="w-7 h-7 animate-spin" />
+          ) : (
+            <UploadIcon className="w-7 h-7" />
+          )}
+        </div>
         <div className="text-base font-medium text-ink">
           {loading ? "解析中…" : "拖拽 Excel 到这里 或 点击选择"}
         </div>

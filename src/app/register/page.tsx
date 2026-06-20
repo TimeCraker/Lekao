@@ -90,6 +90,8 @@ export default function RegisterPage() {
         setTimeout(() => router.push("/login"), 1500);
         return;
       }
+      // 标记已注册（让"免费开始"按钮后续默认跳登录页）
+      localStorage.setItem("lekao-account-exists", "true");
       router.push("/dashboard");
       router.refresh();
     });

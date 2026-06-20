@@ -4,7 +4,7 @@ import {
   SummaryIcon,
   FeedbackIcon,
   CoinIcon,
-} from "@/components/landing/icons";
+} from "@/components/icons";
 
 export const metadata = {
   title: "关于 · Lekao Agent",

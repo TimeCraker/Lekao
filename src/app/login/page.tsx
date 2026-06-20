@@ -64,6 +64,7 @@ export default function LoginPage() {
           setError("邮箱或密码错误");
           return;
         }
+        localStorage.setItem("lekao-account-exists", "true");
         router.push("/dashboard");
         router.refresh();
       } else {
@@ -77,6 +78,7 @@ export default function LoginPage() {
           setError(data.error ?? "登录失败");
           return;
         }
+        localStorage.setItem("lekao-account-exists", "true");
         router.push("/dashboard");
         router.refresh();
       }

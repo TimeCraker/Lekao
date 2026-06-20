@@ -1,27 +1,33 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import {
+  ProfileIcon,
+  DocumentIcon,
+  DownloadIcon,
+  AdminIcon,
+} from "@/components/icons";
 
 const ADMIN_FEATURES = [
   {
-    icon: "👥",
+    Icon: ProfileIcon,
     title: "用户管理",
     description: "查看所有用户、调整 T-Coin 余额、封禁违规账号",
     status: "规划中",
   },
   {
-    icon: "📊",
+    Icon: DocumentIcon,
     title: "API 监控",
     description: "查看 DeepSeek 调用量、Token 消耗、错误率",
     status: "规划中",
   },
   {
-    icon: "📥",
+    Icon: DownloadIcon,
     title: "模板管理",
     description: "上传 / 修改错题集 Excel 模板",
     status: "规划中",
   },
   {
-    icon: "⚙️",
+    Icon: AdminIcon,
     title: "系统设置",
     description: "SMTP / JWT / 数据库配置",
     status: "规划中",
@@ -57,7 +63,9 @@ export default async function AdminPage() {
               className="bg-white border border-hairline rounded-2xl p-6"
             >
               <div className="flex items-start justify-between mb-4">
-                <div className="text-4xl">{f.icon}</div>
+                <div className="w-12 h-12 rounded-xl bg-accent-soft flex items-center justify-center">
+                  <f.Icon className="w-6 h-6 text-accent-text" />
+                </div>
                 <span className="text-xs px-2 py-1 bg-canvas-alt text-ink-subtle rounded-full">
                   {f.status}
                 </span>

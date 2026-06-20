@@ -11,6 +11,7 @@
 import { useEffect, useState } from "react";
 import { loadImage } from "@/lib/mistake/image-store";
 import type { MistakeCollection, QNumberSlot } from "@/lib/mistake/types";
+import { CloseIcon } from "@/components/icons";
 
 export interface HtmlPreviewProps {
   collection: MistakeCollection;
@@ -72,7 +73,7 @@ export function HtmlPreview({
             className="text-ink-muted hover:text-ink transition w-8 h-8 flex items-center justify-center rounded-md hover:bg-canvas-alt"
             aria-label="关闭预览"
           >
-            ✕
+            <CloseIcon className="w-4 h-4" />
           </button>
         </div>
 

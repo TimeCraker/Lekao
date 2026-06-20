@@ -7,7 +7,7 @@ import {
   FeedbackIcon,
   FreeIcon,
   CoinIcon,
-} from "./icons";
+} from "@/components/icons";
 
 const FEATURES = [
   {

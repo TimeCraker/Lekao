@@ -17,6 +17,7 @@ import { useMemo } from "react";
 import * as XLSX from "xlsx";
 import { extractHeaderInfo, listSheets } from "@/lib/mistake/excel-parser";
 import type { MistakeCollection } from "@/lib/mistake/types";
+import { LightbulbIcon } from "@/components/icons";
 
 export interface ConfirmCoverValue {
   subjectName: string; // 学科（= 哪个 Sheet）
@@ -70,8 +71,9 @@ export function ConfirmCover({
     <div className="space-y-6">
       {/* 说明 */}
       <div className="rounded-xl border border-accent-line bg-accent-soft/30 p-4">
-        <div className="text-sm text-accent-ink">
-          💡 预筛选已从 Excel 自动提取。可下拉选其他选项，也可手动改。
+        <div className="text-sm text-accent-ink flex items-start gap-2">
+          <LightbulbIcon className="w-4 h-4 mt-0.5 shrink-0" />
+          <span>预筛选已从 Excel 自动提取。可下拉选其他选项，也可手动改。</span>
         </div>
       </div>
 

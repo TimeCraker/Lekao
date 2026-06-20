@@ -3,6 +3,11 @@
 import { useCallback, useRef, useState } from "react";
 import imageCompression from "browser-image-compression";
 import { cn } from "@/lib/utils";
+import {
+  UploadIcon,
+  ResetIcon,
+  CloseIcon,
+} from "@/components/icons";
 
 const ACCEPT = "image/png,image/jpeg,image/webp";
 const MAX_IMAGES = 10;
@@ -121,7 +126,13 @@ export function Uploader({
           }}
         />
 
-        <div className="text-5xl mb-3">{isProcessing ? "⏳" : "📤"}</div>
+        <div className="mb-3 inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-accent-soft text-accent-text">
+          {isProcessing ? (
+            <ResetIcon className="w-7 h-7 animate-spin" />
+          ) : (
+            <UploadIcon className="w-7 h-7" />
+          )}
+        </div>
         <div className="text-base font-semibold text-ink mb-1">
           {isProcessing
             ? "正在压缩图片..."
@@ -160,10 +171,10 @@ export function Uploader({
                 type="button"
                 disabled={disabled}
                 onClick={() => remove(img.id)}
-                className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition disabled:opacity-0"
+                className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition disabled:opacity-0"
                 aria-label="删除图片"
               >
-                ✕
+                <CloseIcon className="w-3 h-3" />
               </button>
               <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent px-2 py-1.5">
                 <div className="text-[10px] text-white truncate">
