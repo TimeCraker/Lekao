@@ -88,7 +88,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <Link href="/" className="flex items-center justify-center gap-2 mb-8">
-          <div className="w-10 h-10 rounded-xl bg-accent text-white flex items-center justify-center text-xl font-bold font-mono">
+          <div className="w-10 h-10 rounded-xl bg-accent-text text-white flex items-center justify-center text-xl font-bold font-mono">
             L
           </div>
           <span className="text-xl font-semibold text-ink">Lekao</span>
@@ -207,7 +207,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isPending}
-              className="w-full py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-accent-hover transition disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-2.5 bg-accent-text text-white rounded-lg font-medium hover:bg-accent-hover transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isPending ? "登录中..." : "登录"}
             </button>

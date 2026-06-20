@@ -92,7 +92,7 @@ function QuickCard({
         <span
           className={`inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded-full ${
             tag.type === "free"
-              ? "bg-success/10 text-success"
+              ? "bg-success-soft text-success-text"
               : "bg-accent-soft text-accent-ink"
           }`}
         >

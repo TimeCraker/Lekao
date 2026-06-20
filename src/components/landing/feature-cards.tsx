@@ -95,7 +95,7 @@ function PriceTag({
 }) {
   if (type === "free") {
     return (
-      <span className="inline-flex items-center px-2.5 py-1 bg-success/10 text-success text-xs font-semibold rounded-full">
+      <span className="inline-flex items-center px-2.5 py-1 bg-success-soft text-success-text text-xs font-semibold rounded-full">
         ✦ {label}
       </span>
     );

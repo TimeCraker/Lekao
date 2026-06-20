@@ -7,7 +7,7 @@ export function Footer() {
         <div className="flex flex-wrap items-center justify-between gap-6">
           {/* Logo */}
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-accent text-white flex items-center justify-center text-base font-bold font-mono">
+            <div className="w-8 h-8 rounded-lg bg-accent-text text-white flex items-center justify-center text-base font-bold font-mono">
               L
             </div>
             <span className="text-base font-semibold text-ink-on-dark">

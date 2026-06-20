@@ -36,7 +36,7 @@ export default function MistakePage() {
         <a
           href="/templates/lekao-mistake-template-v1.xlsx"
           download
-          className="px-4 py-2 bg-accent text-white text-sm font-medium rounded-lg hover:bg-accent-hover transition whitespace-nowrap"
+          className="px-4 py-2 bg-accent-text text-white text-sm font-medium rounded-lg hover:bg-accent-hover transition whitespace-nowrap"
         >
           下载 .xlsx
         </a>

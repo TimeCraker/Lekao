@@ -23,7 +23,7 @@ export function Sidebar() {
         href="/"
         className="px-6 py-5 border-b border-hairline flex items-center gap-2"
       >
-        <div className="w-9 h-9 rounded-xl bg-accent text-white flex items-center justify-center text-lg font-bold font-mono">
+        <div className="w-9 h-9 rounded-xl bg-accent-text text-white flex items-center justify-center text-lg font-bold font-mono">
           L
         </div>
         <span className="text-lg font-semibold text-ink">Lekao</span>

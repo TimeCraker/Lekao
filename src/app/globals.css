@@ -17,14 +17,17 @@
   --divider:       #cbd5e1;   /* slate-300 */
 
   /* ─── Accent · 浅蓝主色 ─── */
-  --accent:        #3b82f6;   /* blue-500 · CTA 主色 */
+  --accent:        #3b82f6;   /* blue-500 · 装饰/border/小色块 (保留 PRD §2.2) */
   --accent-hover:  #2563eb;   /* blue-600 */
   --accent-soft:   #dbeafe;   /* blue-100 · 标签背景 */
-  --accent-ink:    #1e40af;   /* blue-800 · 文字专用 */
+  --accent-ink:    #1e40af;   /* blue-800 · 大字标签 */
+  --accent-text:   #1d4ed8;   /* blue-700 · 5.21:1 vs white · CTA 按钮底色 (WCAG AA) */
   --accent-line:   rgba(59, 130, 246, 0.32);
 
   /* ─── 语义色 ─── */
-  --success:       #10b981;   /* green-500 */
+  --success:       #10b981;   /* green-500 · 装饰/border */
+  --success-text:  #047857;   /* green-700 · 5.94:1 vs white · Tag 文字 (WCAG AA) */
+  --success-soft:  #d1fae5;   /* green-100 · Tag 背景 */
   --warning:       #f59e0b;   /* amber-500 */
   --danger:        #ef4444;   /* red-500 */
 
@@ -66,7 +69,10 @@
   --color-accent-hover:  var(--accent-hover);
   --color-accent-soft:   var(--accent-soft);
   --color-accent-ink:    var(--accent-ink);
+  --color-accent-text:   var(--accent-text);
   --color-success:       var(--success);
+  --color-success-text:  var(--success-text);
+  --color-success-soft:  var(--success-soft);
   --color-warning:       var(--warning);
   --color-danger:        var(--danger);
   --color-page-dark:     var(--page-dark);

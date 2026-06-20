@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# lighthouse (CI 跑分产物, 不入仓)
+lighthouse-mobile.json
+lighthouse-mobile.html

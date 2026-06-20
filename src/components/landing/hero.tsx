@@ -31,7 +31,7 @@ export function Hero() {
         <div className="mt-12 flex flex-wrap items-center justify-center gap-4">
           <Link
             href="/register"
-            className="px-8 py-3.5 bg-accent text-white text-base font-medium rounded-xl hover:bg-accent-hover transition shadow-md hover:shadow-lg"
+            className="px-8 py-3.5 bg-accent-text text-white text-base font-medium rounded-xl hover:bg-accent-hover transition shadow-md hover:shadow-lg"
           >
             免费开始 · 送 5 T-Coin
           </Link>
