@@ -109,7 +109,9 @@ model LekaoTemplate {
 model VerificationCode {
   id        String   @id @default(cuid())
   email     String
-  code      String
+  code      String? // ⭐ 已废弃: 新数据只存 codeHash, 老数据可读兼容
+  codeHash  String? // bcrypt(code, cost=10) 哈希值 (DB 泄露也不暴露明文)
+  attempts  Int      @default(0) // 失败计数, 5 次后锁定 1 小时
   purpose   String // register | login | reset
   expiresAt DateTime
   used      Boolean  @default(false)
