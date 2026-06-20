@@ -68,7 +68,12 @@ export interface ImageRecord {
 }
 
 // 步骤状态机
-export type MistakeStep = "upload" | "selectSheet" | "fillSlots" | "export";
+export type MistakeStep =
+  | "upload"
+  | "selectSheet"
+  | "confirmCover" // v2 新增：封面信息确认（班级 + 学科预筛选）
+  | "fillSlots"
+  | "export";
 
 // LocalStorage 草稿
 export interface MistakeDraft {

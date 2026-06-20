@@ -102,6 +102,7 @@ export function ExportBar({
       // 批量生成
       const docs = await generateBatchDocx(studentNames, {
         sheetName: collection.sheetName,
+        classroomName: collection.classroomName, // 封面"班级：xxx"
         date: collection.date,
         classroomSlots,
         homeworkSlots,
@@ -161,6 +162,7 @@ export function ExportBar({
     try {
       const docs = await generateBatchDocx(studentNames, {
         sheetName: collection.sheetName,
+        classroomName: collection.classroomName,
         date: collection.date,
         classroomSlots,
         homeworkSlots,

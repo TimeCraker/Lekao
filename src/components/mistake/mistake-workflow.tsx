@@ -4,8 +4,8 @@
  * 错题集主流程组件（核心）
  * 来源：STAGE spec §6.1 + PRD §3.5.5
  *
- * 状态机：
- *   upload → selectSheet → fillSlots → export
+ * 状态机（v2 升级）：
+ *   upload → selectSheet → confirmCover → fillSlots → export
  *
  * 所有状态保存在 useState（client-only，不需要全局状态管理）
  * 图片存 IndexedDB（image-store.ts）
@@ -38,6 +38,7 @@ import type {
 } from "@/lib/mistake/types";
 import { ExcelUploader } from "./excel-uploader";
 import { SheetSelector } from "./sheet-selector";
+import { ConfirmCover, type ConfirmCoverValue } from "./confirm-cover";
 import { QNumberSlot as QNumberSlotUI } from "./qnumber-slot";
 import { ExportBar } from "./export-bar";
 import { HtmlPreview } from "./html-preview";
@@ -53,6 +54,11 @@ export function MistakeWorkflow() {
   const [workbook, setWorkbook] = useState<XLSX.WorkBook | null>(null);
   const [sheets, setSheets] = useState<SheetMetadata[]>([]);
   const [collection, setCollection] = useState<MistakeCollection | null>(null);
+
+  // v2 新增：封面信息 override（用户可改，预筛选默认 = Excel 提取）
+  const [coverOverride, setCoverOverride] = useState<ConfirmCoverValue | null>(
+    null,
+  );
 
   // 槽位数据：key = `${qType}:${qNumber}`
   const [slots, setSlots] = useState<Record<string, QNumberSlot>>({});
@@ -74,7 +80,7 @@ export function MistakeWorkflow() {
     setStep("selectSheet");
   }, []);
 
-  // ===== 步骤 2：选择 Sheet =====
+  // ===== 步骤 2：选择 Sheet → 跳到 confirmCover（v2 改动）=====
   const onSelectSheet = useCallback(
     (sheetName: string) => {
       if (!workbook) return;
@@ -82,6 +88,12 @@ export function MistakeWorkflow() {
       try {
         const parsed = parseSheet(workbook, sheetName);
         setCollection(parsed);
+
+        // v2：先初始化 cover override（用户可改）
+        setCoverOverride({
+          subjectName: parsed.sheetName,
+          classroomName: parsed.classroomName || parsed.sheetName,
+        });
 
         // 默认全选所有学生
         setStudentSelection(new Set(parsed.students.map((s) => s.name)));
@@ -97,13 +109,18 @@ export function MistakeWorkflow() {
           setSlots({});
         }
 
-        setStep("fillSlots");
+        setStep("confirmCover");
       } catch (e) {
         alert(e instanceof Error ? e.message : "解析失败");
       }
     },
     [workbook],
   );
+
+  // ===== 步骤 2.5：确认封面 → 进 fillSlots =====
+  const onConfirmCover = useCallback(() => {
+    setStep("fillSlots");
+  }, []);
 
   // ===== 步骤 3：槽位变化（自动保存草稿）=====
   const handleSlotChange = useCallback(
@@ -143,6 +160,18 @@ export function MistakeWorkflow() {
     [collection],
   );
 
+  // v2：把 cover override 合并到 collection（用于 export 时的封面 + 页眉）
+  const finalCollection = useMemo<MistakeCollection | null>(() => {
+    if (!collection) return null;
+    if (!coverOverride) return collection;
+    return {
+      ...collection,
+      sheetName: coverOverride.subjectName || collection.sheetName,
+      classroomName:
+        coverOverride.classroomName || collection.classroomName,
+    };
+  }, [collection, coverOverride]);
+
   // ===== 学生选择 =====
   const toggleStudent = useCallback((name: string) => {
     setStudentSelection((prev) => {
@@ -175,13 +204,19 @@ export function MistakeWorkflow() {
     setSheets([]);
     setSlots({});
     setStudentSelection(new Set());
+    setCoverOverride(null);
     setStep("upload");
   }, [collection]);
 
   const backToSheetSelect = useCallback(() => {
     setCollection(null);
     setSlots({});
+    setCoverOverride(null);
     setStep("selectSheet");
+  }, []);
+
+  const backToConfirmCover = useCallback(() => {
+    setStep("confirmCover");
   }, []);
 
   return (
@@ -194,7 +229,7 @@ export function MistakeWorkflow() {
             班级错题 → Word 文档
           </h1>
           <p className="text-ink-muted mt-2 text-sm">
-            上传 Excel 错题表 → 选择学科 → 填题号图片/文字 → 导出本地 Word
+            上传 Excel 错题表 → 选择学科 → 确认封面信息 → 填题号图片/文字 → 导出本地 Word
           </p>
         </div>
         <Link
@@ -238,17 +273,41 @@ export function MistakeWorkflow() {
           </Section>
         )}
 
+        {step === "confirmCover" && collection && workbook && coverOverride && (
+          <Section
+            title="Step 2.5 · 确认 Word 封面信息（学科 + 班级）"
+            action={
+              <button
+                type="button"
+                onClick={backToSheetSelect}
+                className="text-sm text-ink-muted hover:text-ink transition"
+              >
+                ← 重新选 Sheet
+              </button>
+            }
+          >
+            <ConfirmCover
+              collection={collection}
+              workbook={workbook}
+              value={coverOverride}
+              onChange={setCoverOverride}
+              onConfirm={onConfirmCover}
+              onBack={backToSheetSelect}
+            />
+          </Section>
+        )}
+
         {step === "fillSlots" && collection && summary && (
           <>
             <Section
-              title={`Step 3 · ${collection.classroomName} · ${collection.date} · 全班 ${summary.totalStudents} 人`}
+              title={`Step 3 · ${finalCollection?.classroomName ?? collection.classroomName} · ${collection.date} · 全班 ${summary.totalStudents} 人`}
               action={
                 <button
                   type="button"
-                  onClick={backToSheetSelect}
+                  onClick={backToConfirmCover}
                   className="text-sm text-ink-muted hover:text-ink transition"
                 >
-                  ← 重新选 Sheet
+                  ← 改封面信息
                 </button>
               }
             >
@@ -356,17 +415,19 @@ export function MistakeWorkflow() {
                       👁 预览 Word 效果
                     </button>
                   </div>
-                  <ExportBar
-                    collection={collection}
-                    classroomSlots={Object.values(slots).filter(
-                      (s) => s.qType === "classroom",
-                    )}
-                    homeworkSlots={Object.values(slots).filter(
-                      (s) => s.qType === "homework",
-                    )}
-                    studentNames={Array.from(studentSelection)}
-                    isFsAccessSupported={fsSupported}
-                  />
+                  {finalCollection && (
+                    <ExportBar
+                      collection={finalCollection}
+                      classroomSlots={Object.values(slots).filter(
+                        (s) => s.qType === "classroom",
+                      )}
+                      homeworkSlots={Object.values(slots).filter(
+                        (s) => s.qType === "homework",
+                      )}
+                      studentNames={Array.from(studentSelection)}
+                      isFsAccessSupported={fsSupported}
+                    />
+                  )}
                 </div>
               </Section>
             </div>
@@ -375,9 +436,9 @@ export function MistakeWorkflow() {
       </div>
 
       {/* HTML 预览模态框 */}
-      {previewStudent && (
+      {previewStudent && finalCollection && (
         <HtmlPreview
-          collection={collection!}
+          collection={finalCollection}
           classroomSlots={Object.values(slots).filter(
             (s) => s.qType === "classroom",
           )}
@@ -396,11 +457,12 @@ export function MistakeWorkflow() {
 // ============== 子组件 ==============
 
 function StepIndicator({ step }: { step: MistakeStep }) {
-  const steps = [
-    { id: "upload" as const, label: "上传" },
-    { id: "selectSheet" as const, label: "选学科" },
-    { id: "fillSlots" as const, label: "填题号" },
-    { id: "export" as const, label: "导出" },
+  const steps: Array<{ id: MistakeStep; label: string }> = [
+    { id: "upload", label: "上传" },
+    { id: "selectSheet", label: "选学科" },
+    { id: "confirmCover", label: "封面" },
+    { id: "fillSlots", label: "填题号" },
+    { id: "export", label: "导出" },
   ];
 
   const activeIdx = steps.findIndex((s) => s.id === step);

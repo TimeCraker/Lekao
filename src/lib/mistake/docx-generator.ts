@@ -1,22 +1,33 @@
 /**
- * docx 生成器（T22）
+ * docx 生成器 v2（T22 + 真实场景样式升级）
  * 来源：STAGE spec §7 + PRD §3.5.5
  *
- * 设计：
- * - 使用 docx 库（npm: `docx` v9）生成 Word
+ * 设计（参考真实场景 docs/贺梓晗逻辑思维错题集.doc）：
  * - 累积模式：每次生成把今天 section 存 IndexedDB，下一次读全部历史 sections
  *   重组成完整 docx 写回（覆盖模式，避免 XML 操作复杂性）
- * - Apple-style：单栏 + 居中图片 + 22pt 学生名 + 16pt 日期
+ * - 文档结构 = [封面 section] + [内容 section]
+ *   - 封面：错题集 + 姓名 + 班级（独立第一页）
+ *   - 内容：页眉（科目/学生姓名）+ 页脚（页码）+ 累积 sections
+ * - 关键样式：
+ *   - 封面大标题 36pt 加粗黑色居中
+ *   - 日期段标题 16pt 加粗红色
+ *   - 题号 12pt 加粗
+ *   - 题内容 11pt 黑色
  * - 失败兜底：file-saver 直接下载 blob
  */
 
 import {
   AlignmentType,
   Document,
+  Footer,
+  Header,
   HeadingLevel,
   ImageRun,
   Packer,
+  PageNumber,
   Paragraph,
+  TabStopPosition,
+  TabStopType,
   TextRun,
 } from "docx";
 import { loadImage } from "./image-store";
@@ -28,11 +39,28 @@ import {
   type SavedSection,
 } from "./section-store";
 
+// ============== 样式常量（与 gen-word-template.ts 保持一致）==============
+
+const COLOR = {
+  black: "000000",
+  red: "DC2626", // 真实场景日期标题用红
+  slate: "64748b", // 页眉页脚
+  ink: "1e293b", // 正文
+  muted: "94a3b8", // 占位提示
+  hairline: "cbd5e1",
+};
+
+const FONT = {
+  cnTitle: "宋体",
+  cnBody: "宋体",
+};
+
 // ============== 主入口 ==============
 
 export interface GenerateArgs {
   studentName: string;
-  sheetName: string; // 学科（用作文件夹名）
+  sheetName: string; // 学科（用作页眉"科目"和文件夹名）
+  classroomName?: string; // 班级（用作封面"班级：xxx"），不传则降级到 sheetName
   date: string;
   classroomSlots: QNumberSlot[];
   homeworkSlots: QNumberSlot[];
@@ -48,10 +76,21 @@ export interface GenerateArgs {
  * 2. 检查今日日期是否已存在 → 跳过（覆盖会丢用户手工编辑）
  * 3. 把今日 section 加入历史
  * 4. 用 docx 库按时间顺序拼所有 sections → 一个完整 docx
+ *
+ * 文档结构：
+ * - Section 1: 封面（错题集 + 姓名 + 班级）
+ * - Section 2: 内容（带页眉页脚 + 累积 sections）
  */
 export async function generateStudentDocx(args: GenerateArgs): Promise<Blob> {
-  const { studentName, sheetName, date, classroomSlots, homeworkSlots } = args;
+  const {
+    studentName,
+    sheetName,
+    date,
+    classroomSlots,
+    homeworkSlots,
+  } = args;
   const cumulative = args.cumulative ?? true;
+  const classroomName = args.classroomName || sheetName; // 班级 fallback 到 Sheet 名
 
   // 1. 读取历史 sections
   let historySections: SavedSection[] = cumulative
@@ -107,20 +146,46 @@ export async function generateStudentDocx(args: GenerateArgs): Promise<Blob> {
     title: `${studentName}-${sheetName}错题集`,
     description: `AI 智能助教助手生成 · ${historySections.length} 天累计`,
     sections: [
+      // ========== Section 1: 封面 ==========
       {
         properties: {
           page: {
             margin: {
-              top: 800, // 8mm
-              bottom: 1400, // 14mm
-              left: 1000, // 10mm
-              right: 1000,
+              top: 1440, // 1 inch
+              bottom: 1440,
+              left: 1440,
+              right: 1440,
             },
           },
         },
-        children: await buildDocumentChildren({
+        children: buildCoverChildren({
           studentName,
-          sheetName,
+          classroomName,
+        }),
+      },
+      // ========== Section 2: 内容（带页眉页脚）==========
+      {
+        properties: {
+          page: {
+            margin: {
+              top: 1440,
+              bottom: 1440,
+              left: 1440,
+              right: 1440,
+            },
+          },
+        },
+        headers: {
+          default: new Header({
+            children: [buildHeaderParagraph(sheetName, studentName)],
+          }),
+        },
+        footers: {
+          default: new Footer({
+            children: [buildFooterParagraph()],
+          }),
+        },
+        children: await buildContentChildren({
           historySections,
           imageCache,
         }),
@@ -135,95 +200,174 @@ export async function generateStudentDocx(args: GenerateArgs): Promise<Blob> {
   });
 }
 
-// ============== 文档内容构建 ==============
+// ============== 封面 Section ==============
 
-interface BuildChildrenArgs {
+function buildCoverChildren({
+  studentName,
+  classroomName,
+}: {
   studentName: string;
-  sheetName: string;
-  historySections: SavedSection[];
-  imageCache: Map<string, { blob: Blob; buffer: ArrayBuffer }>;
+  classroomName: string;
+}): Paragraph[] {
+  return [
+    // 上方留白
+    emptyLine(),
+    emptyLine(),
+    emptyLine(),
+    emptyLine(),
+    emptyLine(),
+
+    // 大字"错题集"（36pt 加粗居中）
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 0, after: 0 },
+      children: [
+        new TextRun({
+          text: "错题集",
+          bold: true,
+          size: 72, // 36pt
+          color: COLOR.black,
+          font: FONT.cnTitle,
+        }),
+      ],
+    }),
+
+    emptyLine(),
+    emptyLine(),
+    emptyLine(),
+    emptyLine(),
+
+    // 姓名（14pt 居中）
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 0, after: 0 },
+      children: [
+        new TextRun({
+          text: `姓名：${studentName}`,
+          size: 28, // 14pt
+          color: COLOR.black,
+          font: FONT.cnBody,
+        }),
+      ],
+    }),
+
+    emptyLine(),
+    emptyLine(),
+
+    // 班级（14pt 居中）
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 0, after: 0 },
+      children: [
+        new TextRun({
+          text: `班级：${classroomName}`,
+          size: 28,
+          color: COLOR.black,
+          font: FONT.cnBody,
+        }),
+      ],
+    }),
+
+    // 下方留白 + 强制分页
+    emptyLine(),
+    emptyLine(),
+    emptyLine(),
+    emptyLine(),
+    emptyLine(),
+    emptyLine(),
+    new Paragraph({ children: [new TextRun({ break: 1 })] }),
+  ];
 }
 
-async function buildDocumentChildren({
-  studentName,
-  sheetName,
+// ============== 页眉页脚 ==============
+
+function buildHeaderParagraph(
+  subject: string,
+  studentName: string,
+): Paragraph {
+  return new Paragraph({
+    children: [
+      new TextRun({
+        text: `科目：${subject}`,
+        size: 20, // 10pt
+        color: COLOR.slate,
+        font: FONT.cnBody,
+      }),
+      new TextRun({ text: "\t\t" }),
+      new TextRun({
+        text: `学生姓名：${studentName}`,
+        size: 20,
+        color: COLOR.slate,
+        font: FONT.cnBody,
+      }),
+    ],
+    tabStops: [
+      {
+        type: TabStopType.RIGHT,
+        position: TabStopPosition.MAX,
+      },
+    ],
+    border: {
+      bottom: {
+        color: COLOR.hairline,
+        space: 1,
+        style: "single",
+        size: 6,
+      },
+    },
+  });
+}
+
+function buildFooterParagraph(): Paragraph {
+  return new Paragraph({
+    alignment: AlignmentType.CENTER,
+    children: [
+      new TextRun({
+        text: "第 ",
+        size: 20,
+        color: COLOR.slate,
+        font: FONT.cnBody,
+      }),
+      new TextRun({
+        children: [PageNumber.CURRENT],
+        size: 20,
+        color: COLOR.slate,
+        font: FONT.cnBody,
+      }),
+      new TextRun({
+        text: " 页 / 共 ",
+        size: 20,
+        color: COLOR.slate,
+        font: FONT.cnBody,
+      }),
+      new TextRun({
+        children: [PageNumber.TOTAL_PAGES],
+        size: 20,
+        color: COLOR.slate,
+        font: FONT.cnBody,
+      }),
+      new TextRun({
+        text: " 页",
+        size: 20,
+        color: COLOR.slate,
+        font: FONT.cnBody,
+      }),
+    ],
+  });
+}
+
+// ============== 内容 Section ==============
+
+async function buildContentChildren({
   historySections,
   imageCache,
-}: BuildChildrenArgs): Promise<Paragraph[]> {
+}: {
+  historySections: SavedSection[];
+  imageCache: Map<string, { blob: Blob; buffer: ArrayBuffer }>;
+}): Promise<Paragraph[]> {
   const children: Paragraph[] = [];
 
-  // === 顶部摘要（首次生成时创建，永不更新）===
-  // 简化：每次重生成时都写一遍（spec: "首次新建时生成，永不更新" 但实际我们重生成 = 覆盖）
-  // 这里我们做"智能摘要"：如果只有 1 个 section 就显示完整摘要；多个就显示统计
-  const totalSections = historySections.length;
-  const totalQCount = historySections.reduce((sum, s) => {
-    const c: QNumberSlot[] = JSON.parse(s.classroomSlotsJson);
-    const h: QNumberSlot[] = JSON.parse(s.homeworkSlotsJson);
-    return sum + c.length + h.length;
-  }, 0);
-
-  // 学生姓名（22pt 加粗居中）
-  children.push(
-    new Paragraph({
-      alignment: AlignmentType.CENTER,
-      spacing: { before: 200, after: 200 },
-      children: [
-        new TextRun({
-          text: studentName,
-          bold: true,
-          size: 44, // 22pt = 44 half-points
-        }),
-      ],
-    }),
-  );
-
-  // 学科
-  children.push(
-    new Paragraph({
-      alignment: AlignmentType.CENTER,
-      spacing: { after: 100 },
-      children: [
-        new TextRun({
-          text: `学科：${sheetName}`,
-          size: 22, // 11pt
-          color: "475569", // slate-600
-        }),
-      ],
-    }),
-  );
-
-  // 汇总行
-  children.push(
-    new Paragraph({
-      alignment: AlignmentType.CENTER,
-      spacing: { after: 400 },
-      children: [
-        new TextRun({
-          text: `累计 ${totalSections} 次 · ${totalQCount} 道错题`,
-          size: 20, // 10pt
-          color: "94a3b8",
-        }),
-      ],
-    }),
-  );
-
-  // 分隔线
-  children.push(
-    new Paragraph({
-      border: {
-        bottom: {
-          color: "cbd5e1",
-          size: 6,
-          space: 1,
-          style: "single",
-        },
-      },
-      spacing: { after: 300 },
-      children: [new TextRun({ text: "" })],
-    }),
-  );
-
-  // === 每个 section ===
+  // === 每个累积 section ===
   for (let i = 0; i < historySections.length; i++) {
     const section = historySections[i];
     if (i > 0) {
@@ -243,7 +387,7 @@ async function buildSectionChildren(
 ): Promise<Paragraph[]> {
   const children: Paragraph[] = [];
 
-  // 日期段标题（16pt 加粗）
+  // 日期段标题（16pt 加粗 红色）
   children.push(
     new Paragraph({
       heading: HeadingLevel.HEADING_2,
@@ -253,7 +397,8 @@ async function buildSectionChildren(
           text: `${section.date}（第 ${await getSectionIndex(section)} 次）`,
           bold: true,
           size: 32, // 16pt
-          color: "1e40af", // accent-ink
+          color: COLOR.red, // 红色
+          font: FONT.cnTitle,
         }),
       ],
     }),
@@ -270,6 +415,8 @@ async function buildSectionChildren(
             text: "【堂测错题】",
             bold: true,
             size: 24, // 12pt
+            color: COLOR.black,
+            font: FONT.cnBody,
           }),
         ],
       }),
@@ -295,6 +442,8 @@ async function buildSectionChildren(
             text: "【作业错题】",
             bold: true,
             size: 24,
+            color: COLOR.black,
+            font: FONT.cnBody,
           }),
         ],
       }),
@@ -310,6 +459,10 @@ async function buildSectionChildren(
   }
 
   return children;
+}
+
+function emptyLine(): Paragraph {
+  return new Paragraph({ children: [new TextRun({ text: "" })] });
 }
 
 function hasSlotContent(slot: QNumberSlot): boolean {
@@ -331,11 +484,13 @@ async function buildSlotParagraphs(
     new Paragraph({
       spacing: { before: 200, after: 80 },
       children: [
-        new TextRun({ text: `${idx}. `, size: 24 }),
+        new TextRun({ text: `${idx}. `, size: 24, color: COLOR.black, font: FONT.cnBody }),
         new TextRun({
           text: slot.qNumber,
           bold: true,
           size: 24,
+          color: COLOR.black,
+          font: FONT.cnBody,
         }),
       ],
     }),
@@ -378,7 +533,8 @@ async function buildSlotParagraphs(
           new TextRun({
             text: slot.textContent.trim(),
             size: 22, // 11pt
-            color: "1e293b",
+            color: COLOR.ink,
+            font: FONT.cnBody,
           }),
         ],
       }),

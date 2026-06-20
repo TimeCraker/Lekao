@@ -1,14 +1,19 @@
 /**
- * Excel 解析器 (T16)
+ * Excel 解析器 v2 (T16 + 兼容性升级)
  * 来源：STAGE spec §2 + §4
  *
  * 功能：
  * - SheetJS 解析 .xlsx/.xls（GBK 编码 SheetJS 自动处理）
- * - 列名模糊识别（姓名 / 堂测错题 / 作业错题）
+ * - 列名模糊识别（姓名 / 堂测错题 / 作业错题）· 兼容 5/6/7+ 列
  * - 多 Sheet 列表
  * - 合并单元格 SheetJS 自动读左上角值
  *
  * 关键反模式（§9.7）：不强依赖标准模板列名
+ *
+ * v2 修复：
+ * - ⚠️ 堂测分数误识 bug：CLASSROOM_KEYWORDS 不再含"堂测"裸词
+ *   （5 列真实场景有"堂测分数"列，会被误识为"堂测错题"列）
+ * - 班级名精确提取：标题"XX班《YY》反馈表" 优先用 regex 取"《》前"+"班"结尾
  */
 
 import * as XLSX from "xlsx";
@@ -19,13 +24,17 @@ import type { StudentMistakes } from "./types";
 /** 匹配姓名列的关键词（含空格变体） */
 const NAME_KEYWORDS = ["姓名", "名字", "学生姓名", "学生", "name", "name"];
 
-/** 匹配堂测错题列的关键词 */
+/**
+ * 匹配堂测错题列的关键词
+ *
+ * ⚠️ 不要加"堂测"裸词！真实场景 5 列结构有"堂测分数"列，会被误识
+ * v2 修复：移除"堂测"裸词，只保留含"错题"或"quiz"等明确指向错题列的关键词
+ */
 const CLASSROOM_KEYWORDS = [
   "堂测错题",
   "堂测错题号",
-  "堂测",
-  "课堂测验",
-  "课堂测试",
+  "课堂测验错题",
+  "课堂测试错题",
   "课堂错题",
   "测验错题",
   "quiz",
@@ -36,14 +45,14 @@ const HOMEWORK_KEYWORDS = [
   "作业错题",
   "课后作业错题",
   "作业错题号",
-  "作业",
+  "作业错题",
   "课后作业",
   "homework",
   "作业题号",
 ];
 
-/** 匹配班级标题行的关键词 */
-const CLASSROOM_TITLE_KEYWORDS = ["班级", "班", "冲刺班", "火箭", "课堂"];
+/** 匹配班级标题行的关键词（精确提取失败时降级用） */
+const CLASSROOM_TITLE_KEYWORDS = ["班", "冲刺班", "火箭班", "课堂"];
 
 /** 匹配日期行的关键词 */
 const DATE_KEYWORDS = ["日期", "时间", "date", "上课时间"];
@@ -155,8 +164,13 @@ export function listSheets(workbook: XLSX.WorkBook): SheetMetadata[] {
 
 /**
  * 从 Sheet 头部提取班级名 + 日期
+ *
+ * 班级提取优先级（v2 升级）：
+ * 1. 精确 regex：`XX班《YY》反馈表` → 取"《》前"+"班"结尾（→ "XX班"）
+ * 2. 降级模糊：含"班"字且字符串长度 ≤ 30
+ * 3. 最后降级：Sheet 名
  */
-function extractHeaderInfo(
+export function extractHeaderInfo(
   workbook: XLSX.WorkBook,
   sheetName: string,
 ): { classroomName: string; date: string } {
@@ -171,6 +185,7 @@ function extractHeaderInfo(
 
   let classroomName = sheetName;
   let dateStr = new Date().toISOString().slice(0, 10);
+  let classroomExtracted = false; // 标记是否已提取到班级
 
   // 前 5 行内寻找班级名 / 日期
   for (let i = 0; i < Math.min(5, aoa.length); i++) {
@@ -196,10 +211,22 @@ function extractHeaderInfo(
         }
       }
 
-      // 提取班级名
-      if (classroomName === sheetName && matchAnyKeyword(str, CLASSROOM_TITLE_KEYWORDS)) {
-        // 取第一个含"班"字或冲刺/火箭等的字符串
-        classroomName = str;
+      // 提取班级名（v2 精确优先 + 降级）
+      if (!classroomExtracted) {
+        // 优先：标题行格式 "XX班《YY》反馈表" → 取"《》前"+"班"结尾
+        // 例："理科精品班《物质材料》反馈表  8月12日" → "理科精品班"
+        const preciseMatch = str.match(/^([^《》]{1,20}?)班(?=[《\s]|$)/);
+        if (preciseMatch) {
+          classroomName = preciseMatch[0];
+          classroomExtracted = true;
+          continue;
+        }
+
+        // 降级：模糊匹配含"班"等（仅当字符串较短时，避免误抓长文本）
+        if (matchAnyKeyword(str, CLASSROOM_TITLE_KEYWORDS) && str.length <= 30) {
+          classroomName = str;
+          classroomExtracted = true;
+        }
       }
     }
   }
@@ -325,7 +352,7 @@ export function parseSheet(
  *
  * 切分规则（实测反馈：逗号 / 空格 / 中文逗号 / Tab / 换行 都作为分隔符）：
  * - "1, 2, 7" → ["1", "2", "7"]
- * - "1（2 8）2（7）" → ["1（2 8）", "2（7）"]
+ * - "1（2 8）2（7）" → ["1（2 8）", "2（7）"]   ← v2 修复：括号闭合后紧跟题号字符也要切分
  * - "针2 全对" → ["针2", "全对"]
  */
 export function splitQNumbers(raw: string): string[] {
@@ -336,21 +363,35 @@ export function splitQNumbers(raw: string): string[] {
   const tokens: string[] = [];
   let buffer = "";
   let parenDepth = 0;
+  let prevWasClosingParen = false; // v2 修复：记录上一个字符是否是 ）
 
   for (const ch of raw) {
     if (ch === "（" || ch === "(") {
       parenDepth++;
       buffer += ch;
+      prevWasClosingParen = false;
     } else if (ch === "）" || ch === ")") {
       parenDepth = Math.max(0, parenDepth - 1);
       buffer += ch;
+      prevWasClosingParen = true; // 标记，准备切分下一个题号
     } else if (parenDepth === 0 && /[,，;；\s\t\n\r]+/.test(ch)) {
       if (buffer.trim()) {
         tokens.push(buffer.trim());
         buffer = "";
       }
+      prevWasClosingParen = false;
     } else {
+      // v2 修复：） 后紧跟题号字符（数字/中文/字母）→ 强制切分前一个 token
+      if (
+        prevWasClosingParen &&
+        /[0-9一-龥a-zA-Z]/.test(ch) &&
+        buffer.trim()
+      ) {
+        tokens.push(buffer.trim());
+        buffer = "";
+      }
       buffer += ch;
+      prevWasClosingParen = false;
     }
   }
 

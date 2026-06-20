@@ -59,35 +59,34 @@ const MAX_ROWS = 30; // 预分配最多 30 人班级
 const TITLE_TEMPLATE = "理科精品班《{topic}》反馈表  {date}";
 
 async function buildSheet(wb, sheetName, topic, date) {
-  // Sheet 名加前后空格匹配真实表格式
-  const name = ` ${sheetName} `;
-  const ws = wb.addWorksheet(name, {
+  // Sheet 名保持纯净（真实场景的 Sheet 名就是"化学"/"物理"等无空格）
+  const ws = wb.addWorksheet(sheetName, {
     properties: { defaultRowHeight: 22 },
   });
 
   // 列宽
   ws.columns = COL_WIDTHS.map((w) => ({ width: w }));
 
-  // === Row 1: 标题（合并 6 列）===
+  // === Row 1: 标题（合并 6 列 · 黑色加粗大字）===
   ws.mergeCells(1, 1, 1, 6);
   const titleCell = ws.getCell(1, 1);
   titleCell.value = TITLE_TEMPLATE.replace("{topic}", topic).replace(
     "{date}",
     date,
   );
-  titleCell.font = { bold: true, size: 16, color: { argb: "FF1E40AF" } };
+  titleCell.font = { bold: true, size: 18, color: { argb: "FF000000" } };
   titleCell.alignment = { vertical: "middle", horizontal: "center" };
-  ws.getRow(1).height = 36;
+  ws.getRow(1).height = 40;
 
-  // === Row 2: 表头 ===
+  // === Row 2: 表头（浅蓝底色 + 黑色文字）===
   HEADERS.forEach((h, i) => {
     const cell = ws.getCell(2, i + 1);
     cell.value = h;
-    cell.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 11 };
+    cell.font = { bold: true, color: { argb: "FF000000" }, size: 11 };
     cell.fill = {
       type: "pattern",
       pattern: "solid",
-      fgColor: { argb: "FF3B82F6" },
+      fgColor: { argb: "FFB4C7E7" }, // Office 主题浅蓝
     };
     cell.alignment = { vertical: "middle", horizontal: "center" };
     cell.border = {
@@ -163,9 +162,9 @@ async function main() {
   wb.created = new Date();
   wb.title = "Lekao 错题集录入模板 v3";
 
-  // 2 个示例学科 Sheet（化学 + 物理）
-  await buildSheet(wb, "化学冲刺班", "物质材料", "2026-06-14");
-  await buildSheet(wb, "物理火箭班", "力学基础", "2026-06-14");
+  // 2 个示例学科 Sheet（化学 + 物理 · 真实场景 Sheet 名风格：无空格）
+  await buildSheet(wb, "化学", "物质材料", "2026-06-14");
+  await buildSheet(wb, "物理", "力学基础", "2026-06-14");
 
   await wb.xlsx.writeFile(OUTPUT_PATH);
   console.log(`✅ 模板已生成: ${OUTPUT_PATH}`);
