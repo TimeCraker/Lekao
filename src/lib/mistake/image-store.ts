@@ -33,7 +33,7 @@ export async function compressImage(file: File | Blob): Promise<Blob> {
     return file;
   }
 
-  const compressed = await imageCompression(file, COMPRESSION_OPTIONS);
+  const compressed = await imageCompression(file as File, COMPRESSION_OPTIONS);
   return compressed;
 }
 

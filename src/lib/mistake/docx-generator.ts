@@ -129,7 +129,8 @@ export async function generateStudentDocx(args: GenerateArgs): Promise<Blob> {
   });
 
   const buffer = await Packer.toBuffer(doc);
-  return new Blob([buffer], {
+  // Node Buffer → Uint8Array 包一层，兼容 Web BlobPart 类型
+  return new Blob([new Uint8Array(buffer)], {
     type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   });
 }
@@ -214,6 +215,7 @@ async function buildDocumentChildren({
           color: "cbd5e1",
           size: 6,
           space: 1,
+          style: "single",
         },
       },
       spacing: { after: 300 },

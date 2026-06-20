@@ -148,9 +148,14 @@ export async function writeFile(
 ): Promise<void> {
   const fileHandle = await dir.getFileHandle(filename, { create: true });
   const writable = await (fileHandle as unknown as {
-    createWritable: () => Promise<WritableStream>;
+    createWritable: () => Promise<FileSystemWritableFileStream>;
   }).createWritable();
-  await writable.write(data);
+  // 规范化 Uint8Array → Blob（避免 ArrayBufferLike vs ArrayBuffer 类型不兼容）
+  const chunk =
+    data instanceof Uint8Array
+      ? new Blob([data as Uint8Array<ArrayBuffer>])
+      : data;
+  await writable.write(chunk as FileSystemWriteChunkType);
   await writable.close();
 }
 

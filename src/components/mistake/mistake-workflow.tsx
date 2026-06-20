@@ -40,6 +40,7 @@ import { ExcelUploader } from "./excel-uploader";
 import { SheetSelector } from "./sheet-selector";
 import { QNumberSlot as QNumberSlotUI } from "./qnumber-slot";
 import { ExportBar } from "./export-bar";
+import { HtmlPreview } from "./html-preview";
 
 export function MistakeWorkflow() {
   const [step, setStep] = useState<MistakeStep>("upload");
@@ -60,6 +61,10 @@ export function MistakeWorkflow() {
   const [studentSelection, setStudentSelection] = useState<Set<string>>(
     () => new Set(),
   );
+
+  // HTML 预览
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewStudent, setPreviewStudent] = useState<string | null>(null);
 
   // ===== 步骤 1：上传 Excel =====
   const onWorkbookReady = useCallback((wb: XLSX.WorkBook) => {
@@ -332,6 +337,25 @@ export function MistakeWorkflow() {
                   </div>
 
                   {/* 导出栏 */}
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        // 默认预览第一个选中的学生
+                        const first =
+                          Array.from(studentSelection)[0] ||
+                          collection.students[0]?.name;
+                        if (first) {
+                          setPreviewStudent(first);
+                          setPreviewOpen(true);
+                        }
+                      }}
+                      disabled={studentSelection.size === 0}
+                      className="text-sm px-4 py-2 rounded-md bg-canvas-alt text-ink-mute hover:bg-accent-soft hover:text-accent-ink transition disabled:opacity-50"
+                    >
+                      👁 预览 Word 效果
+                    </button>
+                  </div>
                   <ExportBar
                     collection={collection}
                     classroomSlots={Object.values(slots).filter(
@@ -349,6 +373,22 @@ export function MistakeWorkflow() {
           </>
         )}
       </div>
+
+      {/* HTML 预览模态框 */}
+      {previewStudent && (
+        <HtmlPreview
+          collection={collection!}
+          classroomSlots={Object.values(slots).filter(
+            (s) => s.qType === "classroom",
+          )}
+          homeworkSlots={Object.values(slots).filter(
+            (s) => s.qType === "homework",
+          )}
+          studentName={previewStudent}
+          open={previewOpen}
+          onClose={() => setPreviewOpen(false)}
+        />
+      )}
     </div>
   );
 }
