@@ -59,8 +59,8 @@ export function OutputCard({
     <div className="space-y-4">
       {feedback && (
         <SectionBlock
-          emoji={template === "summary" ? "📝" : "💬"}
-          title={feedbackTitle || (template === "summary" ? "课堂反馈" : "学习反馈")}
+          emoji={template === "summary" ? "📝" : "📊"}
+          title={feedbackTitle || (template === "summary" ? "课堂反馈" : "堂测反馈")}
           content={feedback}
           isCopied={copiedKey === "feedback"}
           onCopy={() => copyToClipboard(feedback, "feedback")}
@@ -72,11 +72,11 @@ export function OutputCard({
       {summary && (
         <SectionBlock
           emoji="📋"
-          title={summaryTitle || (template === "summary" ? "课堂总体小结" : "总体反馈")}
+          title={summaryTitle || (template === "summary" ? "课堂总体小结" : "堂测总体反馈")}
           content={summary}
           isCopied={copiedKey === "summary"}
           onCopy={() => copyToClipboard(summary, "summary")}
-          copyLabel="发家长群用"
+          copyLabel="贴群里用"
           variant="summary"
         />
       )}

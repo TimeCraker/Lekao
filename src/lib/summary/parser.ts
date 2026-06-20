@@ -3,8 +3,8 @@
 // ============================================
 // 按 PRD §4.1 + BRD §4.3 + 用户 2026-06-20 决策：
 // - 模板输出 = feedback 段（10 条建议）+ summary 段（一段小结）
-// - 段标题：本次XX课堂反馈/学习反馈（XX专题）/ 本次XX课堂总体小结/总体反馈
-// - 前端按"分流复制"按钮切分 → 贴 Excel / 发家长群
+// - 段标题：本次XX课堂反馈/堂测反馈（XX专题）/ 本次XX课堂总体小结/堂测总体反馈
+// - 前端按"分流复制"按钮切分 → 贴 Excel / 贴群里
 
 export type ParsedOutput = {
   /** 第一段：10 条建议（每条独占一行，无 Markdown 符号） */
@@ -37,9 +37,9 @@ export function parseSummaryOutput(
   }
 
   // summary 模板：feedback 段 = "本次XX课堂反馈（XX专题）"，summary 段 = "本次XX课堂总体小结"
-  // feedback 模板：feedback 段 = "本次XX学习反馈（XX专题）"，summary 段 = "本次XX总体反馈"
+  // feedback 模板：feedback 段 = "本次XX堂测反馈（XX专题）"，summary 段 = "本次XX堂测总体反馈"
   const summaryMarker =
-    template === "summary" ? "课堂总体小结" : "总体反馈";
+    template === "summary" ? "课堂总体小结" : "堂测总体反馈";
 
   const lines = rawText.split("\n");
   const summaryStartIdx = lines.findIndex((line) =>
@@ -75,8 +75,8 @@ export function parseSummaryOutput(
  * 提取段标题（去掉"本次XX"前缀简化展示）
  */
 function extractTitle(line: string): string {
-  // 匹配 "本次XX反馈（XX专题）" / "本次XX总体小结"
-  const m = line.match(/^本次(.+?)(?:反馈|总体小结|总体反馈)(?:（(.+?)）)?$/);
+  // 匹配 "本次XX反馈（XX专题）" / "本次XX总体小结" / "本次XX堂测总体反馈"
+  const m = line.match(/^本次(.+?)(?:反馈|总体小结|堂测总体反馈)(?:（(.+?)）)?$/);
   if (m) {
     const type = m[1];
     const topic = m[2];

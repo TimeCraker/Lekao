@@ -5,6 +5,10 @@
 // - 视觉模型读图自动判断学科 + 章节 + 提取知识点
 // - 文本模型拿知识点按模板生成（不锁死 7 动词 8 鼓励语）
 // - 输出 10 条建议 + 一段小结（助教贴 Excel 一列方便）
+//
+// 模板类型（2026-06-20 重构）：
+// - "summary"：课堂小结（备课组存档风 · 专业）
+// - "feedback"：堂测反馈（堂测批改风 · 具体可执行 · 给老师看）
 
 /**
  * 视觉模型读图 prompt（Qwen3-VL-8B-Instruct）
@@ -37,7 +41,7 @@ export const VISION_PROMPT = `你是一位资深高中教师，正在分析一�
  *
  * 模板：
  * - "summary"：课堂小结（备课组存档风 · 专业）
- * - "feedback"：家长反馈（家长群风 · 亲切）
+ * - "feedback"：堂测反馈（堂测批改风 · 具体可执行 · 给老师看）
  */
 export const TEXT_PROMPT = ({
   subject,
@@ -53,9 +57,13 @@ export const TEXT_PROMPT = ({
   feedbackCount?: number;
 }) => {
   const isSummary = template === "summary";
+  const audience = isSummary ? "备课组存档" : "堂测批改";
+  const docType = isSummary ? "课堂小结" : "堂测反馈";
+  const feedbackTerm = isSummary ? "课堂反馈" : "堂测反馈";
+  const summaryTerm = isSummary ? "课堂总体小结" : "堂测总体反馈";
   const keyPointsText = keyPoints.length > 0 ? keyPoints.join("、") : "本节课内容";
 
-  return `你是一位经验丰富的培训机构助教，正在为${isSummary ? "备课组存档" : "学生家长"}写${isSummary ? "课堂小结" : "课堂反馈"}。
+  return `你是一位经验丰富的培训机构助教，正在为${audience}写${docType}。
 
 # 本节课信息
 - 学科：${subject}
@@ -64,29 +72,29 @@ export const TEXT_PROMPT = ({
 
 # 写作要求
 
-## 第一部分：${isSummary ? "课堂反馈" : "学习建议"}（${feedbackCount} 条）
-围绕上述知识点，列出 ${feedbackCount} 条${isSummary ? "课堂反馈建议" : "家长可参考的学习建议"}。
+## 第一部分：${feedbackTerm}（${feedbackCount} 条）
+围绕上述知识点，列出 ${feedbackCount} 条${isSummary ? "课堂反馈建议" : "堂测批改建议"}。
 - 每条建议独占一行，不要数字序号（不要写 "1. " "2. "）
 - 不要 Markdown 列表符号（不要写 "*" "-" "+"）
 - 内容可以相近但不要完全重复
-- 第一段以 "本次${subject}${isSummary ? "课堂反馈" : "学习反馈"}（${topic}专题）" 开头（独占一行）
+- 第一段以 "本次${subject}${feedbackTerm}（${topic}专题）" 开头（独占一行）
 
-## 第二部分：${isSummary ? "课堂总体小结" : "总体反馈"}
+## 第二部分：${summaryTerm}
 写一段紧凑的总结文字（不换行成多段），包含：
 - 考查重点（简要说明本节课核心目标）
 - 解题关键（用"解题的关键在于：第一，...；第二，...；第三，..."的三段式）
 - 订正建议（1-2 句）
-- ${isSummary ? "作业未交的同学请课后及时补做，遇到疑问欢迎随时来问老师，下次记得按时交作业哦！" : "感谢家长配合，有任何疑问随时联系助教～"}
+- ${isSummary ? "作业未交的同学请课后及时补做，遇到疑问欢迎随时来问老师，下次记得按时交作业哦！" : "请相关同学课后订正错题并重做同类练习，下次堂测重点关注类似题型～"}
 
 第一段和第二段之间空一行作为分隔。
 
 # 语气风格
-- ${isSummary ? "专业、清晰、像备课笔记" : "亲切、鼓励、像跟家长聊孩子学习"}
+- ${isSummary ? "专业、清晰、像备课笔记" : "具体、可执行、像老师在批改作业"}
 - 用词贴近中国高中教学场景
 - 不要用 AI 套话（如"在当今社会"）
 
 # 输出格式
-直接输出两段文字，不要任何额外解释。第一段标题用 "本次${subject}${isSummary ? "课堂反馈" : "学习反馈"}（${topic}专题）"，第二段标题用 "本次${subject}${isSummary ? "课堂总体小结" : "总体反馈"}"。`;
+直接输出两段文字，不要任何额外解释。第一段标题用 "本次${subject}${feedbackTerm}（${topic}专题）"，第二段标题用 "本次${subject}${summaryTerm}"。`;
 };
 
 /**

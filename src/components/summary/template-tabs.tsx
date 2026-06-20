@@ -20,9 +20,9 @@ const TABS: Tab[] = [
   },
   {
     id: "feedback",
-    label: "家长反馈",
-    emoji: "💬",
-    desc: "家长群风格 · 亲切鼓励",
+    label: "堂测反馈",
+    emoji: "📊",
+    desc: "堂测批改风格 · 具体可执行",
   },
 ];
 

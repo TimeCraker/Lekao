@@ -26,8 +26,8 @@ const FEATURES = [
   },
   {
     Icon: FeedbackIcon,
-    title: "课堂反馈",
-    desc: "上传讲义图片 + 简单描述，AI 生成专业家长反馈，语气温和、可读性高。",
+    title: "堂测反馈",
+    desc: "上传讲义图片，AI 生成专业堂测批改反馈，具体可执行、可直接贴群里。",
     tag: "1 币 / 次",
   },
 ];

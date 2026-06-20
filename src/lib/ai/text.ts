@@ -77,7 +77,7 @@ export function generateStream(
             {
               role: "system",
               content:
-                "你是一位经验丰富的中国培训机构助教，专业、亲切，擅长用家长和老师易懂的语言总结课堂内容。",
+                "你是一位经验丰富的中国培训机构助教，专业、亲切，擅长用老师易懂的语言总结课堂内容。",
             },
             { role: "user", content: prompt },
           ],
@@ -124,7 +124,7 @@ export async function generate(input: GenerationInput): Promise<GenerationResult
       {
         role: "system",
         content:
-          "你是一位经验丰富的中国培训机构助教，专业、亲切，擅长用家长和老师易懂的语言总结课堂内容。",
+          "你是一位经验丰富的中国培训机构助教，专业、亲切，擅长用老师易懂的语言总结课堂内容。",
       },
       { role: "user", content: prompt },
     ],
@@ -148,7 +148,7 @@ function parseOutput(
   template: TemplateType,
 ): { feedback: string; summary: string } {
   // summary 模板：第一段标题 = "本次XX课堂反馈"，第二段 = "本次XX课堂总体小结"
-  // feedback 模板：第一段标题 = "本次XX学习反馈"，第二段 = "本次XX总体反馈"
+  // feedback 模板：第一段标题 = "本次XX堂测反馈"，第二段 = "本次XX堂测总体反馈"
   const summaryMarker = template === "summary" ? "课堂总体小结" : "总体反馈";
 
   const lines = rawText.split("\n");

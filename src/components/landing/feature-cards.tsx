@@ -28,9 +28,9 @@ const FEATURES = [
   },
   {
     Icon: FeedbackIcon,
-    title: "课堂反馈",
+    title: "堂测反馈",
     description:
-      "上传讲义图片 + 简单描述，AI 生成专业家长反馈，省下重复写作的时间",
+      "上传讲义图片，AI 生成堂测批改反馈，给出具体可执行的错题订正建议",
     priceTag: { type: "coin" as const, label: "1 币/次" },
     href: "/dashboard/feedback",
   },

@@ -36,8 +36,8 @@ const QUICK_FEATURES: QuickFeature[] = [
   },
   {
     Icon: FeedbackIcon,
-    title: "课堂反馈",
-    description: "上传讲义图片 + 简单描述，AI 生成专业家长反馈",
+    title: "堂测反馈",
+    description: "上传讲义图片，AI 生成专业堂测批改反馈",
     href: "/dashboard/feedback",
     tag: { type: "coin", label: "1 币/次" },
   },

@@ -3,9 +3,10 @@
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { parseSummaryOutput } from "@/lib/summary/parser";
-import { TemplateTabs, type TemplateType } from "./template-tabs";
 import { Uploader, type ImageItem } from "./uploader";
 import { OutputCard } from "./output-card";
+
+type TemplateType = "summary" | "feedback";
 
 type Meta = {
   subject: string;
@@ -16,8 +17,23 @@ type Meta = {
 
 type Status = "idle" | "vision" | "generating" | "done" | "error";
 
-export function SummaryWorkflow() {
-  const [template, setTemplate] = useState<TemplateType>("summary");
+type Props = {
+  /** 模板类型（由调用方决定，sidebar 路由决定） */
+  template: TemplateType;
+};
+
+const TEMPLATE_LABEL: Record<TemplateType, { title: string; desc: string }> = {
+  summary: {
+    title: "课堂小结",
+    desc: "上传讲义图片 → AI 自动识别学科、章节、知识点 → 生成专业课堂小结。",
+  },
+  feedback: {
+    title: "堂测反馈",
+    desc: "上传讲义图片 → AI 自动识别学科、章节、知识点 → 生成堂测批改反馈。",
+  },
+};
+
+export function SummaryWorkflow({ template }: Props) {
   const [images, setImages] = useState<ImageItem[]>([]);
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -113,15 +129,10 @@ export function SummaryWorkflow() {
   };
 
   const hasOutput = parsed.feedback || parsed.summary;
+  const label = TEMPLATE_LABEL[template];
 
   return (
     <div className="space-y-6">
-      <TemplateTabs
-        value={template}
-        onChange={setTemplate}
-        disabled={isWorking}
-      />
-
       <Uploader
         images={images}
         onChange={setImages}
@@ -224,3 +235,6 @@ export function SummaryWorkflow() {
     </div>
   );
 }
+
+// re-export for callers
+export type { TemplateType };
