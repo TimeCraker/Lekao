@@ -9,27 +9,37 @@ import {
 } from "@/components/landing/icons";
 import { CoinCounter } from "./coin-counter";
 
-const QUICK_FEATURES = [
+type FeatureIcon = React.ComponentType<{ className?: string }>;
+type FeatureTag = { type: "free" | "coin"; label: string };
+type QuickFeature = {
+  Icon: FeatureIcon;
+  title: string;
+  description: string;
+  href: string;
+  tag: FeatureTag;
+};
+
+const QUICK_FEATURES: QuickFeature[] = [
   {
     Icon: MistakeIcon,
     title: "错题集生成",
     description: "上传 Excel + 错题图片，AI 自动整理为 Word 文档",
     href: "/dashboard/mistake",
-    tag: { type: "free" as const, label: "免费" },
+    tag: { type: "free", label: "免费" },
   },
   {
     Icon: SummaryIcon,
     title: "课堂小结",
     description: "AI 按 BRD 硬约束格式生成 10 条建议 + 小结",
     href: "/dashboard/summary",
-    tag: { type: "coin" as const, label: "1 币/次" },
+    tag: { type: "coin", label: "1 币/次" },
   },
   {
     Icon: FeedbackIcon,
     title: "课堂反馈",
     description: "上传讲义图片 + 简单描述，AI 生成专业家长反馈",
     href: "/dashboard/feedback",
-    tag: { type: "coin" as const, label: "1 币/次" },
+    tag: { type: "coin", label: "1 币/次" },
   },
 ];
 
@@ -97,14 +107,7 @@ function QuickCard({
   href,
   tag,
   index,
-}: {
-  Icon: React.ComponentType<{ className?: string }>;
-  title: string;
-  description: string;
-  href: string;
-  tag: { type: "free" | "coin"; label: string };
-  index: number;
-}) {
+}: QuickFeature & { index: number }) {
   return (
     <Link
       href={href}

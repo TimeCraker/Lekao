@@ -77,7 +77,7 @@ export default async function ProfilePage() {
         </div>
 
         {/* 修改名 (Phase 2 接入) */}
-        <ProfileActions userId={dbUser.id} currentName={dbUser.name ?? ""} />
+        <ProfileActions currentName={dbUser.name ?? ""} />
       </div>
 
       {/* T-Coin 余额卡 */}
