@@ -1,4 +1,5 @@
 import type { NextAuthOptions } from "next-auth";
+import { getServerSession } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "./prisma";
@@ -12,6 +13,12 @@ import { prisma } from "./prisma";
  *
  * 字段默认 -1 而非 0 的关键: 0 可能是"已用完的余额", 不能再次初始化
  */
+
+/**
+ * Server Component helper
+ * 用法: const session = await auth();
+ */
+export const auth = () => getServerSession(authOptions);
 
 export const authOptions: NextAuthOptions = {
   // ⭐ 不写 session.strategy: next-auth v4 默认 JWT (PRD §3.3 锁 JWT)
