@@ -89,12 +89,14 @@ export function buildFeedbackPrompt({
   keyPoints,
   className = "超火1班",
   date,
+  feedbackCount = 20,
 }: {
   subject: string;
   topic: string;
   keyPoints: string[];
   className?: string;
   date: string;
+  feedbackCount?: number;
 }): string {
   const kp = keyPoints.length > 0 ? keyPoints.join("、") : "本节课内容";
   return `你是一位经验丰富的培训机构助教。请根据以下信息，生成一份具体、可执行的【作业/堂测反馈】。
@@ -131,7 +133,7 @@ export function buildFeedbackPrompt({
 注意：
 - "1⃣" "2⃣" 等符号使用 emoji 风格的数字符号
 - "①" "②" 等使用带圈数字符号
-- 典型错误分析列出 20 条左右，覆盖不同学生的各类错误
+- 典型错误分析列出 ${feedbackCount} 条左右，覆盖不同学生的各类错误
 - 语气具体、可执行，像老师在批改作业后给的反馈`;
 }
 
@@ -143,7 +145,7 @@ export const TEXT_PROMPT = ({
   template,
   className = "超火1班",
   date,
-  feedbackCount = 10,
+  feedbackCount = 20,
 }: {
   subject: string;
   topic: string;
@@ -155,5 +157,5 @@ export const TEXT_PROMPT = ({
 }) => {
   return template === "summary"
     ? buildSummaryPrompt({ subject, topic, keyPoints, className, date })
-    : buildFeedbackPrompt({ subject, topic, keyPoints, className, date });
+    : buildFeedbackPrompt({ subject, topic, keyPoints, className, date, feedbackCount });
 };

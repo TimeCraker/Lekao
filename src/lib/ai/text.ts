@@ -37,6 +37,7 @@ export type GenerationInput = {
   template: TemplateType;
   className?: string;
   date: string;
+  feedbackCount?: number;
 };
 
 export type GenerationResult = {
@@ -67,6 +68,7 @@ export function generateStream(
     template: input.template,
     className: input.className,
     date: input.date,
+    feedbackCount: input.feedbackCount,
   });
 
   const encoder = new TextEncoder();
@@ -122,6 +124,7 @@ export async function generate(input: GenerationInput): Promise<GenerationResult
     template: input.template,
     className: input.className,
     date: input.date,
+    feedbackCount: input.feedbackCount,
   });
 
   const response = await getClient().chat.completions.create({

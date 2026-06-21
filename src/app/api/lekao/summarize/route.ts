@@ -67,6 +67,7 @@ type RequestBody = {
   template: "summary" | "feedback";
   className?: string;
   date: string;
+  feedbackCount?: number;
 };
 
 export async function POST(req: NextRequest) {
@@ -210,6 +211,7 @@ export async function POST(req: NextRequest) {
       template: body.template,
       className: body.className,
       date: body.date,
+      feedbackCount: body.feedbackCount,
     });
 
     const encoder = new TextEncoder();
