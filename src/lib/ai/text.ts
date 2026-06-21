@@ -90,7 +90,7 @@ export function generateStream(
             { role: "user", content: prompt },
           ],
           temperature: 0.7,
-          max_tokens: 2048,
+          max_tokens: 4096,
           stream: true,
         });
 
@@ -141,7 +141,7 @@ export async function generate(input: GenerationInput): Promise<GenerationResult
       { role: "user", content: prompt },
     ],
     temperature: 0.7,
-    max_tokens: 2048,
+    max_tokens: 4096,
   });
 
   const rawText = response.choices[0]?.message?.content || "";
@@ -160,8 +160,9 @@ function parseOutput(
   template: TemplateType,
 ): { feedback: string; summary: string } {
   // summary 模板：第一段标题 = "本次XX课堂反馈"，第二段 = "本次XX课堂总体小结"
-  // feedback 模板：第一段标题 = "本次XX堂测反馈"，第二段 = "本次XX堂测总体反馈"
-  const summaryMarker = template === "summary" ? "课堂总体小结" : "总体反馈";
+  // feedback 模板：第一段标题 = "反馈" 各条，第二段 = "本次XX作业总体小结"（见 prompts.ts buildFeedbackPrompt）
+  // ⚠️ 标记必须与 prompts.ts 中实际告诉 AI 输出的文本一致
+  const summaryMarker = template === "summary" ? "课堂总体小结" : "总体小结";
 
   const lines = rawText.split("\n");
   const summaryStartIdx = lines.findIndex((line) =>
