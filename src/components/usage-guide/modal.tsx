@@ -4,7 +4,7 @@
  * 使用说明 Modal（3 模块通用 · Round 2026-06-20）
  *
  * 设计原则：
- * - 右滑 slide-over（更现代 UX，不打断主页面流）
+ * - 居中弹窗（更直觉 UX，不遮挡侧边栏/顶部栏）
  * - 内容按步骤分组，每步 = icon + 标题 + 简短说明
  * - 关闭 = 点 X / 点遮罩 / 按 ESC
  * - 全 SVG icon，无 emoji
@@ -76,7 +76,7 @@ export function UsageGuideModal({
 
   return (
     <div
-      className="fixed inset-0 z-50"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6"
       role="dialog"
       aria-modal="true"
       aria-label={title}
@@ -86,14 +86,14 @@ export function UsageGuideModal({
         type="button"
         aria-label="关闭"
         onClick={onClose}
-        className="absolute inset-0 bg-ink/40 backdrop-blur-sm animate-[fadeIn_0.18s_ease-out]"
+        className="absolute inset-0 bg-ink/40 backdrop-blur-sm animate-[fadeIn_0.18s_ease-out] cursor-default"
       />
 
-      {/* 抽屉（右侧滑出 · 桌面 480px, 移动全宽） */}
+      {/* 居中卡片 */}
       <aside
         className={cn(
-          "absolute top-0 right-0 bottom-0 w-full sm:w-[480px] bg-white shadow-2xl",
-          "flex flex-col animate-[slideInRight_0.22s_ease-out]",
+          "relative w-full max-w-[560px] max-h-[85vh] bg-white rounded-2xl shadow-2xl",
+          "flex flex-col animate-[scaleIn_0.22s_ease-out]",
         )}
       >
         {/* Header */}
@@ -169,7 +169,7 @@ export function UsageGuideModal({
         </div>
 
         {/* Footer · 关闭按钮 */}
-        <footer className="shrink-0 px-6 py-4 border-t border-hairline bg-canvas-alt/50">
+        <footer className="shrink-0 px-6 py-4 border-t border-hairline bg-canvas-alt/50 rounded-b-2xl">
           <button
             type="button"
             onClick={onClose}
@@ -180,15 +180,15 @@ export function UsageGuideModal({
         </footer>
       </aside>
 
-      {/* 注入 keyframes（一次性，类名靠 Tailwind 的 arbitrary value 不行，改用 inline style tag） */}
+      {/* keyframes */}
       <style jsx global>{`
         @keyframes fadeIn {
           from { opacity: 0; }
           to { opacity: 1; }
         }
-        @keyframes slideInRight {
-          from { transform: translateX(100%); }
-          to { transform: translateX(0); }
+        @keyframes scaleIn {
+          from { opacity: 0; transform: scale(0.95) translateY(8px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
         }
       `}</style>
     </div>
