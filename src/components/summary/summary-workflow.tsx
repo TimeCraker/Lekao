@@ -205,7 +205,7 @@ export function SummaryWorkflow({ template }: Props) {
           <div className="flex items-center gap-2">
             <label className="text-sm text-ink-muted font-medium">反馈条数</label>
             <div className="flex rounded-lg border border-hairline overflow-hidden">
-              {[10, 20, 30, 50].map((n) => (
+              {[10, 20, 30, 40, 50].map((n) => (
                 <button
                   key={n}
                   type="button"
