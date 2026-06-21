@@ -65,6 +65,8 @@ function estimateBase64Bytes(dataUrl: string): number {
 type RequestBody = {
   images: string[];
   template: "summary" | "feedback";
+  className?: string;
+  date: string;
 };
 
 export async function POST(req: NextRequest) {
@@ -206,6 +208,8 @@ export async function POST(req: NextRequest) {
       topic: visionResult.topic,
       keyPoints: visionResult.keyPoints,
       template: body.template,
+      className: body.className,
+      date: body.date,
     });
 
     const encoder = new TextEncoder();

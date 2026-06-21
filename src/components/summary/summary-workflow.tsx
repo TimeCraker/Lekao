@@ -3,8 +3,10 @@
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { parseSummaryOutput } from "@/lib/summary/parser";
+import { buildSummaryPrompt, buildFeedbackPrompt } from "@/lib/ai/prompts";
 import { Uploader, type ImageItem } from "./uploader";
 import { OutputCard } from "./output-card";
+import { PromptCard } from "./prompt-card";
 import {
   SparkleIcon,
   ResetIcon,
@@ -24,18 +26,24 @@ type Meta = {
 type Status = "idle" | "vision" | "generating" | "done" | "error";
 
 type Props = {
-  /** 模板类型（由调用方决定，sidebar 路由决定） */
   template: TemplateType;
 };
+
+function todayStr(): string {
+  const d = new Date();
+  const m = String(d.getMonth() + 1);
+  const day = String(d.getDate());
+  return `${m}.${day}`;
+}
 
 const TEMPLATE_LABEL: Record<TemplateType, { title: string; desc: string }> = {
   summary: {
     title: "课堂小结",
-    desc: "上传讲义图片 → AI 自动识别学科、章节、知识点 → 生成专业课堂小结。",
+    desc: "上传讲义图片 → AI 自动识别学科、章节、知识点 → 生成课堂小结。",
   },
   feedback: {
     title: "堂测反馈",
-    desc: "上传讲义图片 → AI 自动识别学科、章节、知识点 → 生成堂测批改反馈。",
+    desc: "上传讲义图片 → AI 自动识别学科、章节、知识点 → 生成堂测反馈。",
   },
 };
 
@@ -46,13 +54,29 @@ export function SummaryWorkflow({ template }: Props) {
   const [meta, setMeta] = useState<Meta | null>(null);
   const [streamedText, setStreamedText] = useState("");
 
+  const [className, setClassName] = useState("超火1班");
+  const [date, setDate] = useState(todayStr);
+
   const isWorking = status === "vision" || status === "generating";
 
-  // 实时切分 feedback / summary 两段
+  // 实时切分
   const parsed = useMemo(
     () => parseSummaryOutput(streamedText, template),
     [streamedText, template],
   );
+
+  // 构建可见 prompt
+  const visiblePrompt = useMemo(() => {
+    if (!meta) return "";
+    const builder = template === "summary" ? buildSummaryPrompt : buildFeedbackPrompt;
+    return builder({
+      subject: meta.subject,
+      topic: meta.topic,
+      keyPoints: meta.keyPoints,
+      className,
+      date,
+    });
+  }, [meta, template, className, date]);
 
   const handleGenerate = async () => {
     if (images.length === 0) return;
@@ -69,6 +93,8 @@ export function SummaryWorkflow({ template }: Props) {
         body: JSON.stringify({
           images: images.map((i) => i.dataUrl),
           template,
+          className,
+          date,
         }),
       });
 
@@ -145,6 +171,32 @@ export function SummaryWorkflow({ template }: Props) {
         disabled={isWorking}
       />
 
+      {/* 班级 + 日期 */}
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="flex items-center gap-2">
+          <label className="text-sm text-ink-muted font-medium">班级</label>
+          <input
+            type="text"
+            value={className}
+            onChange={(e) => setClassName(e.target.value)}
+            disabled={isWorking}
+            placeholder="超火1班"
+            className="w-32 px-3 py-2 border border-hairline rounded-lg text-sm text-ink bg-white focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition disabled:opacity-50"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-sm text-ink-muted font-medium">日期</label>
+          <input
+            type="text"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            disabled={isWorking}
+            placeholder="6.14"
+            className="w-24 px-3 py-2 border border-hairline rounded-lg text-sm text-ink bg-white focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition disabled:opacity-50"
+          />
+        </div>
+      </div>
+
       <div className="flex flex-wrap items-center gap-3">
         <button
           type="button"
@@ -169,7 +221,6 @@ export function SummaryWorkflow({ template }: Props) {
           )}
         </button>
 
-        {/* 扣币标注 · 仅按钮未在工作时显示，避免流式过程中误导 */}
         {!isWorking && (
           <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-accent-soft text-accent-ink text-xs font-semibold rounded-full border border-accent/20">
             <CoinIcon className="w-3 h-3" />
@@ -232,9 +283,7 @@ export function SummaryWorkflow({ template }: Props) {
       {hasOutput && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <div className="text-sm font-medium text-ink-mute">
-              生成结果
-            </div>
+            <div className="text-sm font-medium text-ink-mute">生成结果</div>
             {status === "generating" && (
               <span className="inline-flex items-center gap-1.5 text-xs text-accent-text">
                 <span className="inline-block w-2 h-2 rounded-full bg-accent animate-pulse" />
@@ -251,9 +300,18 @@ export function SummaryWorkflow({ template }: Props) {
           />
         </div>
       )}
+
+      {/* ⭐ Prompt 展示卡片 — 始终可见（识别后有内容） */}
+      {meta && visiblePrompt && (
+        <div className="pt-4">
+          <PromptCard
+            prompt={visiblePrompt}
+            label={template === "summary" ? "课堂小结提示词（可复制到 DeepSeek 使用）" : "堂测反馈提示词（可复制到 DeepSeek 使用）"}
+          />
+        </div>
+      )}
     </div>
   );
 }
 
-// re-export for callers
 export type { TemplateType };

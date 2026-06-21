@@ -1,14 +1,12 @@
 // ============================================
 // Lekao · AI Prompt 模板（视觉 + 文本）
 // ============================================
-// 用户 2026-06-20 最新意图：
+// 用户 2026-06-21 最新意图：
 // - 视觉模型读图自动判断学科 + 章节 + 提取知识点
-// - 文本模型拿知识点按模板生成（不锁死 7 动词 8 鼓励语）
-// - 输出 10 条建议 + 一段小结（助教贴 Excel 一列方便）
-//
-// 模板类型（2026-06-20 重构）：
-// - "summary"：课堂小结（备课组存档风 · 专业）
-// - "feedback"：堂测反馈（堂测批改风 · 具体可执行 · 给老师看）
+// - 文本模型按模板生成课堂小结/堂测反馈
+// - 输出格式：【班级 + 学科 + 类型 + 日期】
+//   1⃣ 授课内容 / 2⃣ 学习要求 / 3⃣ 作业反馈
+// - Prompt 全量公开在页面下方，支持一键复制到 DeepSeek
 
 /**
  * 视觉模型读图 prompt（Qwen3-VL-8B-Instruct）
@@ -34,74 +32,129 @@ export const VISION_PROMPT = `你是一位资深高中教师，正在分析一�
 如果图片内容模糊无法判断学科，subject 填 "未知"，topic 填 "未知"，keyPoints 为空数组，rawText 留空。`;
 
 /**
- * 文本模型生成 prompt（DeepSeek V4 Flash）
- *
- * 输入：{subject, topic, keyPoints, template, feedbackCount}
- * 输出：{feedback: string, summary: string}
- *
- * 模板：
- * - "summary"：课堂小结（备课组存档风 · 专业）
- * - "feedback"：堂测反馈（堂测批改风 · 具体可执行 · 给老师看）
+ * 生成课堂小结的完整 prompt（用户可见 + 可复制到 DeepSeek）
  */
+export function buildSummaryPrompt({
+  subject,
+  topic,
+  keyPoints,
+  className = "超火1班",
+  date,
+}: {
+  subject: string;
+  topic: string;
+  keyPoints: string[];
+  className?: string;
+  date: string;
+}): string {
+  const kp = keyPoints.length > 0 ? keyPoints.join("、") : "本节课内容";
+  return `你是一位经验丰富的培训机构助教。请根据以下信息，生成一份专业、清晰的【课堂小结】。
+
+# 本节课信息
+- 班级：${className}
+- 学科：${subject}
+- 章节/板块：${topic}
+- 知识点：${kp}
+- 日期：${date}
+
+# 输出格式要求
+
+请严格按照以下模板输出，不要添加额外解释：
+
+【${className}${subject}小结${date}】
+
+1⃣ 授课内容
+① ${kp}
+
+2⃣ 学习要求
+① （写出第一点学习要求）
+② （写出第二点学习要求）
+③ （写出第三点学习要求）
+
+3⃣ 作业反馈:如下表所示👇👇
+
+注意：
+- "1⃣" "2⃣" 等符号使用 emoji 风格的数字符号
+- "①" "②" 等使用带圈数字符号
+- 学习要求写 3 条，每条针对一个关键能力
+- 作业反馈列出 20 条左右的具体反馈，覆盖不同学生的典型问题
+- 语气专业、清晰，像备课组存档文档`;
+}
+
+/**
+ * 生成堂测反馈的完整 prompt（用户可见 + 可复制到 DeepSeek）
+ */
+export function buildFeedbackPrompt({
+  subject,
+  topic,
+  keyPoints,
+  className = "超火1班",
+  date,
+}: {
+  subject: string;
+  topic: string;
+  keyPoints: string[];
+  className?: string;
+  date: string;
+}): string {
+  const kp = keyPoints.length > 0 ? keyPoints.join("、") : "本节课内容";
+  return `你是一位经验丰富的培训机构助教。请根据以下信息，生成一份具体、可执行的【堂测反馈】。
+
+# 本节课信息
+- 班级：${className}
+- 学科：${subject}
+- 章节/板块：${topic}
+- 知识点：${kp}
+- 日期：${date}
+
+# 输出格式要求
+
+请严格按照以下模板输出，不要添加额外解释：
+
+【${className}${subject}反馈${date}】
+
+1⃣ 测试概况
+① （总体得分情况简述）
+② （典型共性问题 1-2 个）
+
+2⃣ 典型错误分析
+① （写出第1个典型错误及原因）
+② （写出第2个典型错误及原因）
+③ （写出第3个典型错误及原因）
+④ （写出第4个典型错误及原因）
+⑤ （写出第5个典型错误及原因）
+...
+
+3⃣ 订正建议
+① （订正方法一）
+② （订正方法二）
+
+注意：
+- "1⃣" "2⃣" 等符号使用 emoji 风格的数字符号
+- "①" "②" 等使用带圈数字符号
+- 典型错误分析列出 20 条左右，覆盖不同学生的各类错误
+- 语气具体、可执行，像老师在批改作业后给的反馈`;
+}
+
+/** 用于 AI 调用的低层级 prompt 生成（不含模板样式，保留纯指令） */
 export const TEXT_PROMPT = ({
   subject,
   topic,
   keyPoints,
   template,
+  className = "超火1班",
+  date,
   feedbackCount = 10,
 }: {
   subject: string;
   topic: string;
   keyPoints: string[];
   template: "summary" | "feedback";
+  className?: string;
+  date: string;
   feedbackCount?: number;
 }) => {
-  const isSummary = template === "summary";
-  const audience = isSummary ? "备课组存档" : "堂测批改";
-  const docType = isSummary ? "课堂小结" : "堂测反馈";
-  const feedbackTerm = isSummary ? "课堂反馈" : "堂测反馈";
-  const summaryTerm = isSummary ? "课堂总体小结" : "堂测总体反馈";
-  const keyPointsText = keyPoints.length > 0 ? keyPoints.join("、") : "本节课内容";
-
-  return `你是一位经验丰富的培训机构助教，正在为${audience}写${docType}。
-
-# 本节课信息
-- 学科：${subject}
-- 章节/板块：${topic}
-- 知识点：${keyPointsText}
-
-# 写作要求
-
-## 第一部分：${feedbackTerm}（${feedbackCount} 条）
-围绕上述知识点，列出 ${feedbackCount} 条${isSummary ? "课堂反馈建议" : "堂测批改建议"}。
-- 每条建议独占一行，不要数字序号（不要写 "1. " "2. "）
-- 不要 Markdown 列表符号（不要写 "*" "-" "+"）
-- 内容可以相近但不要完全重复
-- 第一段以 "本次${subject}${feedbackTerm}（${topic}专题）" 开头（独占一行）
-
-## 第二部分：${summaryTerm}
-写一段紧凑的总结文字（不换行成多段），包含：
-- 考查重点（简要说明本节课核心目标）
-- 解题关键（用"解题的关键在于：第一，...；第二，...；第三，..."的三段式）
-- 订正建议（1-2 句）
-- ${isSummary ? "作业未交的同学请课后及时补做，遇到疑问欢迎随时来问老师，下次记得按时交作业哦！" : "请相关同学课后订正错题并重做同类练习，下次堂测重点关注类似题型～"}
-
-第一段和第二段之间空一行作为分隔。
-
-# 语气风格
-- ${isSummary ? "专业、清晰、像备课笔记" : "具体、可执行、像老师在批改作业"}
-- 用词贴近中国高中教学场景
-- 不要用 AI 套话（如"在当今社会"）
-
-# 输出格式
-直接输出两段文字，不要任何额外解释。第一段标题用 "本次${subject}${feedbackTerm}（${topic}专题）"，第二段标题用 "本次${subject}${summaryTerm}"。`;
-};
-
-/**
- * 流式输出分段切分 marker
- * 用于前端解析 feedback / summary 两段
- */
-export const SECTION_MARKERS = {
-  feedback: /^本次.+反馈.+专题/m,
-  summary: /^本次.+总体小结|^本次.+总体反馈/m,
+  return template === "summary"
+    ? buildSummaryPrompt({ subject, topic, keyPoints, className, date })
+    : buildFeedbackPrompt({ subject, topic, keyPoints, className, date });
 };

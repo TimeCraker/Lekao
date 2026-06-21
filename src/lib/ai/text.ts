@@ -35,6 +35,8 @@ export type GenerationInput = {
   topic: string;
   keyPoints: string[];
   template: TemplateType;
+  className?: string;
+  date: string;
 };
 
 export type GenerationResult = {
@@ -63,6 +65,8 @@ export function generateStream(
     topic: input.topic,
     keyPoints: input.keyPoints,
     template: input.template,
+    className: input.className,
+    date: input.date,
   });
 
   const encoder = new TextEncoder();
@@ -116,6 +120,8 @@ export async function generate(input: GenerationInput): Promise<GenerationResult
     topic: input.topic,
     keyPoints: input.keyPoints,
     template: input.template,
+    className: input.className,
+    date: input.date,
   });
 
   const response = await getClient().chat.completions.create({
