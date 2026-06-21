@@ -11,7 +11,8 @@
  * - 长内容可滚动（max-h + overflow-y-auto）
  */
 
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import {
   CloseIcon,
@@ -51,15 +52,17 @@ export function UsageGuideModal({
   subtitle,
   sections,
 }: Props) {
+  const close = useCallback(() => onClose(), [onClose]);
+
   // ESC 关闭
   useEffect(() => {
     if (!open) return;
     function handleEsc(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") close();
     }
     window.addEventListener("keydown", handleEsc);
     return () => window.removeEventListener("keydown", handleEsc);
-  }, [open, onClose]);
+  }, [open, close]);
 
   // body scroll lock
   useEffect(() => {
@@ -74,25 +77,27 @@ export function UsageGuideModal({
 
   if (!open) return null;
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6"
       role="dialog"
       aria-modal="true"
       aria-label={title}
+      style={{ position: "fixed", inset: 0, zIndex: 100 }}
     >
       {/* 遮罩 */}
       <button
         type="button"
         aria-label="关闭"
-        onClick={onClose}
-        className="absolute inset-0 bg-ink/40 backdrop-blur-sm animate-[fadeIn_0.18s_ease-out] cursor-default"
+        onClick={close}
+        style={{ position: "absolute", inset: 0 }}
+        className="bg-ink/40 backdrop-blur-sm animate-[fadeIn_0.18s_ease-out] cursor-default"
       />
 
       {/* 居中卡片 */}
       <aside
         className={cn(
-          "relative w-full max-w-[560px] max-h-[85vh] bg-white rounded-2xl shadow-2xl",
+          "relative w-full max-w-[560px] max-h-[85dvh] bg-white rounded-2xl shadow-2xl",
           "flex flex-col animate-[scaleIn_0.22s_ease-out]",
         )}
       >
@@ -104,7 +109,7 @@ export function UsageGuideModal({
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={close}
             aria-label="关闭"
             className="shrink-0 w-9 h-9 flex items-center justify-center rounded-lg text-ink-mute hover:bg-canvas-alt hover:text-ink transition"
           >
@@ -172,7 +177,7 @@ export function UsageGuideModal({
         <footer className="shrink-0 px-6 py-4 border-t border-hairline bg-canvas-alt/50 rounded-b-2xl">
           <button
             type="button"
-            onClick={onClose}
+            onClick={close}
             className="w-full py-2.5 bg-accent-text text-white text-sm font-medium rounded-lg hover:bg-accent-hover transition"
           >
             知道了 · 开始使用
@@ -180,7 +185,6 @@ export function UsageGuideModal({
         </footer>
       </aside>
 
-      {/* keyframes */}
       <style jsx global>{`
         @keyframes fadeIn {
           from { opacity: 0; }
@@ -191,6 +195,7 @@ export function UsageGuideModal({
           to { opacity: 1; transform: scale(1) translateY(0); }
         }
       `}</style>
-    </div>
+    </div>,
+    document.body,
   );
 }
