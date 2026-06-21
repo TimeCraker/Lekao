@@ -40,14 +40,26 @@ export function buildSummaryPrompt({
   keyPoints,
   className = "超火1班",
   date,
+  feedbackCount = 20,
+  feedbackLength = "standard",
 }: {
   subject: string;
   topic: string;
   keyPoints: string[];
   className?: string;
   date: string;
+  feedbackCount?: number;
+  feedbackLength?: "short" | "standard" | "long";
 }): string {
   const kp = keyPoints.length > 0 ? keyPoints.join("、") : "本节课内容";
+
+  const lengthGuide =
+    feedbackLength === "short"
+      ? "每条 15-35 字"
+      : feedbackLength === "long"
+        ? "每条 50-90 字"
+        : "每条 25-55 字";
+
   return `你是一位经验丰富的培训机构助教。请根据以下信息，生成一份专业、清晰的【课堂小结】。
 
 # 本节课信息
@@ -71,7 +83,8 @@ export function buildSummaryPrompt({
 ② （写出第二点学习要求）
 ③ （写出第三点学习要求）
 
-3⃣ 作业反馈:如下表所示👇👇
+3⃣ 作业反馈
+根据本节课作业情况，撰写 ${feedbackCount} 条具体反馈，覆盖整体表现和典型问题。每条反馈针对一个具体知识点，${lengthGuide}，用"巩固/加强/掌握"开头，末尾用"继续加油/再接再厉"结尾，不要连续两条用一样的开头或结尾。
 
 注意：
 - "1⃣" "2⃣" 等符号使用 emoji 风格的数字符号
