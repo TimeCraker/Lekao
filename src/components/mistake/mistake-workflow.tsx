@@ -74,6 +74,9 @@ export function MistakeWorkflow() {
     null,
   );
 
+  // v3 新增：日期 override（Excel 未识别或需要改时）
+  const [dateOverride, setDateOverride] = useState<string>("");
+
   // 槽位数据：key = `${qType}:${qNumber}`
   const [slots, setSlots] = useState<Record<string, QNumberSlot>>({});
 
@@ -113,6 +116,9 @@ export function MistakeWorkflow() {
           subjectName: parsed.sheetName,
           classroomName: parsed.classroomName || parsed.sheetName,
         });
+
+        // v3：初始化日期 override
+        setDateOverride(parsed.date);
 
         // 默认全选所有学生
         setStudentSelection(new Set(parsed.students.map((s) => s.name)));
@@ -180,16 +186,18 @@ export function MistakeWorkflow() {
   );
 
   // v2：把 cover override 合并到 collection（用于 export 时的封面 + 页眉）
+  // v3：同时合并日期 override
   const finalCollection = useMemo<MistakeCollection | null>(() => {
     if (!collection) return null;
-    if (!coverOverride) return collection;
+    if (!coverOverride && !dateOverride) return collection;
     return {
       ...collection,
-      sheetName: coverOverride.subjectName || collection.sheetName,
+      sheetName: coverOverride?.subjectName || collection.sheetName,
       classroomName:
-        coverOverride.classroomName || collection.classroomName,
+        coverOverride?.classroomName || collection.classroomName,
+      date: dateOverride || collection.date,
     };
-  }, [collection, coverOverride]);
+  }, [collection, coverOverride, dateOverride]);
 
   // ===== 学生选择 =====
   const toggleStudent = useCallback((name: string) => {
@@ -225,6 +233,7 @@ export function MistakeWorkflow() {
     setStudentSelection(new Set());
     setCoverOverride(null);
     setHeaderScan(null);
+    setDateOverride("");
     setStep("upload");
   }, [collection]);
 
@@ -233,6 +242,7 @@ export function MistakeWorkflow() {
     setSlots({});
     setCoverOverride(null);
     setHeaderScan(null);
+    setDateOverride("");
     setStep("selectSheet");
   }, []);
 
@@ -337,7 +347,21 @@ export function MistakeWorkflow() {
         {step === "fillSlots" && collection && summary && (
           <>
             <Section
-              title={`Step 3 · ${finalCollection?.classroomName ?? collection.classroomName} · ${collection.date} · 全班 ${summary.totalStudents} 人`}
+              title={
+                <span className="flex items-center gap-2 flex-wrap">
+                  <span>Step 3 · {finalCollection?.classroomName ?? collection.classroomName}</span>
+                  <span className="flex items-center gap-1">
+                    <span className="text-xs text-ink-muted">日期</span>
+                    <input
+                      type="date"
+                      value={dateOverride}
+                      onChange={(e) => setDateOverride(e.target.value)}
+                      className="text-sm px-2 py-0.5 rounded-md border border-hairline bg-white w-36 focus:outline-none focus:ring-1 focus:ring-accent/50"
+                    />
+                  </span>
+                  <span>· 全班 {summary.totalStudents} 人</span>
+                </span>
+              }
               action={
                 <button
                   type="button"
@@ -568,7 +592,7 @@ function Section({
   action,
   children,
 }: {
-  title: string;
+  title: React.ReactNode;
   action?: React.ReactNode;
   children: React.ReactNode;
 }) {
