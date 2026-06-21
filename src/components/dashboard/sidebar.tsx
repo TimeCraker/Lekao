@@ -20,7 +20,7 @@ import {
 const NAV_ITEMS = [
   { href: "/dashboard/mistake", label: "错题集生成", Icon: MistakeIcon },
   { href: "/dashboard/summary", label: "课堂小结", Icon: SummaryIcon },
-  { href: "/dashboard/feedback", label: "堂测反馈", Icon: FeedbackIcon },
+  { href: "/dashboard/feedback", label: "作业/堂测反馈", Icon: FeedbackIcon },
 ];
 
 const STORAGE_KEY = "lekao-sidebar-collapsed";

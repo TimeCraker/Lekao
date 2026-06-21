@@ -8,8 +8,8 @@ export default function FeedbackPage() {
   return (
     <>
       <TopBar
-        title="堂测反馈"
-        description="上传讲义图片 → AI 自动识别学科、章节、知识点 → 生成堂测批改反馈"
+        title="作业/堂测反馈"
+        description="上传讲义图片 → AI 自动识别学科、章节、知识点 → 生成作业/堂测批改反馈"
         rightExtra={
           <div className="flex items-center gap-2">
             <span className="hidden md:inline-flex items-center gap-1 px-2.5 py-1 bg-accent-soft text-accent-ink text-xs font-semibold rounded-full border border-accent/20">

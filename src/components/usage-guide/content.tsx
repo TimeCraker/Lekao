@@ -147,14 +147,14 @@ export const SUMMARY_GUIDE: {
 };
 
 /* ============================================
- * 3. 堂测反馈 · 4 步
+ * 3. 作业/堂测反馈 · 4 步
  * ============================================ */
 export const FEEDBACK_GUIDE: {
   title: string;
   subtitle: string;
   sections: UsageSection[];
 } = {
-  title: "堂测反馈 · 使用说明",
+  title: "作业/堂测反馈 · 使用说明",
   subtitle: "上传讲义图片 → AI 按堂测批改风格 → 流式输出 → 一键复制",
   sections: [
     {

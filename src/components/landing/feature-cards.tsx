@@ -28,9 +28,9 @@ const FEATURES = [
   },
   {
     Icon: FeedbackIcon,
-    title: "堂测反馈",
+    title: "作业/堂测反馈",
     description:
-      "上传讲义图片，AI 生成堂测批改反馈，给出具体可执行的错题订正建议",
+      "上传讲义图片，AI 生成作业/堂测批改反馈，给出具体可执行的错题订正建议",
     priceTag: { type: "coin" as const, label: "1 币/次" },
     href: "/dashboard/feedback",
   },

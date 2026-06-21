@@ -66,7 +66,7 @@ export function OutputCard({
       {feedback && (
         <SectionBlock
           Icon={template === "summary" ? SummaryIcon : FeedbackIcon}
-          title={feedbackTitle || (template === "summary" ? "课堂反馈" : "堂测反馈")}
+          title={feedbackTitle || (template === "summary" ? "课堂反馈" : "作业/堂测反馈")}
           content={feedback}
           isCopied={copiedKey === "feedback"}
           onCopy={() => copyToClipboard(feedback, "feedback")}

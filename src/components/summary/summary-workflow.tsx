@@ -42,8 +42,8 @@ const TEMPLATE_LABEL: Record<TemplateType, { title: string; desc: string }> = {
     desc: "上传讲义图片 → AI 自动识别学科、章节、知识点 → 生成课堂小结。",
   },
   feedback: {
-    title: "堂测反馈",
-    desc: "上传讲义图片 → AI 自动识别学科、章节、知识点 → 生成堂测反馈。",
+    title: "作业/堂测反馈",
+    desc: "上传讲义图片 → AI 自动识别学科、章节、知识点 → 生成作业/堂测反馈。",
   },
 };
 
@@ -305,7 +305,7 @@ export function SummaryWorkflow({ template }: Props) {
         <div className="pt-4">
           <PromptCard
             prompt={visiblePrompt}
-            label={template === "summary" ? "课堂小结提示词（可复制到 DeepSeek 使用）" : "堂测反馈提示词（可复制到 DeepSeek 使用）"}
+            label={template === "summary" ? "课堂小结提示词（可复制到 DeepSeek 使用）" : "作业/堂测反馈提示词（可复制到 DeepSeek 使用）"}
           />
         </div>
       )}
