@@ -66,7 +66,7 @@ export function OutputCard({
       {feedback && (
         <SectionBlock
           Icon={template === "summary" ? SummaryIcon : FeedbackIcon}
-          title={feedbackTitle || (template === "summary" ? "课堂反馈" : "作业/堂测反馈")}
+          title={feedbackTitle || (template === "summary" ? "课堂反馈" : "本次作业/堂测反馈")}
           content={feedback}
           isCopied={copiedKey === "feedback"}
           onCopy={() => copyToClipboard(feedback, "feedback")}
@@ -78,7 +78,7 @@ export function OutputCard({
       {summary && (
         <SectionBlock
           Icon={DocumentIcon}
-          title={summaryTitle || (template === "summary" ? "课堂总体小结" : "堂测总体反馈")}
+          title={summaryTitle || (template === "summary" ? "课堂总体小结" : "作业/堂测总体小结")}
           content={summary}
           isCopied={copiedKey === "summary"}
           onCopy={() => copyToClipboard(summary, "summary")}
@@ -172,15 +172,14 @@ function SectionBlock({
       {/* Body */}
       <div className="p-5">
         {isMultiLine ? (
-          // feedback 段：每条建议独立成段（去掉 Markdown 符号后）
-          <div className="space-y-2 text-sm text-ink leading-relaxed">
+          // feedback 段：每条独立一行，无符号（贴 Excel 友好）
+          <div className="space-y-3 text-sm text-ink leading-relaxed">
             {cleaned
               .split("\n")
               .filter((line) => line.trim())
               .map((line, i) => (
-                <div key={i} className="flex gap-2">
-                  <span className="text-accent-text shrink-0 select-none">·</span>
-                  <span className="flex-1">{line.trim()}</span>
+                <div key={i}>
+                  {line.trim()}
                 </div>
               ))}
           </div>

@@ -1,28 +1,26 @@
 // ============================================
 // Lekao · AI 输出切分器
 // ============================================
-// 2026-06-21 更新：新格式为单一结构化文档
-// 【班级 + 学科 + 类型 + 日期】
-// 1⃣ 授课内容 / 2⃣ 学习要求 / 3⃣ 作业反馈
-//
-// 整段输出直接作为 summary 展示
+// 2026-06-21 更新：
+// 课堂小结 -> 单一结构化文档【班级学科小结日期】
+// 作业反馈 -> 按 "本次...总体小结" 标记拆分为 feedback 项 + 总体小结
 
 export type ParsedOutput = {
-  /** 整个文档（新格式）或 10 条建议段（旧格式兼容） */
+  /** feedback 项（每条独立一行，贴 Excel 用） */
   feedback: string;
-  /** 整个文档（新格式）或 一段小结（旧格式兼容） */
+  /** 总体小结段落 */
   summary: string;
-  /** 第一段标题 */
+  /** feedback 板块标题 */
   feedbackTitle: string;
-  /** 第二段标题 */
+  /** 小结板块标题 */
   summaryTitle: string;
 };
 
 /**
  * 解析 AI 输出
  *
- * @param rawText - 完整流式累积文本
- * @param _template - 模板类型（保留参数签名，不再按 marker 切分）
+ * - summary 模板：整段作为 summary 输出（兼容旧格式）
+ * - feedback 模板：按 "本次...总体小结" 标记拆分为 feedback + summary
  */
 export function parseSummaryOutput(
   rawText: string,
@@ -33,12 +31,46 @@ export function parseSummaryOutput(
     return { feedback: "", summary: "", feedbackTitle: "", summaryTitle: "" };
   }
 
-  // 新格式：整段作为 summary 输出
-  // 提取第一行作为标题（【...】）
-  const firstLine = text.split("\n")[0] || "";
-  const titleMatch = firstLine.match(/^【(.+?)】/);
-  const summaryTitle = titleMatch ? titleMatch[1] : "生成结果";
+  const lines = text.split("\n");
+  const firstLine = lines[0] || "";
 
+  // feedback 模板：按 "本次...总体小结" 标记拆分
+  if (_template === "feedback") {
+    // 用正则匹配 "本次{学科}作业总体小结" 或 "本次{学科}堂测总体小结"
+    const summaryMarkerMatch = text.match(/本次.+?(?:作业|堂测)总体小结/);
+    if (summaryMarkerMatch) {
+      const markerFull = summaryMarkerMatch[0];
+      const markerIndex = summaryMarkerMatch.index!;
+      // feedback 正文 = 第一行标题之后、标记之前的全部内容
+      let feedbackBody = "";
+      if (markerIndex > firstLine.length) {
+        // 跨越多行：feedbackBody = 第一行之后、标记之前
+        const afterTitle = text.slice(firstLine.length, markerIndex).trim();
+        feedbackBody = afterTitle;
+      }
+      // summary = 标记行 + 标记后的内容
+      const summaryBody = text.slice(markerIndex).trim();
+
+      return {
+        feedback: feedbackBody,
+        summary: summaryBody,
+        feedbackTitle: firstLine || "本次作业反馈",
+        summaryTitle: markerFull,
+      };
+    }
+
+    // 没找到标记：把第一行当标题，其余当 feedback 项
+    const rest = lines.slice(1).join("\n").trim();
+    return {
+      feedback: rest,
+      summary: "",
+      feedbackTitle: firstLine || "本次作业反馈",
+      summaryTitle: "",
+    };
+  }
+
+  // summary 模板：整段作为 summary 输出
+  const summaryTitle = firstLine.match(/^【(.+?)】/)?.[1] || "生成结果";
   return {
     feedback: "",
     summary: text,
