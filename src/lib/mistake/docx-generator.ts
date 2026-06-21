@@ -64,6 +64,10 @@ export interface GenerateArgs {
   date: string;
   classroomSlots: QNumberSlot[];
   homeworkSlots: QNumberSlot[];
+  /** 该学生当天的堂测错题号（用于 section QNumbers 存储 + 构建时过滤旧 section）*/
+  classroomQNumbers?: string[];
+  /** 该学生当天的作业错题号 */
+  homeworkQNumbers?: string[];
   /** 是否累积模式（默认 true：检测到同日 section 时跳过 + 提示）*/
   cumulative?: boolean;
 }
@@ -104,7 +108,7 @@ export async function generateStudentDocx(args: GenerateArgs): Promise<Blob> {
     );
   }
 
-  // 3. 持久化今日 section
+  // 3. 持久化今日 section（含 QNumbers 用于构建时过滤）
   const newSection: SavedSection = {
     id: `${sheetName}:${studentName}:${date}`,
     studentName,
@@ -112,6 +116,9 @@ export async function generateStudentDocx(args: GenerateArgs): Promise<Blob> {
     date,
     classroomSlotsJson: JSON.stringify(classroomSlots),
     homeworkSlotsJson: JSON.stringify(homeworkSlots),
+    classroomQNumbers: args.classroomQNumbers,
+    homeworkQNumbers: args.homeworkQNumbers,
+    sectionVersion: 1,
     imageIds: [
       ...classroomSlots.map((s) => s.imageBlobId).filter(Boolean) as string[],
       ...homeworkSlots.map((s) => s.imageBlobId).filter(Boolean) as string[],
@@ -153,6 +160,10 @@ export async function generateStudentDocx(args: GenerateArgs): Promise<Blob> {
               width,
               height,
             });
+          } else {
+            console.warn(
+              `[docx] 图片未找到: ${slot.imageBlobId} (section ${section.id})`,
+            );
           }
         }
       }
@@ -393,17 +404,41 @@ async function buildContentChildren({
       // section 之间的空行
       children.push(new Paragraph({ children: [new TextRun({ text: "" })] }));
     }
-    const sectionChildren = await buildSectionChildren(section, imageCache);
+
+    const classroomSlots: QNumberSlot[] = JSON.parse(section.classroomSlotsJson);
+    const homeworkSlots: QNumberSlot[] = JSON.parse(section.homeworkSlotsJson);
+
+    // v2: 按 section 内存储的 QNumbers 过滤（旧版 section 无 QNumbers 时全量保留）
+    const filteredClassroom = section.classroomQNumbers
+      ? classroomSlots.filter((s) => section.classroomQNumbers!.includes(s.qNumber))
+      : classroomSlots;
+    const filteredHomework = section.homeworkQNumbers
+      ? homeworkSlots.filter((s) => section.homeworkQNumbers!.includes(s.qNumber))
+      : homeworkSlots;
+
+    const sectionChildren = await buildSectionChildren({
+      section,
+      classroomSlots: filteredClassroom,
+      homeworkSlots: filteredHomework,
+      imageCache,
+    });
     children.push(...sectionChildren);
   }
 
   return children;
 }
 
-async function buildSectionChildren(
-  section: SavedSection,
-  imageCache: Map<string, { blob: Blob; buffer: Uint8Array; width: number; height: number }>,
-): Promise<Paragraph[]> {
+async function buildSectionChildren({
+  section,
+  classroomSlots,
+  homeworkSlots,
+  imageCache,
+}: {
+  section: SavedSection;
+  classroomSlots: QNumberSlot[];
+  homeworkSlots: QNumberSlot[];
+  imageCache: Map<string, { blob: Blob; buffer: Uint8Array; width: number; height: number }>;
+}): Promise<Paragraph[]> {
   const children: Paragraph[] = [];
 
   // 日期段标题（16pt 加粗 红色）
@@ -424,7 +459,6 @@ async function buildSectionChildren(
   );
 
   // 堂测错题
-  const classroomSlots: QNumberSlot[] = JSON.parse(section.classroomSlotsJson);
   if (classroomSlots.length > 0) {
     children.push(
       new Paragraph({
@@ -446,12 +480,11 @@ async function buildSectionChildren(
       .filter(({ slot }) => hasSlotContent(slot));
 
     for (const { slot } of numberedSlots) {
-      children.push(...(await buildSlotParagraphs(slot, "classroom", imageCache)));
+      children.push(...(await buildSlotParagraphs(slot, imageCache)));
     }
   }
 
   // 作业错题
-  const homeworkSlots: QNumberSlot[] = JSON.parse(section.homeworkSlotsJson);
   if (homeworkSlots.length > 0) {
     children.push(
       new Paragraph({
@@ -473,7 +506,7 @@ async function buildSectionChildren(
       .filter(({ slot }) => hasSlotContent(slot));
 
     for (const { slot } of numberedSlots) {
-      children.push(...(await buildSlotParagraphs(slot, "homework", imageCache)));
+      children.push(...(await buildSlotParagraphs(slot, imageCache)));
     }
   }
 
@@ -492,7 +525,6 @@ function hasSlotContent(slot: QNumberSlot): boolean {
 
 async function buildSlotParagraphs(
   slot: QNumberSlot,
-  _qType: "classroom" | "homework",
   imageCache: Map<string, { blob: Blob; buffer: Uint8Array; width: number; height: number }>,
 ): Promise<Paragraph[]> {
   const paragraphs: Paragraph[] = [];
@@ -542,6 +574,10 @@ async function buildSlotParagraphs(
       } catch (e) {
         console.warn("[docx] 图片嵌入失败", e);
       }
+    } else {
+      console.warn(
+        `[docx] 题号 ${slot.qNumber} 的图片未找到（imageBlobId=${slot.imageBlobId}），跳过图片`,
+      );
     }
   }
 
@@ -620,6 +656,8 @@ export async function generateBatchDocx(
       studentName: name,
       classroomSlots: filteredClassroom,
       homeworkSlots: filteredHomework,
+      classroomQNumbers: student.classroomQNumbers,
+      homeworkQNumbers: student.homeworkQNumbers,
     });
     results.push({
       studentName: name,

@@ -16,6 +16,12 @@ export interface SavedSection {
   classroomSlotsJson: string; // 序列化（不含图片 Blob）
   homeworkSlotsJson: string;
   imageIds: string[]; // 关联的图片 ID（在另一个 IndexedDB 库）
+  /** v2: 该学生当天的堂测错题号列表 —— 用于 docx 构建时过滤（防止旧 section 含全班数据导致文档膨胀） */
+  classroomQNumbers?: string[];
+  /** v2: 该学生当天的作业错题号列表 */
+  homeworkQNumbers?: string[];
+  /** 结构版本号：1=带 QNumbers，undefined=旧版（不含 QNumbers，全量 slots） */
+  sectionVersion?: 1;
   createdAt: number;
 }
 
