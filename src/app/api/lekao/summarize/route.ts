@@ -68,6 +68,7 @@ type RequestBody = {
   className?: string;
   date: string;
   feedbackCount?: number;
+  feedbackLength?: "short" | "standard" | "long";
 };
 
 export async function POST(req: NextRequest) {
@@ -212,6 +213,7 @@ export async function POST(req: NextRequest) {
       className: body.className,
       date: body.date,
       feedbackCount: body.feedbackCount,
+      feedbackLength: body.feedbackLength,
     });
 
     const encoder = new TextEncoder();

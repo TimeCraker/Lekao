@@ -86,19 +86,20 @@ export function buildSummaryPrompt({
  * 输出格式（参考用户提供的真实模板）：
  *   本次{学科}作业反馈（{专题}）
  *
- *   巩固XXX，继续加油
- *   加强XXX，再接再厉
- *   掌握XXX，继续努力
+ *   巩固对xx概念的理解，做到熟练辨析，继续加油
+ *   加强xx方法的灵活运用，注意与类似题型的区分，再接再厉
+ *   掌握xx问题的解题技巧，注意审题中的关键条件，继续努力
+ *   熟练运用xx公式进行计算，提升准确率，继续保持
  *   ...
  *
  *   本次{学科}作业总体小结
  *   ...
  *
  * 关键要求：
- *   - 反馈项不加任何序号或符号（不要 ① ①② 1. - 等前缀）
+ *   - 每条只讲 ONE 个知识点/角度，不要罗列所有知识点
+ *   - 每条控制在 20-50 字（短）、30-70 字（标准）、50-100 字（长）
  *   - 每条以"巩固/加强/掌握/熟练/..."开头，以"继续加油/再接再厉/继续努力/继续保持/多总结方法"结尾
- *   - 语气自然，像老师批改作业后写的评语
- *   - 内容可以相近但不能完全相同
+ *   - 不同条目从不同角度切入：概念理解、方法运用、易错提醒、解题技巧等
  *   - 条数由 feedbackCount 控制
  */
 export function buildFeedbackPrompt({
@@ -108,6 +109,7 @@ export function buildFeedbackPrompt({
   className = "超火1班",
   date,
   feedbackCount = 20,
+  feedbackLength = "standard",
 }: {
   subject: string;
   topic: string;
@@ -115,8 +117,18 @@ export function buildFeedbackPrompt({
   className?: string;
   date: string;
   feedbackCount?: number;
+  feedbackLength?: "short" | "standard" | "long";
 }): string {
   const kp = keyPoints.length > 0 ? keyPoints.join("、") : "本节课内容";
+
+  // 根据长度档位设置不同的字数和详尽度约束
+  const lengthGuide =
+    feedbackLength === "short"
+      ? "每条控制在 15-35 字，极其精简，只点出知识点名称和关键动作，不展开解释。"
+      : feedbackLength === "long"
+        ? "每条控制在 50-90 字，可适当展开解释方法或易错点，比标准版多一个层级的说明。"
+        : "每条控制在 25-55 字，简洁地点出知识点的掌握要点和提升方向。";
+
   return `你是一位经验丰富的培训机构助教。请根据以下信息，生成一份具体、可执行的【作业/堂测反馈】。
 
 # 本节课信息
@@ -134,29 +146,36 @@ export function buildFeedbackPrompt({
 本次${subject}作业反馈（${topic}）
 
 ## 第二行开始：反馈项（共 ${feedbackCount} 条）
-每条独立一行，不要加任何序号或符号前缀（不要①、②、1.、-、·等）。
-每条的写法风格如下（内容上要围绕知识点展开，不可直接套用例句）：
 
-巩固${kp}的相关概念，熟练掌握基本题型解法，继续加油
-加强${kp}的综合应用能力，注意不同知识点之间的联系与转化，再接再厉
-掌握${kp}的分析方法，能灵活运用数形结合等思想解决问题，继续努力
-熟练运用${kp}的解题技巧，提升运算速度与准确性，继续保持
-...
+每条独立一行，不加任何序号或符号前缀（不要①、②、1.、-、·等）。
 
-每条内容可以相近但不能完全相同。
-结尾用"继续加油"、"再接再厉"、"继续努力"、"继续保持"、"多总结方法"等轮换使用，不要全部用同一个。
+每条格式：以"巩固/加强/掌握/熟练/注意/理解/强化"等中的一个开头，以"继续加油/再接再厉/继续努力/继续保持/多总结方法"等中的一个结尾。
+
+${lengthGuide}
+
+注意以下规则：
+1. 每条只聚焦一个知识点或一个角度，不能把全部知识点塞进同一条里
+2. 不同条目的角度要不同，交替使用这些角度：概念理解、方法运用、易错提醒、解题技巧、公式记忆、思路分析、题型识别、规范书写
+3. 鼓励语轮流使用"继续加油、再接再厉、继续努力、继续保持、多总结方法"，不要全部一样
+4. 示例对比——👇好的写法：
+   "巩固圆台内切球半径的推导思路，注意母线、高与半径的垂直关系，继续加油"
+   "加强概率独立事件与互斥事件的区分，避免混淆概念，再接再厉"
+   "掌握正方体中点体积分割的辅助线构造方法，继续努力"
+   而不是👇坏的写法：
+   "巩固圆台内切球半径、圆柱与圆台间隙最大球、概率独立事件计算...的相关概念..."
+5. 每条开头用不同的动词，不要连续两条都用"巩固"
 
 ## 最后：总体小结
 空一行后输出：
 本次${subject}作业总体小结
 
-（一段总结，包含本次作业的核心考点、解题关键点、易错提醒、鼓励语气）
-（最后一句提醒：作业未交的同学请课后及时补做，下次要记得交作业哦！）
+（一段 150-300 字的总结：包含本次作业的核心考点、解题关键点、易错提醒、鼓励语气）
+（最后一句：作业未交的同学请课后及时补做，下次要记得交作业哦！）
 
 注意：
 - 整个输出不能出现任何序号（① ② ③ 1. 2. 3. - · 等均不允许）
 - 每条反馈都是纯文字句子，没有前缀符号
-- 总体小结段落要完整、通顺
+- 总体小结段落要完整、通顺，至少 3-5 句话
 - 语气专业、亲切，像老师批改作业后的真实评语`;
 }
 
@@ -169,6 +188,7 @@ export const TEXT_PROMPT = ({
   className = "超火1班",
   date,
   feedbackCount = 20,
+  feedbackLength,
 }: {
   subject: string;
   topic: string;
@@ -177,8 +197,9 @@ export const TEXT_PROMPT = ({
   className?: string;
   date: string;
   feedbackCount?: number;
+  feedbackLength?: "short" | "standard" | "long";
 }) => {
   return template === "summary"
     ? buildSummaryPrompt({ subject, topic, keyPoints, className, date })
-    : buildFeedbackPrompt({ subject, topic, keyPoints, className, date, feedbackCount });
+    : buildFeedbackPrompt({ subject, topic, keyPoints, className, date, feedbackCount, feedbackLength });
 };
