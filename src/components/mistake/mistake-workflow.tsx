@@ -22,7 +22,9 @@ import {
 import {
   listSheets,
   parseSheet,
+  scanHeaders,
   type SheetMetadata,
+  type HeaderScanResult,
 } from "@/lib/mistake/excel-parser";
 import {
   clearDraft,
@@ -64,6 +66,9 @@ export function MistakeWorkflow() {
   const [sheets, setSheets] = useState<SheetMetadata[]>([]);
   const [collection, setCollection] = useState<MistakeCollection | null>(null);
 
+  // v3 新增：表头扫描结果（columnMapper 步骤使用）
+  const [headerScan, setHeaderScan] = useState<HeaderScanResult | null>(null);
+
   // v2 新增：封面信息 override（用户可改，预筛选默认 = Excel 提取）
   const [coverOverride, setCoverOverride] = useState<ConfirmCoverValue | null>(
     null,
@@ -89,12 +94,17 @@ export function MistakeWorkflow() {
     setStep("selectSheet");
   }, []);
 
-  // ===== 步骤 2：选择 Sheet → 跳到 confirmCover（v2 改动）=====
+  // ===== 步骤 2：选择 Sheet → 解析 + 进 confirmCover（同时记录表头供 fillSlots 映射用）=====
   const onSelectSheet = useCallback(
     (sheetName: string) => {
       if (!workbook) return;
 
       try {
+        // 记录表头扫描结果（fillSlots 页面列映射面板使用）
+        const scan = scanHeaders(workbook, sheetName);
+        setHeaderScan(scan);
+
+        // 正式解析（用自动检测的列映射）
         const parsed = parseSheet(workbook, sheetName);
         setCollection(parsed);
 
@@ -214,6 +224,7 @@ export function MistakeWorkflow() {
     setSlots({});
     setStudentSelection(new Set());
     setCoverOverride(null);
+    setHeaderScan(null);
     setStep("upload");
   }, [collection]);
 
@@ -221,12 +232,37 @@ export function MistakeWorkflow() {
     setCollection(null);
     setSlots({});
     setCoverOverride(null);
+    setHeaderScan(null);
     setStep("selectSheet");
   }, []);
 
   const backToConfirmCover = useCallback(() => {
     setStep("confirmCover");
   }, []);
+
+  // ===== v3 新增：fillSlots 页面重新映射列（用户手动改列对应）=====
+  const [showMapping, setShowMapping] = useState(false);
+
+  const reparseMapping = useCallback(
+    (classroomCol: number, homeworkCol: number) => {
+      if (!workbook || !collection) return;
+      try {
+        const remapped = parseSheet(workbook, collection.sheetName, {
+          nameCol: collection.columns.nameCol,
+          classroomCol,
+          homeworkCol,
+        });
+        setCollection(remapped);
+        // 列变化 → 题号变化 → 清空已填的槽位
+        setSlots({});
+        setStudentSelection(new Set(remapped.students.map((s) => s.name)));
+        setShowMapping(false);
+      } catch (e) {
+        alert(e instanceof Error ? e.message : "重新解析失败");
+      }
+    },
+    [workbook, collection],
+  );
 
   return (
     <div className="px-6 md:px-10 py-8 max-w-6xl">
@@ -319,6 +355,19 @@ export function MistakeWorkflow() {
                 <SummaryCard label="堂测错题" value={summary.classroomQCount} accent="accent" />
                 <SummaryCard label="作业错题" value={summary.homeworkQCount} accent="accent" />
               </div>
+
+              {/* v3 新增：列映射调整面板 */}
+              {headerScan && (
+                <MappingPanel
+                  showMapping={showMapping}
+                  setShowMapping={setShowMapping}
+                  headers={headerScan.headers}
+                  currentClassroomCol={collection.columns.classroomCol}
+                  currentHomeworkCol={collection.columns.homeworkCol}
+                  nameColName={headerScan.headers[collection.columns.nameCol] ?? "未识别"}
+                  onApply={reparseMapping}
+                />
+              )}
 
               {/* 两列：堂测 + 作业 */}
               <div className="grid lg:grid-cols-2 gap-6">
@@ -601,6 +650,118 @@ function SlotColumn({
           })
         )}
       </div>
+    </div>
+  );
+}
+
+/**
+ * v3 新增：fillSlots 页面内的列映射调整面板
+ * 展开后显示堂测/作业两列的下拉选择器，应用后重新解析
+ */
+function MappingPanel({
+  showMapping,
+  setShowMapping,
+  headers,
+  currentClassroomCol,
+  currentHomeworkCol,
+  nameColName,
+  onApply,
+}: {
+  showMapping: boolean;
+  setShowMapping: (v: boolean) => void;
+  headers: string[];
+  currentClassroomCol: number;
+  currentHomeworkCol: number;
+  nameColName: string;
+  onApply: (classroomCol: number, homeworkCol: number) => void;
+}) {
+  const [classroomDraft, setClassroomDraft] = useState(currentClassroomCol);
+  const [homeworkDraft, setHomeworkDraft] = useState(currentHomeworkCol);
+
+  return (
+    <div className="mb-6 rounded-xl border border-accent-line bg-accent-soft/20 p-4">
+      <button
+        type="button"
+        onClick={() => setShowMapping(!showMapping)}
+        className="flex items-center gap-2 text-sm font-medium text-accent-ink"
+      >
+        <span className="text-xs px-2 py-0.5 rounded-full bg-accent-soft text-accent-text">
+          {showMapping ? "收起" : "展开"}
+        </span>
+        列映射调整
+        <span className="text-xs text-ink-muted font-normal">
+          （当前：堂测={headers[currentClassroomCol] ?? "未识别"} · 作业={headers[currentHomeworkCol] ?? "未识别"}）
+        </span>
+      </button>
+
+      {showMapping && (
+        <div className="mt-4 space-y-3">
+          {/* 姓名列（只读） */}
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-ink w-28 shrink-0">姓名列</span>
+            <span className="text-sm text-ink-muted">{nameColName}</span>
+            <span className="text-xs text-success-text">（自动检测，不可改）</span>
+          </div>
+
+          {/* 堂测列 */}
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-ink w-28 shrink-0">堂测错题列</span>
+            <select
+              value={classroomDraft}
+              onChange={(e) => setClassroomDraft(Number(e.target.value))}
+              className="flex-1 rounded-lg border border-hairline px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-accent/50"
+            >
+              <option value={-1}>（不识别）</option>
+              {headers.map((h, i) => (
+                <option key={i} value={i}>{h || `列${i + 1}`}</option>
+              ))}
+            </select>
+            {classroomDraft >= 0 && (
+              <span className="text-xs text-ink-muted shrink-0">列{classroomDraft + 1}</span>
+            )}
+          </div>
+
+          {/* 作业列 */}
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-ink w-28 shrink-0">作业错题列</span>
+            <select
+              value={homeworkDraft}
+              onChange={(e) => setHomeworkDraft(Number(e.target.value))}
+              className="flex-1 rounded-lg border border-hairline px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-accent/50"
+            >
+              <option value={-1}>（不识别）</option>
+              {headers.map((h, i) => (
+                <option key={i} value={i}>{h || `列${i + 1}`}</option>
+              ))}
+            </select>
+            {homeworkDraft >= 0 && (
+              <span className="text-xs text-ink-muted shrink-0">列{homeworkDraft + 1}</span>
+            )}
+          </div>
+
+          <div className="text-xs text-ink-muted mt-2">
+            ⚠️ 更改列映射会清空已填写的题号槽位
+          </div>
+
+          <div className="flex justify-end gap-3 mt-3">
+            <button
+              type="button"
+              onClick={() => setShowMapping(false)}
+              className="text-sm px-3 py-1.5 rounded-lg border border-hairline text-ink-muted hover:text-ink"
+            >
+              取消
+            </button>
+            <button
+              type="button"
+              onClick={() => onApply(classroomDraft, homeworkDraft)}
+              disabled={classroomDraft === currentClassroomCol && homeworkDraft === currentHomeworkCol}
+              className="text-sm px-4 py-1.5 rounded-lg bg-accent text-white font-medium hover:bg-accent-hover transition disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              应用映射
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

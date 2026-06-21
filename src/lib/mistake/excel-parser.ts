@@ -40,15 +40,18 @@ const CLASSROOM_KEYWORDS = [
   "quiz",
 ];
 
-/** 匹配作业错题列的关键词 */
+/** 匹配作业错题列的关键词（v3 扩展：课后练习错题 / 练习错题 / 课后练习 / 作业） */
 const HOMEWORK_KEYWORDS = [
   "作业错题",
   "课后作业错题",
+  "课后练习错题",
   "作业错题号",
-  "作业错题",
   "课后作业",
+  "课后练习",
+  "练习错题",
   "homework",
   "作业题号",
+  "作业",
 ];
 
 /** 匹配班级标题行的关键词（精确提取失败时降级用） */
@@ -106,6 +109,79 @@ export function detectColumns(headers: string[]): {
   }
 
   return { nameCol, classroomCol, homeworkCol };
+}
+
+// ============== 表头扫描（v3 新增：先扫描表头，交给 UI 确认映射后再解析）==============
+
+/**
+ * 表头扫描结果：仅扫描表头，不解析全量数据
+ */
+export interface HeaderScanResult {
+  sheetName: string;
+  headers: string[]; // 表头行中各列的原始名称
+  headerRowIndex: number; // 表头行在 aoa 中的索引
+  detected: {
+    nameCol: number; // -1 表示未识别
+    classroomCol: number;
+    homeworkCol: number;
+  };
+  classroomName: string;
+  date: string;
+}
+
+/**
+ * 扫描表头行 + 提取班级名和日期
+ * 不同于 parseSheet：不会解析全量学生数据，只返回表头和列映射
+ */
+export function scanHeaders(
+  workbook: XLSX.WorkBook,
+  sheetName: string,
+): HeaderScanResult {
+  const sheet = workbook.Sheets[sheetName];
+  if (!sheet) throw new Error(`Sheet "${sheetName}" 不存在`);
+
+  const { classroomName, date } = extractHeaderInfo(workbook, sheetName);
+
+  const aoa = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
+    header: 1,
+    defval: "",
+    raw: false,
+  });
+
+  // 寻找含"姓名"的表头行（前 5 行）
+  let headerRowIndex = -1;
+  let headers: string[] = [];
+
+  for (let i = 0; i < Math.min(5, aoa.length); i++) {
+    const row = aoa[i] || [];
+    const candidates = row.map((c) => String(c ?? "").trim());
+    if (candidates.some((c) => matchAnyKeyword(c, NAME_KEYWORDS))) {
+      headerRowIndex = i;
+      headers = candidates;
+      break;
+    }
+  }
+
+  // 没找到含"姓名"的行 → 强行拿第 1 行
+  if (headerRowIndex === -1 && aoa.length > 0) {
+    headerRowIndex = 0;
+    headers = (aoa[0] || []).map((c) => String(c ?? "").trim());
+  }
+
+  const detected = detectColumns(headers);
+
+  return {
+    sheetName,
+    headers,
+    headerRowIndex,
+    detected: {
+      nameCol: detected.nameCol,
+      classroomCol: detected.classroomCol,
+      homeworkCol: detected.homeworkCol,
+    },
+    classroomName,
+    date,
+  };
 }
 
 // ============== Sheet 读取 ==============
@@ -241,10 +317,13 @@ export function extractHeaderInfo(
  * - 表头行模糊识别（不强制第 1 行是表头，会扫描前 5 行找含"姓名"的那行）
  * - 合并单元格 SheetJS 自动读左上角值，无需特殊处理
  * - 空行自动跳过
+ *
+ * @param explicitMapping 可选：传入显式列映射（来自 columnMapper UI），跳过自动检测
  */
 export function parseSheet(
   workbook: XLSX.WorkBook,
   sheetName: string,
+  explicitMapping?: { nameCol: number; classroomCol: number; homeworkCol: number },
 ): import("./types").MistakeCollection {
   const sheet = workbook.Sheets[sheetName];
   if (!sheet) {
@@ -279,15 +358,32 @@ export function parseSheet(
   let headerRowIdx = -1;
   let columns = { nameCol: -1, classroomCol: -1, homeworkCol: -1 };
 
-  for (let i = 0; i < Math.min(5, nonEmptyRows.length); i++) {
-    const row = nonEmptyRows[i] || [];
-    const headers = row.map((c) => String(c ?? "").trim());
-    const detected = detectColumns(headers);
+  // 如果传入了显式映射，直接用它，跳过自动检测
+  if (explicitMapping) {
+    columns = explicitMapping;
+    // 找匹配的表头行（作为数据起始索引）
+    for (let i = 0; i < Math.min(5, nonEmptyRows.length); i++) {
+      const row = nonEmptyRows[i] || [];
+      const headers = row.map((c) => String(c ?? "").trim());
+      if (headers.some((h) => matchAnyKeyword(h, NAME_KEYWORDS))) {
+        headerRowIdx = i;
+        break;
+      }
+    }
+    // 没找到含"姓名"的行 → 表头在第 1 行
+    if (headerRowIdx === -1) headerRowIdx = 0;
+  } else {
+    // 自动检测：扫描前 5 行找含"姓名"的行
+    for (let i = 0; i < Math.min(5, nonEmptyRows.length); i++) {
+      const row = nonEmptyRows[i] || [];
+      const headers = row.map((c) => String(c ?? "").trim());
+      const detected = detectColumns(headers);
 
-    if (detected.nameCol !== -1) {
-      headerRowIdx = i;
-      columns = detected;
-      break;
+      if (detected.nameCol !== -1) {
+        headerRowIdx = i;
+        columns = detected;
+        break;
+      }
     }
   }
 
