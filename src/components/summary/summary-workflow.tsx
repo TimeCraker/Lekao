@@ -1,9 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { parseSummaryOutput } from "@/lib/summary/parser";
 import { buildSummaryPrompt, buildFeedbackPrompt } from "@/lib/ai/prompts";
+import { saveGeneration } from "@/lib/storage/local-history";
 import { Uploader, type ImageItem } from "./uploader";
 import { OutputCard } from "./output-card";
 import { PromptCard } from "./prompt-card";
@@ -61,6 +63,7 @@ export function SummaryWorkflow({ template }: Props) {
   const [contentSections, setContentSections] = useState(1);
   const [requirementCount, setRequirementCount] = useState(3);
   const [showFeedback, setShowFeedback] = useState(false);
+  const { data: session } = useSession();
 
   const isWorking = status === "vision" || status === "generating";
 
@@ -121,6 +124,7 @@ export function SummaryWorkflow({ template }: Props) {
       const decoder = new TextDecoder();
       let buffered = "";
       let metaParsed = false;
+      let metaResult: Meta | null = null;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -138,7 +142,8 @@ export function SummaryWorkflow({ template }: Props) {
                 metaEnd,
               );
               try {
-                const parsedMeta = JSON.parse(metaLine);
+                const parsedMeta = JSON.parse(metaLine) as Meta;
+                metaResult = parsedMeta;
                 setMeta(parsedMeta);
               } catch {
                 // meta JSON 解析失败（不影响后续流）
@@ -151,6 +156,28 @@ export function SummaryWorkflow({ template }: Props) {
 
         if (metaParsed) {
           setStreamedText(buffered);
+        }
+      }
+
+      // 保存到本地历史（IndexedDB）
+      const userKey = session?.user?.email;
+      if (userKey && metaResult && buffered) {
+        const out = parseSummaryOutput(buffered, template);
+        if (out.feedback || out.summary) {
+          saveGeneration({
+            id: crypto.randomUUID(),
+            userKey,
+            template,
+            subject: metaResult.subject,
+            topic: metaResult.topic,
+            keyPoints: metaResult.keyPoints,
+            className,
+            date,
+            feedback: out.feedback,
+            summary: out.summary,
+            rawText: buffered,
+            createdAt: new Date().toISOString(),
+          }).catch(() => {});
         }
       }
 
