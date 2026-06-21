@@ -65,14 +65,13 @@ export function SummaryWorkflow({ template }: Props) {
     [streamedText, template],
   );
 
-  // 构建可见 prompt
+  // 构建可见 prompt（始终可用，无 meta 时用通用占位）
   const visiblePrompt = useMemo(() => {
-    if (!meta) return "";
     const builder = template === "summary" ? buildSummaryPrompt : buildFeedbackPrompt;
     return builder({
-      subject: meta.subject,
-      topic: meta.topic,
-      keyPoints: meta.keyPoints,
+      subject: meta?.subject || "数学",
+      topic: meta?.topic || "本节课内容",
+      keyPoints: meta?.keyPoints || ["知识点1", "知识点2", "知识点3"],
       className,
       date,
     });
@@ -301,8 +300,8 @@ export function SummaryWorkflow({ template }: Props) {
         </div>
       )}
 
-      {/* ⭐ Prompt 展示卡片 — 始终可见（识别后有内容） */}
-      {meta && visiblePrompt && (
+      {/* ⭐ Prompt 展示卡片 — 始终可见 */}
+      {visiblePrompt && (
         <div className="pt-4">
           <PromptCard
             prompt={visiblePrompt}
