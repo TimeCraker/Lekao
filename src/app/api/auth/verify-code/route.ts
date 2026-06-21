@@ -9,7 +9,11 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { email, code } = body as { email?: string; code?: string };
+    const { email, code, inviteCode } = body as {
+      email?: string;
+      code?: string;
+      inviteCode?: string;
+    };
 
     if (!email || !EMAIL_REGEX.test(email)) {
       return NextResponse.json({ error: "邮箱格式错误" }, { status: 400 });
@@ -53,7 +57,50 @@ export async function POST(req: Request) {
       console.log(`[verify-code] 延迟初始化赠币: user ${email} +5 T-Coin`);
     }
 
-    // 4. 颁发 next-auth JWT cookie
+    // 4. ⭐ 邀请码兑换 (仅首次验证码登录可兑换, 一次有效)
+    if (inviteCode && inviteCode.trim()) {
+      const trimmedCode = inviteCode.trim().toUpperCase();
+
+      // 4a. 检查用户是否已兑换过邀请码
+      const alreadyRedeemed = await prisma.invitationCode.findFirst({
+        where: { usedByUserId: user.id },
+      });
+
+      if (!alreadyRedeemed) {
+        // 4b. 查找并尝试使用邀请码
+        const invite = await prisma.invitationCode.findUnique({
+          where: { code: trimmedCode },
+        });
+
+        if (invite && !invite.used) {
+          // 标记邀请码为已使用
+          await prisma.invitationCode.update({
+            where: { id: invite.id },
+            data: { used: true, usedByUserId: user.id, usedAt: new Date() },
+          });
+
+          // 增加 15 枚赠送币
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { lekao_gift_coin: { increment: 15 } },
+          });
+          user.lekao_gift_coin += 15;
+          console.log(
+            `[verify-code] 邀请码兑换: user ${email} code=${trimmedCode} +15 T-Coin`,
+          );
+        }
+        // 无效邀请码静默忽略 (不报错, 不给币)
+      }
+      // 已兑换过邀请码 → 静默忽略
+    }
+
+    // 5. 颁发 next-auth JWT cookie
+    // ⭐ cookie 名必须与 next-auth v4 useSecureCookies 一致
+    //    生产环境 (HTTPS) 用 __Secure-next-auth.session-token
+    const useSecureCookies =
+      process.env.NEXTAUTH_URL?.startsWith("https://") ?? false;
+    const cookiePrefix = useSecureCookies ? "__Secure-" : "";
+
     const token = await encode({
       token: {
         id: user.id,
@@ -68,7 +115,7 @@ export async function POST(req: Request) {
     });
 
     (await cookies()).set({
-      name: "next-auth.session-token",
+      name: `${cookiePrefix}next-auth.session-token`,
       value: token,
       httpOnly: true,
       path: "/",

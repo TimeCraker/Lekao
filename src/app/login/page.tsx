@@ -13,6 +13,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [cooldown, setCooldown] = useState(0);
@@ -71,7 +72,7 @@ export default function LoginPage() {
         const res = await fetch("/api/auth/verify-code", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, code }),
+          body: JSON.stringify({ email, code, inviteCode }),
         });
         const data = await res.json();
         if (!res.ok) {
@@ -167,6 +168,7 @@ export default function LoginPage() {
                 />
               </div>
             ) : (
+              <>
               <div>
                 <label className="block text-sm font-medium text-ink mb-2">
                   验证码
@@ -195,6 +197,23 @@ export default function LoginPage() {
                   </button>
                 </div>
               </div>
+
+              {/* 邀请码 (可选) */}
+              <div>
+                <label className="block text-sm font-medium text-ink mb-2">
+                  邀请码 <span className="text-ink-subtle font-normal">(可选，填了送 15 枚代币)</span>
+                </label>
+                <input
+                  type="text"
+                  value={inviteCode}
+                  onChange={(e) =>
+                    setInviteCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8))
+                  }
+                  placeholder="选填"
+                  className="w-full px-4 py-2.5 border border-hairline rounded-lg focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition font-mono text-sm tracking-wider"
+                />
+              </div>
+              </>
             )}
 
             {error && (

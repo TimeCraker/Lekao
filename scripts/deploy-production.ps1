@@ -87,23 +87,34 @@ $envSrc = Join-Path $LekaoRoot ".env"
 if (-not (Test-Path $envSrc)) {
   throw ".env 不存在: $envSrc (本地开发配置)"
 }
-$envContent = Get-Content $envSrc -Raw
-$envContent = $envContent -replace "NEXTAUTH_URL=.+", "NEXTAUTH_URL=`"$PublicUrl`""
+# ⭐ 中文注释行合并到 KEY=VALUE 行时 Set-Content -Encoding UTF8 会乱码
+# 解法：去掉所有 # 注释行 + 空行，精简 .env 为纯 KEY=VALUE + 必要注释
+$envContent = Get-Content $envSrc | Where-Object { $_ -match '^[A-Z_]+\=' } | ForEach-Object { $_ -replace '^NEXTAUTH_URL=.+', "NEXTAUTH_URL=`"$PublicUrl`"" }
+if (-not $envContent) {
+  throw ".env 中没有找到任何 KEY=VALUE 行"
+}
+# Out-File -Encoding UTF8NoBOM (PS 6+) 或 Set-Content (-Encoding UTF8 在 PS 5.1 会用 BOM)
+# 用原始 byte 写入避免编码问题
+$utf8NoBom = New-Object System.Text.UTF8Encoding $false
 $envRemote = Join-Path $env:TEMP "lekao.env"
-$envContent | Set-Content -Path $envRemote -NoNewline -Encoding UTF8
+[System.IO.File]::WriteAllLines($envRemote, $envContent, $utf8NoBom)
 Invoke-ScpFrom @($envRemote) "$RemoteRoot/.env"
-Invoke-Ssh "chmod 600 $RemoteRoot/.env && head -10 $RemoteRoot/.env"
+Invoke-Ssh "chmod 600 $RemoteRoot/.env && grep -c 'API_KEY' $RemoteRoot/.env && echo '---' && grep -c '^#' $RemoteRoot/.env && echo '---zero comment lines OK'"
 
-# ─── [5/7] pnpm install ───
-Write-Host "`n==> [5/7] 服务器 pnpm install ..." -ForegroundColor Cyan
+# ─── [5/8] pnpm install ───
+Write-Host "`n==> [5/8] 服务器 pnpm install ..." -ForegroundColor Cyan
 Invoke-Ssh "cd $RemoteRoot && $RemoteEnv && pnpm install --frozen-lockfile 2>&1 | tail -10"
 
-# ─── [6/7] prisma generate ───
-Write-Host "`n==> [6/7] prisma generate ..." -ForegroundColor Cyan
+# ─── [6/8] prisma migrate deploy ───
+Write-Host "`n==> [6/8] prisma migrate deploy ..." -ForegroundColor Cyan
+Invoke-Ssh "cd $RemoteRoot && $RemoteEnv && pnpm exec prisma migrate deploy 2>&1 | tail -10"
+
+# ─── [7/8] prisma generate ───
+Write-Host "`n==> [7/8] prisma generate ..." -ForegroundColor Cyan
 Invoke-Ssh "cd $RemoteRoot && $RemoteEnv && pnpm exec prisma generate 2>&1 | tail -5"
 
-# ─── [7/7] next build + systemd ───
-Write-Host "`n==> [7/7] next build (NODE_OPTIONS=2GB) + systemd ..." -ForegroundColor Cyan
+# ─── [8/8] next build + systemd ───
+Write-Host "`n==> [8/8] next build (NODE_OPTIONS=2GB) + systemd ..." -ForegroundColor Cyan
 Invoke-Ssh "cd $RemoteRoot && $RemoteEnv && NODE_OPTIONS=--max-old-space-size=1536 pnpm build 2>&1 | tail -25"
 
 # ─── systemd service ───

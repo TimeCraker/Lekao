@@ -120,3 +120,15 @@ model VerificationCode {
   @@index([email, purpose, expiresAt])
   @@map("verification_codes")
 }
+
+// 邀请码
+model InvitationCode {
+  id             String    @id @default(cuid())
+  code           String    @unique // 邀请码 (大写字母 + 数字)
+  used           Boolean   @default(false)
+  usedByUserId   String?   // 使用者的 userId
+  usedAt         DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@map("invitation_codes")
+}
