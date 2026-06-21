@@ -57,41 +57,34 @@ export async function POST(req: Request) {
       console.log(`[verify-code] 延迟初始化赠币: user ${email} +5 T-Coin`);
     }
 
-    // 4. ⭐ 邀请码兑换 (仅首次验证码登录可兑换, 一次有效)
+    // 4. ⭐ 邀请码兑换 (事务内原子操作, 防竞态双兑)
     if (inviteCode && inviteCode.trim()) {
       const trimmedCode = inviteCode.trim().toUpperCase();
 
-      // 4a. 检查用户是否已兑换过邀请码
-      const alreadyRedeemed = await prisma.invitationCode.findFirst({
-        where: { usedByUserId: user.id },
-      });
-
-      if (!alreadyRedeemed) {
-        // 4b. 查找并尝试使用邀请码
-        const invite = await prisma.invitationCode.findUnique({
-          where: { code: trimmedCode },
+      await prisma.$transaction(async (tx) => {
+        // 4a. 用户级别防护: 已兑换过则静默跳过
+        const already = await tx.invitationCode.findFirst({
+          where: { usedByUserId: user.id },
         });
+        if (already) return;
 
-        if (invite && !invite.used) {
-          // 标记邀请码为已使用
-          await prisma.invitationCode.update({
-            where: { id: invite.id },
-            data: { used: true, usedByUserId: user.id, usedAt: new Date() },
-          });
+        // 4b. 原子 claim: updateMany + used:false 条件, 并发下仅一个成功
+        const claim = await tx.invitationCode.updateMany({
+          where: { code: trimmedCode, used: false },
+          data: { used: true, usedByUserId: user.id, usedAt: new Date() },
+        });
+        if (claim.count === 0) return; // 码不存在或已被他人兑走
 
-          // 增加 15 枚赠送币
-          await prisma.user.update({
-            where: { id: user.id },
-            data: { lekao_gift_coin: { increment: 15 } },
-          });
-          user.lekao_gift_coin += 15;
-          console.log(
-            `[verify-code] 邀请码兑换: user ${email} code=${trimmedCode} +15 T-Coin`,
-          );
-        }
-        // 无效邀请码静默忽略 (不报错, 不给币)
-      }
-      // 已兑换过邀请码 → 静默忽略
+        // 4c. 加 15 枚赠送币
+        await tx.user.update({
+          where: { id: user.id },
+          data: { lekao_gift_coin: { increment: 15 } },
+        });
+        user.lekao_gift_coin += 15;
+        console.log(
+          `[verify-code] 邀请码兑换: user ${email} code=${trimmedCode} +15 T-Coin`,
+        );
+      });
     }
 
     // 5. 颁发 next-auth JWT cookie

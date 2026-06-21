@@ -53,18 +53,18 @@ Write-Host "    本地: $LekaoRoot"
 Write-Host "    远程: ${SshHost}:$RemoteRoot"
 Write-Host "    公网: $PublicUrl (port $Port)"
 
-# ─── [1/7] 本地打包 git bundle ───
-Write-Host "`n==> [1/7] 本地 git bundle ..." -ForegroundColor Cyan
+# ─── [1/8] 本地打包 git bundle ───
+Write-Host "`n==> [1/8] 本地 git bundle ..." -ForegroundColor Cyan
 $bundle = Join-Path $env:TEMP "lekao-deploy.bundle"
 if (Test-Path $bundle) { Remove-Item $bundle -Force }
 git -C $LekaoRoot bundle create $bundle main
 if ($LASTEXITCODE -ne 0) { throw "git bundle failed" }
 
-# ─── [2/7] 上传 bundle ───
-Write-Host "`n==> [2/7] 上传 bundle ..." -ForegroundColor Cyan
+# ─── [2/8] 上传 bundle ───
+Write-Host "`n==> [2/8] 上传 bundle ..." -ForegroundColor Cyan
 Invoke-ScpFrom @($bundle) "/tmp/lekao-deploy.bundle"
 
-# ─── [3/7] 服务器 fetch bundle + reset ───
+# ─── [3/8] 服务器 fetch bundle + reset ───
 # 既有目录用 bundle fetch + reset（避免覆盖已有 .git）
 # 首次部署需先手动：mkdir + git init + git remote add + git fetch
 Write-Host "`n==> [3/7] 服务器 fetch bundle + reset ..." -ForegroundColor Cyan
@@ -81,25 +81,20 @@ $RemoteCmd = @"
 "@
 Invoke-Ssh $RemoteCmd
 
-# ─── [4/7] 写服务器 .env (替换 NEXTAUTH_URL 为公网) ───
-Write-Host "`n==> [4/7] 写服务器 .env ..." -ForegroundColor Cyan
+# ─── [4/8] 写服务器 .env (SCP raw 给服务器 sed 替换, 避免 PS 5.1 UTF-8 编码问题) ───
+Write-Host "`n==> [4/8] 写服务器 .env ..." -ForegroundColor Cyan
 $envSrc = Join-Path $LekaoRoot ".env"
 if (-not (Test-Path $envSrc)) {
   throw ".env 不存在: $envSrc (本地开发配置)"
 }
-# ⭐ 中文注释行合并到 KEY=VALUE 行时 Set-Content -Encoding UTF8 会乱码
-# 解法：去掉所有 # 注释行 + 空行，精简 .env 为纯 KEY=VALUE + 必要注释
-$envContent = Get-Content $envSrc | Where-Object { $_ -match '^[A-Z_]+\=' } | ForEach-Object { $_ -replace '^NEXTAUTH_URL=.+', "NEXTAUTH_URL=`"$PublicUrl`"" }
-if (-not $envContent) {
-  throw ".env 中没有找到任何 KEY=VALUE 行"
-}
-# Out-File -Encoding UTF8NoBOM (PS 6+) 或 Set-Content (-Encoding UTF8 在 PS 5.1 会用 BOM)
-# 用原始 byte 写入避免编码问题
-$utf8NoBom = New-Object System.Text.UTF8Encoding $false
-$envRemote = Join-Path $env:TEMP "lekao.env"
-[System.IO.File]::WriteAllLines($envRemote, $envContent, $utf8NoBom)
-Invoke-ScpFrom @($envRemote) "$RemoteRoot/.env"
-Invoke-Ssh "chmod 600 $RemoteRoot/.env && grep -c 'API_KEY' $RemoteRoot/.env && echo '---' && grep -c '^#' $RemoteRoot/.env && echo '---zero comment lines OK'"
+# SCP raw .env 到服务器临时文件
+$envRemote = Join-Path $env:TEMP "lekao.env.raw"
+Copy-Item $envSrc $envRemote -Force
+Invoke-ScpFrom @($envRemote) "/tmp/lekao.env.raw"
+# 服务器端用 sed 过滤注释行 + 替换 NEXTAUTH_URL (Linux UTF-8 无编码问题)
+# 只保留 KEY=VALUE 行, 不保留注释/空行
+$PublicUrlEscaped = $PublicUrl -replace '/', '\/'
+Invoke-Ssh "sed -n '/^[A-Z_][A-Z_]*=/{s|^NEXTAUTH_URL=.*|NEXTAUTH_URL=$PublicUrlEscaped|p}' /tmp/lekao.env.raw > $RemoteRoot/.env && chmod 600 $RemoteRoot/.env && rm /tmp/lekao.env.raw && grep -c 'API_KEY' $RemoteRoot/.env && echo '---' && grep -c '^#' $RemoteRoot/.env && echo '---zero comment lines OK'"
 
 # ─── [5/8] pnpm install ───
 Write-Host "`n==> [5/8] 服务器 pnpm install ..." -ForegroundColor Cyan
