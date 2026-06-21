@@ -69,6 +69,8 @@ type RequestBody = {
   date: string;
   feedbackCount?: number;
   feedbackLength?: "short" | "standard" | "long";
+  contentSections?: number;
+  requirementCount?: number;
 };
 
 export async function POST(req: NextRequest) {
@@ -214,6 +216,8 @@ export async function POST(req: NextRequest) {
       date: body.date,
       feedbackCount: body.template === "feedback" ? body.feedbackCount : undefined,
       feedbackLength: body.template === "feedback" ? body.feedbackLength : undefined,
+      contentSections: body.template === "summary" ? body.contentSections : undefined,
+      requirementCount: body.template === "summary" ? body.requirementCount : undefined,
     });
 
     const encoder = new TextEncoder();

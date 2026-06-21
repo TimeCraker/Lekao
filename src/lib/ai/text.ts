@@ -39,6 +39,8 @@ export type GenerationInput = {
   date: string;
   feedbackCount?: number;
   feedbackLength?: "short" | "standard" | "long";
+  contentSections?: number;
+  requirementCount?: number;
 };
 
 export type GenerationResult = {
@@ -71,6 +73,8 @@ export function generateStream(
     date: input.date,
     feedbackCount: input.feedbackCount,
     feedbackLength: input.feedbackLength,
+    contentSections: input.contentSections,
+    requirementCount: input.requirementCount,
   });
 
   const encoder = new TextEncoder();
@@ -128,6 +132,8 @@ export async function generate(input: GenerationInput): Promise<GenerationResult
     date: input.date,
     feedbackCount: input.feedbackCount,
     feedbackLength: input.feedbackLength,
+    contentSections: input.contentSections,
+    requirementCount: input.requirementCount,
   });
 
   const response = await getClient().chat.completions.create({

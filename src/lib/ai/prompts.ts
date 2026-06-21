@@ -34,20 +34,38 @@ export const VISION_PROMPT = `你是一位资深高中教师，正在分析一�
 /**
  * 生成课堂小结的完整 prompt（用户可见 + 可复制到 DeepSeek）
  */
+const CIRCLED = ["①", "②", "③", "④", "⑤"];
+
 export function buildSummaryPrompt({
   subject,
   topic,
   keyPoints,
   className = "超火1班",
   date,
+  contentSections = 1,
+  requirementCount = 3,
 }: {
   subject: string;
   topic: string;
   keyPoints: string[];
   className?: string;
   date: string;
+  contentSections?: number;
+  requirementCount?: number;
 }): string {
   const kp = keyPoints.length > 0 ? keyPoints.join("、") : "本节课内容";
+
+  // 授课内容行
+  const contentLines = [CIRCLED[0] + " " + kp];
+  for (let i = 1; i < contentSections; i++) {
+    contentLines.push(CIRCLED[i] + " （写出第" + (i + 1) + "点授课内容）");
+  }
+
+  // 学习要求行
+  const reqLines: string[] = [];
+  for (let i = 0; i < requirementCount; i++) {
+    reqLines.push(CIRCLED[i] + " （写出第" + (i + 1) + "点学习要求）");
+  }
 
   return `你是一位经验丰富的培训机构助教。请根据以下信息，生成一份专业、清晰的【课堂小结】。
 
@@ -65,12 +83,10 @@ export function buildSummaryPrompt({
 【${className}${subject}小结${date}】
 
 1⃣ 授课内容
-① ${kp}
+${contentLines.join("\n")}
 
 2⃣ 学习要求
-① （写出第一点学习要求）
-② （写出第二点学习要求）
-③ （写出第三点学习要求）
+${reqLines.join("\n")}
 
 3⃣ 作业反馈
 撰写一段作业情况总结，涵盖整体表现和典型问题，简洁清晰。
@@ -78,7 +94,7 @@ export function buildSummaryPrompt({
 注意：
 - "1⃣" "2⃣" 等符号使用 emoji 风格的数字符号
 - "①" "②" 等使用带圈数字符号
-- 学习要求写 3 条，每条针对一个关键能力
+- 学习要求写 ${requirementCount} 条，每条针对一个关键能力
 - 语气专业、清晰，像备课组存档文档`;
 }
 
@@ -150,6 +166,8 @@ export const TEXT_PROMPT = ({
   date,
   feedbackCount = 20,
   feedbackLength,
+  contentSections,
+  requirementCount,
 }: {
   subject: string;
   topic: string;
@@ -159,8 +177,10 @@ export const TEXT_PROMPT = ({
   date: string;
   feedbackCount?: number;
   feedbackLength?: "short" | "standard" | "long";
+  contentSections?: number;
+  requirementCount?: number;
 }) => {
   return template === "summary"
-    ? buildSummaryPrompt({ subject, topic, keyPoints, className, date })
+    ? buildSummaryPrompt({ subject, topic, keyPoints, className, date, contentSections, requirementCount })
     : buildFeedbackPrompt({ subject, topic, keyPoints, className, date, feedbackCount, feedbackLength });
 };

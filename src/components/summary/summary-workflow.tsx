@@ -58,6 +58,8 @@ export function SummaryWorkflow({ template }: Props) {
   const [date, setDate] = useState(todayStr);
   const [feedbackCount, setFeedbackCount] = useState(20);
   const [feedbackLength, setFeedbackLength] = useState<"short" | "standard" | "long">("standard");
+  const [contentSections, setContentSections] = useState(1);
+  const [requirementCount, setRequirementCount] = useState(3);
 
   const isWorking = status === "vision" || status === "generating";
 
@@ -77,9 +79,9 @@ export function SummaryWorkflow({ template }: Props) {
       className,
       date,
     };
-    if (template === "summary") return builder(common);
+    if (template === "summary") return builder({ ...common, contentSections, requirementCount });
     return builder({ ...common, feedbackCount, feedbackLength });
-  }, [meta, template, className, date, feedbackCount, feedbackLength]);
+  }, [meta, template, className, date, feedbackCount, feedbackLength, contentSections, requirementCount]);
 
   const handleGenerate = async () => {
     if (images.length === 0) return;
@@ -99,6 +101,7 @@ export function SummaryWorkflow({ template }: Props) {
           className,
           date,
           ...(template === "feedback" ? { feedbackCount, feedbackLength } : {}),
+          ...(template === "summary" ? { contentSections, requirementCount } : {}),
         }),
       });
 
@@ -200,6 +203,56 @@ export function SummaryWorkflow({ template }: Props) {
           />
         </div>
       </div>
+
+      {/* 课堂小结选项：授课内容序号 + 学习要求条数（仅 summary 模式） */}
+      {template === "summary" && (
+        <div className="flex flex-wrap items-center gap-6">
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-ink-muted font-medium">授课内容</label>
+            <div className="flex rounded-lg border border-hairline overflow-hidden">
+              {[1, 2].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setContentSections(n)}
+                  disabled={isWorking}
+                  className={cn(
+                    "px-3 py-1.5 text-sm font-medium transition disabled:opacity-50",
+                    contentSections === n
+                      ? "bg-accent text-white"
+                      : "bg-white text-ink-muted hover:text-ink hover:bg-canvas-alt",
+                    "border-r last:border-r-0 border-hairline",
+                  )}
+                >
+                  {n} 个序号
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-ink-muted font-medium">学习要求</label>
+            <div className="flex rounded-lg border border-hairline overflow-hidden">
+              {[2, 3, 4].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setRequirementCount(n)}
+                  disabled={isWorking}
+                  className={cn(
+                    "px-3 py-1.5 text-sm font-medium transition disabled:opacity-50",
+                    requirementCount === n
+                      ? "bg-accent text-white"
+                      : "bg-white text-ink-muted hover:text-ink hover:bg-canvas-alt",
+                    "border-r last:border-r-0 border-hairline",
+                  )}
+                >
+                  {n} 条
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 反馈条数 + 字数选择（仅 feedback 模式） */}
       {template === "feedback" && (
