@@ -1,4 +1,4 @@
-# Lekao 腾讯云一键部署 (:3007)
+﻿# Lekao 腾讯云一键部署 (:3007)
 # - 本地 git bundle → SCP → 服务器 clone (绕过跨境 GitHub 抽风)
 # - pnpm install + prisma generate + next build (Linux)
 # - systemd lekao-web.service 守护
