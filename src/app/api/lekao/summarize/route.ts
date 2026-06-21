@@ -212,8 +212,8 @@ export async function POST(req: NextRequest) {
       template: body.template,
       className: body.className,
       date: body.date,
-      feedbackCount: body.feedbackCount ?? 20,
-      feedbackLength: body.feedbackLength ?? "standard",
+      feedbackCount: body.template === "feedback" ? body.feedbackCount : undefined,
+      feedbackLength: body.template === "feedback" ? body.feedbackLength : undefined,
     });
 
     const encoder = new TextEncoder();

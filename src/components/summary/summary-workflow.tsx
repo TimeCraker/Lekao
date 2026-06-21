@@ -70,15 +70,15 @@ export function SummaryWorkflow({ template }: Props) {
   // 构建可见 prompt（始终可用，无 meta 时用通用占位）
   const visiblePrompt = useMemo(() => {
     const builder = template === "summary" ? buildSummaryPrompt : buildFeedbackPrompt;
-    return builder({
+    const common = {
       subject: meta?.subject || "数学",
       topic: meta?.topic || "本节课内容",
       keyPoints: meta?.keyPoints || ["知识点1", "知识点2", "知识点3"],
       className,
       date,
-      feedbackCount,
-      feedbackLength,
-    });
+    };
+    if (template === "summary") return builder(common);
+    return builder({ ...common, feedbackCount, feedbackLength });
   }, [meta, template, className, date, feedbackCount, feedbackLength]);
 
   const handleGenerate = async () => {
@@ -98,8 +98,7 @@ export function SummaryWorkflow({ template }: Props) {
           template,
           className,
           date,
-          feedbackCount,
-          feedbackLength,
+          ...(template === "feedback" ? { feedbackCount, feedbackLength } : {}),
         }),
       });
 
@@ -202,57 +201,59 @@ export function SummaryWorkflow({ template }: Props) {
         </div>
       </div>
 
-      {/* 反馈条数 + 字数选择 */}
-      <div className="flex flex-wrap items-center gap-6">
-        <div className="flex items-center gap-2">
-          <label className="text-sm text-ink-muted font-medium">反馈条数</label>
-          <div className="flex rounded-lg border border-hairline overflow-hidden">
-            {[10, 20, 30, 40, 50].map((n) => (
-              <button
-                key={n}
-                type="button"
-                onClick={() => setFeedbackCount(n)}
-                disabled={isWorking}
-                className={cn(
-                  "px-3 py-1.5 text-sm font-medium transition disabled:opacity-50",
-                  feedbackCount === n
-                    ? "bg-accent text-white"
-                    : "bg-white text-ink-muted hover:text-ink hover:bg-canvas-alt",
-                  "border-r last:border-r-0 border-hairline",
-                )}
-              >
-                {n}
-              </button>
-            ))}
+      {/* 反馈条数 + 字数选择（仅 feedback 模式） */}
+      {template === "feedback" && (
+        <div className="flex flex-wrap items-center gap-6">
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-ink-muted font-medium">反馈条数</label>
+            <div className="flex rounded-lg border border-hairline overflow-hidden">
+              {[10, 20, 30, 40, 50].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setFeedbackCount(n)}
+                  disabled={isWorking}
+                  className={cn(
+                    "px-3 py-1.5 text-sm font-medium transition disabled:opacity-50",
+                    feedbackCount === n
+                      ? "bg-accent text-white"
+                      : "bg-white text-ink-muted hover:text-ink hover:bg-canvas-alt",
+                    "border-r last:border-r-0 border-hairline",
+                  )}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-ink-muted font-medium">每条字数</label>
+            <div className="flex rounded-lg border border-hairline overflow-hidden">
+              {[
+                { value: "short" as const, label: "精简" },
+                { value: "standard" as const, label: "标准" },
+                { value: "long" as const, label: "详细" },
+              ].map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setFeedbackLength(opt.value)}
+                  disabled={isWorking}
+                  className={cn(
+                    "px-3 py-1.5 text-sm font-medium transition disabled:opacity-50",
+                    feedbackLength === opt.value
+                      ? "bg-accent text-white"
+                      : "bg-white text-ink-muted hover:text-ink hover:bg-canvas-alt",
+                    "border-r last:border-r-0 border-hairline",
+                  )}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <label className="text-sm text-ink-muted font-medium">每条字数</label>
-          <div className="flex rounded-lg border border-hairline overflow-hidden">
-            {[
-              { value: "short" as const, label: "精简" },
-              { value: "standard" as const, label: "标准" },
-              { value: "long" as const, label: "详细" },
-            ].map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => setFeedbackLength(opt.value)}
-                disabled={isWorking}
-                className={cn(
-                  "px-3 py-1.5 text-sm font-medium transition disabled:opacity-50",
-                  feedbackLength === opt.value
-                    ? "bg-accent text-white"
-                    : "bg-white text-ink-muted hover:text-ink hover:bg-canvas-alt",
-                  "border-r last:border-r-0 border-hairline",
-                )}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-3">
         <button
@@ -363,7 +364,7 @@ export function SummaryWorkflow({ template }: Props) {
         <div className="pt-4">
           <PromptCard
             prompt={visiblePrompt}
-            label={`${template === "summary" ? "课堂小结" : "作业/堂测反馈"}提示词（${feedbackCount}条${feedbackLength === "short" ? "·精简" : feedbackLength === "long" ? "·详细" : "·标准"} · 可复制到 DeepSeek 使用）`}
+            label={`${template === "summary" ? "课堂小结" : "作业/堂测反馈"}提示词${template === "feedback" ? `（${feedbackCount}条${feedbackLength === "short" ? "·精简" : feedbackLength === "long" ? "·详细" : "·标准"}）` : ""} · 可复制到 DeepSeek 使用`}
           />
         </div>
       )}
