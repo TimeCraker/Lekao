@@ -71,6 +71,7 @@ type RequestBody = {
   feedbackLength?: "short" | "standard" | "long";
   contentSections?: number;
   requirementCount?: number;
+  showFeedback?: boolean;
 };
 
 export async function POST(req: NextRequest) {
@@ -218,6 +219,7 @@ export async function POST(req: NextRequest) {
       feedbackLength: body.template === "feedback" ? body.feedbackLength : undefined,
       contentSections: body.template === "summary" ? body.contentSections : undefined,
       requirementCount: body.template === "summary" ? body.requirementCount : undefined,
+      showFeedback: body.template === "summary" ? body.showFeedback : undefined,
     });
 
     const encoder = new TextEncoder();

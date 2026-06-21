@@ -44,6 +44,7 @@ export function buildSummaryPrompt({
   date,
   contentSections = 1,
   requirementCount = 3,
+  showFeedback = false,
 }: {
   subject: string;
   topic: string;
@@ -52,6 +53,7 @@ export function buildSummaryPrompt({
   date: string;
   contentSections?: number;
   requirementCount?: number;
+  showFeedback?: boolean;
 }): string {
   const kp = keyPoints.length > 0 ? keyPoints.join("、") : "本节课内容";
 
@@ -67,7 +69,7 @@ export function buildSummaryPrompt({
     reqLines.push(CIRCLED[i] + " （写出第" + (i + 1) + "点学习要求）");
   }
 
-  return `你是一位经验丰富的培训机构助教。请根据以下信息，生成一份专业、清晰的【课堂小结】。
+  return `你是一位经验丰富的助教。请根据以下信息，生成一份专业、清晰的【课堂小结】。
 
 # 本节课信息
 - 班级：${className}
@@ -88,8 +90,8 @@ ${contentLines.join("\n")}
 2⃣ 学习要求
 ${reqLines.join("\n")}
 
-3⃣ 作业反馈
-撰写一段作业情况总结，涵盖整体表现和典型问题，简洁清晰。
+3⃣ 作业反馈${showFeedback ? `
+撰写一段作业情况总结，涵盖整体表现和典型问题，简洁清晰。` : ":如下表所示👇👇"}
 
 注意：
 - "1⃣" "2⃣" 等符号使用 emoji 风格的数字符号
@@ -138,7 +140,7 @@ export function buildFeedbackPrompt({
         ? "每条 50-90 字"
         : "每条 25-55 字";
 
-  return `你是一位培训机构助教。根据以下信息，生成作业/堂测反馈。
+  return `你是一位助教。根据以下信息，生成作业/堂测反馈。
 
 班级：${className}
 学科：${subject}
@@ -168,6 +170,7 @@ export const TEXT_PROMPT = ({
   feedbackLength,
   contentSections,
   requirementCount,
+  showFeedback,
 }: {
   subject: string;
   topic: string;
@@ -179,8 +182,9 @@ export const TEXT_PROMPT = ({
   feedbackLength?: "short" | "standard" | "long";
   contentSections?: number;
   requirementCount?: number;
+  showFeedback?: boolean;
 }) => {
   return template === "summary"
-    ? buildSummaryPrompt({ subject, topic, keyPoints, className, date, contentSections, requirementCount })
+    ? buildSummaryPrompt({ subject, topic, keyPoints, className, date, contentSections, requirementCount, showFeedback })
     : buildFeedbackPrompt({ subject, topic, keyPoints, className, date, feedbackCount, feedbackLength });
 };

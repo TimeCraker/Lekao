@@ -65,7 +65,7 @@ export function Hero() {
           custom={2}
           className="mt-8 text-xl md:text-2xl text-ink-muted max-w-2xl mx-auto leading-relaxed"
         >
-          AI 智能助手，专为培训机构设计
+          AI 智能助手，专为助教设计
           <br />
           让助教从抄错题、写小结、写反馈的重复冗余工作里解放出来
         </motion.p>

@@ -8,7 +8,7 @@ import {
 
 export const metadata = {
   title: "关于 · Lekao Agent",
-  description: "Lekao Agent 是为培训机构助教设计的 AI 智能助手，让重复冗余工作交给机器。",
+  description: "Lekao Agent 是为助教设计的 AI 智能助手，让重复冗余工作交给机器。",
 };
 
 const FEATURES = [
@@ -63,7 +63,7 @@ export default function AboutPage() {
             <span className="text-accent-text">交给机器</span>
           </h1>
           <p className="mt-6 text-lg md:text-xl text-ink-muted max-w-2xl mx-auto leading-relaxed">
-            Lekao Agent 是一款专为培训机构助教设计的 AI 智能助手。
+            Lekao Agent 是一款专为助教设计的 AI 智能助手。
             <br />
             让助教从抄错题、写小结、写反馈的重复冗余工作里解放出来，专注学生成长。
           </p>

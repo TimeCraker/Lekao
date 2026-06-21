@@ -41,6 +41,7 @@ export type GenerationInput = {
   feedbackLength?: "short" | "standard" | "long";
   contentSections?: number;
   requirementCount?: number;
+  showFeedback?: boolean;
 };
 
 export type GenerationResult = {
@@ -75,6 +76,7 @@ export function generateStream(
     feedbackLength: input.feedbackLength,
     contentSections: input.contentSections,
     requirementCount: input.requirementCount,
+	    showFeedback: input.showFeedback,
   });
 
   const encoder = new TextEncoder();
@@ -89,7 +91,7 @@ export function generateStream(
             {
               role: "system",
               content:
-                "你是一位经验丰富的中国培训机构助教，专业、亲切，擅长用老师易懂的语言总结课堂内容。",
+                "你是一位经验丰富的助教，专业、亲切，擅长用老师易懂的语言总结课堂内容。",
             },
             { role: "user", content: prompt },
           ],
@@ -134,6 +136,7 @@ export async function generate(input: GenerationInput): Promise<GenerationResult
     feedbackLength: input.feedbackLength,
     contentSections: input.contentSections,
     requirementCount: input.requirementCount,
+    showFeedback: input.showFeedback,
   });
 
   const response = await getClient().chat.completions.create({
@@ -142,7 +145,7 @@ export async function generate(input: GenerationInput): Promise<GenerationResult
       {
         role: "system",
         content:
-          "你是一位经验丰富的中国培训机构助教，专业、亲切，擅长用老师易懂的语言总结课堂内容。",
+          "你是一位经验丰富的助教，专业、亲切，擅长用老师易懂的语言总结课堂内容。",
       },
       { role: "user", content: prompt },
     ],

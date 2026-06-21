@@ -60,6 +60,7 @@ export function SummaryWorkflow({ template }: Props) {
   const [feedbackLength, setFeedbackLength] = useState<"short" | "standard" | "long">("standard");
   const [contentSections, setContentSections] = useState(1);
   const [requirementCount, setRequirementCount] = useState(3);
+  const [showFeedback, setShowFeedback] = useState(false);
 
   const isWorking = status === "vision" || status === "generating";
 
@@ -79,9 +80,9 @@ export function SummaryWorkflow({ template }: Props) {
       className,
       date,
     };
-    if (template === "summary") return builder({ ...common, contentSections, requirementCount });
+    if (template === "summary") return builder({ ...common, contentSections, requirementCount, showFeedback });
     return builder({ ...common, feedbackCount, feedbackLength });
-  }, [meta, template, className, date, feedbackCount, feedbackLength, contentSections, requirementCount]);
+  }, [meta, template, className, date, feedbackCount, feedbackLength, contentSections, requirementCount, showFeedback]);
 
   const handleGenerate = async () => {
     if (images.length === 0) return;
@@ -101,7 +102,7 @@ export function SummaryWorkflow({ template }: Props) {
           className,
           date,
           ...(template === "feedback" ? { feedbackCount, feedbackLength } : {}),
-          ...(template === "summary" ? { contentSections, requirementCount } : {}),
+          ...(template === "summary" ? { contentSections, requirementCount, showFeedback } : {}),
         }),
       });
 
@@ -250,6 +251,28 @@ export function SummaryWorkflow({ template }: Props) {
                 </button>
               ))}
             </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-ink-muted font-medium">作业反馈</label>
+            <button
+              type="button"
+              onClick={() => setShowFeedback(!showFeedback)}
+              disabled={isWorking}
+              className={cn(
+                "relative inline-flex h-7 w-12 items-center rounded-full transition-colors disabled:opacity-50",
+                showFeedback ? "bg-accent" : "bg-gray-200",
+              )}
+            >
+              <span
+                className={cn(
+                  "inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform",
+                  showFeedback ? "translate-x-6" : "translate-x-1",
+                )}
+              />
+            </button>
+            <span className="text-xs text-ink-muted">
+              {showFeedback ? "写反馈" : "仅占位"}
+            </span>
           </div>
         </div>
       )}

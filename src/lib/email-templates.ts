@@ -120,7 +120,7 @@ export function renderVerificationCodeEmail(opts: {
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
           <tr>
             <td align="center">
-              <div style="font-size:13px;color:#475569;line-height:1.5;margin-bottom:8px;">Lekao · 让培训机构助教省 1-2 小时/课</div>
+              <div style="font-size:13px;color:#475569;line-height:1.5;margin-bottom:8px;">Lekao · 让助教省 1-2 小时/课</div>
               <div style="font-size:13px;line-height:1.5;">
                 <a href="https://lekao.asterforge.top" style="color:#3b82f6;text-decoration:none;font-weight:500;">lekao.asterforge.top</a>
               </div>
