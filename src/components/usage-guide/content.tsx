@@ -155,7 +155,7 @@ export const FEEDBACK_GUIDE: {
   sections: UsageSection[];
 } = {
   title: "作业/堂测反馈 · 使用说明",
-  subtitle: "上传讲义图片 → AI 按堂测批改风格 → 流式输出 → 一键复制",
+  subtitle: "上传讲义图片 → AI 按作业/堂测批改风格 → 流式输出 → 一键复制",
   sections: [
     {
       title: "操作流程（4 步）",
@@ -180,7 +180,7 @@ export const FEEDBACK_GUIDE: {
         {
           icon: CopyIcon,
           title: "复制并发送",
-          desc: "结果分两段：10 条具体反馈（贴 Excel 用）+ 堂测总体反馈（贴群用）。点击按钮一键复制。",
+          desc: "结果分两段：20 条具体反馈（贴 Excel 用）+ 作业/堂测总体反馈（贴群用）。点击按钮一键复制。",
           tip: "反馈内容比课堂小结更具体，针对每道错题给出建议。",
         },
       ],
@@ -199,7 +199,7 @@ export const FEEDBACK_GUIDE: {
         },
         {
           icon: CheckIcon,
-          title: "堂测反馈 = 批改视角",
+          title: "作业/堂测反馈 = 批改视角",
           desc: "聚焦「学生哪里错了 + 怎么改」，更适合发给家长或学生。",
         },
       ],
