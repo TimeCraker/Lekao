@@ -106,11 +106,12 @@ export function ExportBar({
       // 批量生成
       const docs = await generateBatchDocx(studentNames, {
         sheetName: collection.sheetName,
-        classroomName: collection.classroomName, // 封面"班级：xxx"
+        classroomName: collection.classroomName,
         date: collection.date,
         classroomSlots,
         homeworkSlots,
         cumulative: true,
+        students: collection.students,
       });
 
       // 写入文件
@@ -171,6 +172,7 @@ export function ExportBar({
         classroomSlots,
         homeworkSlots,
         cumulative: true,
+        students: collection.students,
       });
 
       // 浏览器直接逐个下载（简化处理，不用 JSZip）

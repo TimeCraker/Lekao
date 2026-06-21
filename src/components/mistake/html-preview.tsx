@@ -118,6 +118,33 @@ function PreviewBody({
   classroomSlots: QNumberSlot[];
   homeworkSlots: QNumberSlot[];
 }) {
+  // 找到该学生，过滤只显示他做错的题
+  const student = collection.students.find((s) => s.name === studentName);
+  const studentClassroom = student
+    ? classroomSlots.filter((s) => student.classroomQNumbers.includes(s.qNumber))
+    : [];
+  const studentHomework = student
+    ? homeworkSlots.filter((s) => student.homeworkQNumbers.includes(s.qNumber))
+    : [];
+
+  // 全对或没有错题 → 显示提示
+  if (student && student.isAllCorrect) {
+    return (
+      <div className="space-y-6 text-ink">
+        <h1 className="text-[22pt] font-bold text-center leading-tight">
+          {studentName}
+        </h1>
+        <div className="text-center text-[11pt] text-ink-muted">
+          学科：{collection.sheetName}
+        </div>
+        <hr className="border-divider" />
+        <div className="text-center text-[14pt] text-success-text py-12">
+          本次全对，无错题
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 text-ink">
       {/* 学生姓名 22pt 居中 */}
@@ -140,19 +167,13 @@ function PreviewBody({
         </h2>
 
         {/* 堂测错题 */}
-        {classroomSlots.filter(hasSlotContent).length > 0 && (
-          <PreviewSlotGroup
-            title="堂测错题"
-            slots={classroomSlots}
-          />
+        {studentClassroom.filter(hasSlotContent).length > 0 && (
+          <PreviewSlotGroup title="堂测错题" slots={studentClassroom} />
         )}
 
         {/* 作业错题 */}
-        {homeworkSlots.filter(hasSlotContent).length > 0 && (
-          <PreviewSlotGroup
-            title="作业错题"
-            slots={homeworkSlots}
-          />
+        {studentHomework.filter(hasSlotContent).length > 0 && (
+          <PreviewSlotGroup title="作业错题" slots={studentHomework} />
         )}
       </div>
     </div>

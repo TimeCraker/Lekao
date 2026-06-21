@@ -581,11 +581,17 @@ async function getSectionIndex(section: SavedSection): Promise<number> {
 /**
  * 批量生成多个学生的 docx（用于一次导出全班）
  *
- * 返回：[{ studentName, blob, filename }, ...]
+ * @param studentNames 要导出的学生姓名列表
+ * @param baseArgs 基础参数 + students 数组（用于按学生过滤各自的错题）
+ *
+ * 关键修复（v3）：过滤 slots，每个学生只拿自己确实做错的题
+ * 学生全对时跳过导出（不给空文档）
  */
 export async function generateBatchDocx(
   studentNames: string[],
-  baseArgs: Omit<GenerateArgs, "studentName">,
+  baseArgs: Omit<GenerateArgs, "studentName"> & {
+    students: Array<{ name: string; classroomQNumbers: string[]; homeworkQNumbers: string[] }>;
+  },
 ): Promise<
   Array<{
     studentName: string;
@@ -596,9 +602,24 @@ export async function generateBatchDocx(
   const results: Array<{ studentName: string; blob: Blob; filename: string }> = [];
 
   for (const name of studentNames) {
+    const student = baseArgs.students.find((s) => s.name === name);
+    // 找不到学生或全对 → 跳过（不生成空文档）
+    if (!student) continue;
+    if (student.classroomQNumbers.length === 0 && student.homeworkQNumbers.length === 0) continue;
+
+    // 只保留该学生确实做错的题号对应的 slots
+    const filteredClassroom = baseArgs.classroomSlots.filter((s) =>
+      student.classroomQNumbers.includes(s.qNumber),
+    );
+    const filteredHomework = baseArgs.homeworkSlots.filter((s) =>
+      student.homeworkQNumbers.includes(s.qNumber),
+    );
+
     const blob = await generateStudentDocx({
       ...baseArgs,
       studentName: name,
+      classroomSlots: filteredClassroom,
+      homeworkSlots: filteredHomework,
     });
     results.push({
       studentName: name,
