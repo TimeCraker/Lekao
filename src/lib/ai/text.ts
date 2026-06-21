@@ -90,7 +90,7 @@ export function generateStream(
             { role: "user", content: prompt },
           ],
           temperature: 0.7,
-          max_tokens: 1500,
+          max_tokens: 2048,
           stream: true,
         });
 
@@ -141,7 +141,7 @@ export async function generate(input: GenerationInput): Promise<GenerationResult
       { role: "user", content: prompt },
     ],
     temperature: 0.7,
-    max_tokens: 1500,
+    max_tokens: 2048,
   });
 
   const rawText = response.choices[0]?.message?.content || "";
