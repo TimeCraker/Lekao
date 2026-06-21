@@ -425,3 +425,13 @@ export function FilterIcon(props: IconProps) {
     </svg>
   );
 }
+
+/** Search — 搜索 */
+export function SearchIcon(props: IconProps) {
+  return (
+    <svg {...baseProps} {...props}>
+      <circle cx="11" cy="11" r="8" />
+      <path d="M21 21l-4.3-4.3" />
+    </svg>
+  );
+}

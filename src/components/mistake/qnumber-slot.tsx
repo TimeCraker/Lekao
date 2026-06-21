@@ -9,8 +9,6 @@
  * - Ctrl+V 粘贴图片（监听 paste 事件）
  * - 拖拽图片到槽位上传（dragenter/dragover/drop 事件）
  * - 纯文字输入
- *
- * 全对槽：标记后跳过图片/文字（PRD §8.3.2 决策 13）
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -287,19 +285,6 @@ export function QNumberSlot({
     onChange(newSlot);
   }, [slot, previewUrl, onChange]);
 
-  // 切换全对
-  const toggleAllCorrect = useCallback(() => {
-    const newSlot: QNumberSlotData = {
-      ...slot,
-      isMarkedAllCorrect: !slot.isMarkedAllCorrect,
-    };
-    setSlot(newSlot);
-    onChange(newSlot);
-  }, [slot, onChange]);
-
-  const isAllCorrectLabel = qNumber === "全对";
-  const isMarked = slot.isMarkedAllCorrect || isAllCorrectLabel;
-
   return (
     <div
       ref={slotRef}
@@ -308,143 +293,108 @@ export function QNumberSlot({
       className={`
         rounded-xl border p-5 transition outline-none
         focus:border-accent focus:ring-2 focus:ring-accent/20
-        ${isMarked ? "bg-success-soft/30 border-success/30" : "bg-white border-hairline"}
+        bg-white border-hairline
         ${dragOver ? "border-accent ring-2 ring-accent/30 bg-accent-soft/30" : ""}
       `}
       data-slot-key={slotKey(qType, qNumber)}
     >
       {/* 标题 */}
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <span className="text-lg font-semibold text-ink font-mono">
-            {qNumber}
-          </span>
-          <span className="text-xs text-ink-muted">
-            {errorCount} 人错
-          </span>
-        </div>
-        <button
-          type="button"
-          onClick={toggleAllCorrect}
-          className={`
-            text-xs px-2.5 py-1 rounded-full transition
-            ${
-              isMarked
-                ? "bg-success text-white"
-                : "bg-canvas-alt text-ink-muted hover:bg-success-soft hover:text-success-text"
-            }
-          `}
-          aria-pressed={isMarked}
-        >
-          <CheckIcon className="w-3.5 h-3.5 mr-1 inline-block" />
-          全对
-        </button>
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-lg font-semibold text-ink font-mono">
+          {qNumber}
+        </span>
+        <span className="text-xs text-ink-muted">
+          {errorCount} 人错
+        </span>
       </div>
 
-      {isMarked ? (
-        <div className="rounded-lg bg-white/60 px-3 py-2 text-sm text-ink-muted">
-          {isAllCorrectLabel ? "该题全对，已标记" : "已标记全对（可选：填写评语）"}
-          {!isAllCorrectLabel && (
-            <textarea
-              value={slot.textContent ?? ""}
-              onChange={onTextChange}
-              placeholder="（可选）填写评语…"
-              className="mt-2 w-full bg-white border border-hairline rounded-lg px-3 py-2 text-sm text-ink placeholder:text-ink-subtle focus:outline-none focus:border-accent resize-none"
-              rows={2}
-            />
-          )}
+      {/* 图片区域 */}
+      {previewUrl ? (
+        <div className="relative">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={previewUrl}
+            alt={`题号 ${qNumber} 图片`}
+            className="w-full max-h-72 object-contain rounded-lg bg-canvas-alt"
+          />
+          <button
+            type="button"
+            onClick={removeImage}
+            className="absolute top-2 right-2 px-2.5 py-1 rounded-md bg-danger text-white text-xs hover:bg-danger/90 transition"
+          >
+            删除
+          </button>
+          <div className="absolute bottom-2 left-2 px-2.5 py-1 rounded-md bg-black/60 text-white text-xs">
+            拖入新图可替换
+          </div>
         </div>
       ) : (
-        <>
-          {/* 图片区域 */}
-          {previewUrl ? (
-            <div className="relative">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={previewUrl}
-                alt={`题号 ${qNumber} 图片`}
-                className="w-full max-h-72 object-contain rounded-lg bg-canvas-alt"
-              />
-              <button
-                type="button"
-                onClick={removeImage}
-                className="absolute top-2 right-2 px-2.5 py-1 rounded-md bg-danger text-white text-xs hover:bg-danger/90 transition"
-              >
-                删除
-              </button>
-              <div className="absolute bottom-2 left-2 px-2.5 py-1 rounded-md bg-black/60 text-white text-xs">
-                拖入新图可替换
-              </div>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
-              className={`w-full rounded-lg border-2 border-dashed transition p-8 text-center ${
-                dragOver
-                  ? "border-accent bg-accent-soft/40 scale-[0.98]"
-                  : "border-hairline hover:border-accent hover:bg-accent-soft/20"
-              }`}
-            >
-              <div className="mb-1 inline-flex items-center justify-center w-12 h-12 rounded-xl bg-accent-soft text-accent-text">
-                {uploading ? (
-                  <ResetIcon className="w-6 h-6 animate-spin" />
-                ) : (
-                  <UploadIcon className="w-6 h-6" />
-                )}
-              </div>
-              <div className="text-sm text-ink-mute">
-                {uploading
-                  ? "压缩中…"
-                  : dragOver
-                  ? "松开即可上传"
-                  : "点击上传 · Ctrl+V 粘贴 · 拖拽图片"}
-              </div>
-              <div className="text-xs text-ink-subtle mt-1">
-                PNG / JPG / JPEG / WebP · 自动压到 500KB
-              </div>
-            </button>
-          )}
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+          className={`w-full rounded-lg border-2 border-dashed transition p-8 text-center ${
+            dragOver
+              ? "border-accent bg-accent-soft/40 scale-[0.98]"
+              : "border-hairline hover:border-accent hover:bg-accent-soft/20"
+          }`}
+        >
+          <div className="mb-1 inline-flex items-center justify-center w-12 h-12 rounded-xl bg-accent-soft text-accent-text">
+            {uploading ? (
+              <ResetIcon className="w-6 h-6 animate-spin" />
+            ) : (
+              <UploadIcon className="w-6 h-6" />
+            )}
+          </div>
+          <div className="text-sm text-ink-mute">
+            {uploading
+              ? "压缩中…"
+              : dragOver
+              ? "松开即可上传"
+              : "点击上传 · Ctrl+V 粘贴 · 拖拽图片"}
+          </div>
+          <div className="text-xs text-ink-subtle mt-1">
+            PNG / JPG / JPEG / WebP · 自动压到 500KB
+          </div>
+        </button>
+      )}
 
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/png,image/jpeg,image/jpg,image/webp"
-            onChange={onFileChange}
-            className="hidden"
-            aria-label={`上传题号 ${qNumber} 的图片`}
-          />
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/jpg,image/webp"
+        onChange={onFileChange}
+        className="hidden"
+        aria-label={`上传题号 ${qNumber} 的图片`}
+      />
 
-          {/* 分割线 + 文字输入 */}
-          {!previewUrl && (
-            <div className="mt-3 flex items-center gap-3 text-xs text-ink-subtle">
-              <div className="flex-1 h-px bg-hairline" />
-              <span>或</span>
-              <div className="flex-1 h-px bg-hairline" />
-            </div>
-          )}
+      {/* 分割线 + 文字输入 */}
+      {!previewUrl && (
+        <div className="mt-3 flex items-center gap-3 text-xs text-ink-subtle">
+          <div className="flex-1 h-px bg-hairline" />
+          <span>或</span>
+          <div className="flex-1 h-px bg-hairline" />
+        </div>
+      )}
 
-          <textarea
-            value={slot.textContent ?? ""}
-            onChange={onTextChange}
-            placeholder={
-              previewUrl
-                ? "（可选）补充文字描述…"
-                : "输入纯文字题目（不粘图片时）"
-            }
-            className="mt-3 w-full bg-canvas-alt border border-hairline rounded-lg px-3 py-2 text-sm text-ink placeholder:text-ink-subtle focus:outline-none focus:border-accent focus:bg-white transition resize-none"
-            rows={previewUrl ? 2 : 4}
-          />
+      <textarea
+        value={slot.textContent ?? ""}
+        onChange={onTextChange}
+        placeholder={
+          previewUrl
+            ? "（可选）补充文字描述…"
+            : "输入纯文字题目（不粘图片时）"
+        }
+        className="mt-3 w-full bg-canvas-alt border border-hairline rounded-lg px-3 py-2 text-sm text-ink placeholder:text-ink-subtle focus:outline-none focus:border-accent focus:bg-white transition resize-none"
+        rows={previewUrl ? 2 : 4}
+      />
 
-          {/* 粘贴提示 */}
-          {pasteHint && (
-            <div className="mt-2 text-xs text-accent animate-pulse inline-flex items-center gap-1">
-              <LightbulbIcon className="w-3 h-3" />
-              已激活 Ctrl+V 粘贴，截图后可直接粘贴
-            </div>
-          )}
-        </>
+      {/* 粘贴提示 */}
+      {pasteHint && (
+        <div className="mt-2 text-xs text-accent animate-pulse inline-flex items-center gap-1">
+          <LightbulbIcon className="w-3 h-3" />
+          已激活 Ctrl+V 粘贴，截图后可直接粘贴
+        </div>
       )}
     </div>
   );

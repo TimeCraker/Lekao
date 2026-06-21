@@ -4,9 +4,10 @@
  *
  * 关键决策（PRD §8.3.2）：
  * - 大题粒度去重：不拆括号内小题
- * - 字符串原样保留：'针2' / '全对' / '未交' 不规范化
+ * - 字符串原样保留：'针2' / '未交' 不规范化
  * - 数字优先排序：1, 2, 7, 10（不是字母序 1, 10, 2）
  * - 堂测 / 作业分别去重（不合并）
+ * - "全对" 在去重阶段过滤掉（不是题号，是学生级状态）
  */
 
 import type { DedupedQNumber, StudentMistakes } from "./types";
@@ -17,7 +18,6 @@ import type { DedupedQNumber, StudentMistakes } from "./types";
  * 例：
  * - "1" < "2" < "7" < "10"
  * - "1（2 8）" < "2（7）"
- * - "全对" 排到末尾（无数字）
  * - "针2" 排在数字后
  */
 export function naturalCompare(a: string, b: string): number {
@@ -70,39 +70,28 @@ export function dedupQNumbers(
   students: StudentMistakes[],
   qType: "classroom" | "homework",
 ): DedupedQNumber[] {
-  const counter = new Map<string, { count: number; allCorrect: boolean }>();
+  const counter = new Map<string, number>();
 
   for (const student of students) {
     const qNumbers =
       qType === "classroom" ? student.classroomQNumbers : student.homeworkQNumbers;
 
     for (const q of qNumbers) {
-      const existing = counter.get(q);
-      if (existing) {
-        existing.count++;
-      } else {
-        counter.set(q, { count: 1, allCorrect: q === "全对" });
-      }
+      if (q === "全对") continue;
+      counter.set(q, (counter.get(q) ?? 0) + 1);
     }
   }
 
   // 转数组 + 自然排序
   const result: DedupedQNumber[] = Array.from(counter.entries()).map(
-    ([qNumber, info]) => ({
+    ([qNumber, count]) => ({
       qNumber,
-      errorCount: info.count,
-      isAllCorrect: info.allCorrect,
+      errorCount: count,
     }),
   );
 
-  // 排序规则：
-  // 1. "全对" 排到末尾（特殊）
-  // 2. 其余按自然排序（数字优先）
+  // 排序规则：按自然排序（数字优先）
   result.sort((a, b) => {
-    if (a.qNumber === "全对" && b.qNumber !== "全对") return 1;
-    if (b.qNumber === "全对" && a.qNumber !== "全对") return -1;
-    if (a.qNumber === "全对" && b.qNumber === "全对") return 0;
-
     // 主排序：自然排序
     const cmp = naturalCompare(a.qNumber, b.qNumber);
     if (cmp !== 0) return cmp;

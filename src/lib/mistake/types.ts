@@ -36,7 +36,6 @@ export interface MistakeCollection {
 export interface DedupedQNumber {
   qNumber: string; // "1" / "2" / "针2" / "1（2 8）"
   errorCount: number; // 错的人数
-  isAllCorrect: boolean; // 是否这个题号都是"全对"
 }
 
 // 单个题号槽位的用户填写内容
