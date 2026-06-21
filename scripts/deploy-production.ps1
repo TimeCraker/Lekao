@@ -94,7 +94,7 @@ Invoke-ScpFrom @($envRemote) "/tmp/lekao.env.raw"
 # 服务器端用 sed 过滤注释行 + 替换 NEXTAUTH_URL (Linux UTF-8 无编码问题)
 # 只保留 KEY=VALUE 行, 不保留注释/空行
 $PublicUrlEscaped = $PublicUrl -replace '/', '\/'
-Invoke-Ssh "sed -n '/^[A-Z_][A-Z_]*=/{s|^NEXTAUTH_URL=.*|NEXTAUTH_URL=$PublicUrlEscaped|p}' /tmp/lekao.env.raw > $RemoteRoot/.env && chmod 600 $RemoteRoot/.env && rm /tmp/lekao.env.raw && grep -c 'API_KEY' $RemoteRoot/.env && echo '---' && grep -c '^#' $RemoteRoot/.env && echo '---zero comment lines OK'"
+Invoke-Ssh "sed -n '/^[A-Z_][A-Z_]*=/{s|^NEXTAUTH_URL=.*|NEXTAUTH_URL=$PublicUrlEscaped|;p}' /tmp/lekao.env.raw > $RemoteRoot/.env && chmod 600 $RemoteRoot/.env && rm /tmp/lekao.env.raw && { echo 'API_KEY count:'; grep -c 'API_KEY' $RemoteRoot/.env || true; echo '# count:'; grep -c '^#' $RemoteRoot/.env || true; echo '.env OK'; }"
 
 # ─── [5/8] pnpm install ───
 Write-Host "`n==> [5/8] 服务器 pnpm install ..." -ForegroundColor Cyan
