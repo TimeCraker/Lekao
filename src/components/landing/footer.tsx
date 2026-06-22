@@ -14,14 +14,14 @@ const CONTACT_LINKS = [
     detail: "asterforge.top",
   },
   {
-    href: "mailto:hi@asterforge.top",
+    href: "mailto:timecraker@foxmail.com",
     label: "邮箱",
-    detail: "hi@asterforge.top",
+    detail: "timecraker@foxmail.com",
   },
   {
-    href: "https://github.com/TimeCraker",
+    href: "https://github.com/TimeCraker/Lekao",
     label: "GitHub",
-    detail: "@TimeCraker",
+    detail: "TimeCraker/Lekao",
   },
 ];
 

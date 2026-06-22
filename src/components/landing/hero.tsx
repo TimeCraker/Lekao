@@ -133,20 +133,20 @@ export function Hero() {
           </a>
           <span className="text-ink-muted/40">·</span>
           <a
-            href="https://github.com/TimeCraker"
+            href="https://github.com/TimeCraker/Lekao"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 hover:text-accent-text transition-colors"
           >
-            GitHub @TimeCraker
+            GitHub 项目源码
             <ArrowRightIcon className="w-3 h-3" />
           </a>
           <span className="text-ink-muted/40">·</span>
           <a
-            href="mailto:hi@asterforge.top"
+            href="mailto:timecraker@foxmail.com"
             className="inline-flex items-center gap-1 hover:text-accent-text transition-colors"
           >
-            hi@asterforge.top
+            timecraker@foxmail.com
           </a>
         </motion.div>
       </div>
