@@ -10,7 +10,7 @@
 
 import { useEffect, useState } from "react";
 import { loadImage } from "@/lib/mistake/image-store";
-import type { MistakeCollection, QNumberSlot } from "@/lib/mistake/types";
+import { type MistakeCollection, type QNumberSlot, getImageIds } from "@/lib/mistake/types";
 import { CloseIcon } from "@/components/icons";
 
 export interface HtmlPreviewProps {
@@ -209,39 +209,53 @@ function PreviewSlotGroup({
 }
 
 function PreviewSlotContent({ slot }: { slot: QNumberSlot }) {
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
 
   useEffect(() => {
-    let url: string | null = null;
     let mounted = true;
+    const urlsToRevoke: string[] = [];
 
     async function load() {
-      if (slot.imageBlobId) {
-        const record = await loadImage(slot.imageBlobId!);
+      const ids = getImageIds(slot);
+      if (ids.length === 0) {
+        if (mounted) setImageUrls([]);
+        return;
+      }
+      const urls: string[] = [];
+      for (const id of ids) {
+        const record = await loadImage(id);
         if (mounted && record) {
-          url = URL.createObjectURL(record.blob);
-          setImageUrl(url);
+          const url = URL.createObjectURL(record.blob);
+          urls.push(url);
+          urlsToRevoke.push(url);
         }
       }
+      if (mounted) setImageUrls(urls);
     }
 
     load();
 
     return () => {
       mounted = false;
-      if (url) URL.revokeObjectURL(url);
+      urlsToRevoke.forEach((u) => URL.revokeObjectURL(u));
     };
-  }, [slot.imageBlobId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slot.imageBlobIds, slot.imageBlobId]);
 
   return (
     <div className="pl-4 space-y-2">
-      {imageUrl && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={imageUrl}
-          alt={`题号 ${slot.qNumber}`}
-          className="max-w-full max-h-72 mx-auto rounded-md"
-        />
+      {imageUrls.length > 0 && (
+        <div className="grid grid-cols-3 gap-2">
+          {imageUrls.map((url, idx) => (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              key={url}
+              src={url}
+              alt={`题号 ${slot.qNumber} 第 ${idx + 1} 张图`}
+              className="w-full max-h-48 object-contain rounded-md bg-canvas-alt"
+            />
+          ))}
+        </div>
       )}
       {slot.textContent?.trim() && (
         <p className="text-[11pt] text-ink-mute whitespace-pre-wrap">
@@ -254,6 +268,6 @@ function PreviewSlotContent({ slot }: { slot: QNumberSlot }) {
 
 function hasSlotContent(slot: QNumberSlot): boolean {
   return Boolean(
-    slot.imageBlobId || (slot.textContent && slot.textContent.trim()),
+    getImageIds(slot).length > 0 || (slot.textContent && slot.textContent.trim()),
   );
 }

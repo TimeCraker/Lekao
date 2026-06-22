@@ -31,7 +31,7 @@ import {
   TextRun,
 } from "docx";
 import { loadImage } from "./image-store";
-import type { QNumberSlot } from "./types";
+import { type QNumberSlot, getImageIds, hasImages } from "./types";
 import {
   hasSection,
   loadSections,
@@ -120,8 +120,8 @@ export async function generateStudentDocx(args: GenerateArgs): Promise<Blob> {
     homeworkQNumbers: args.homeworkQNumbers,
     sectionVersion: 1,
     imageIds: [
-      ...classroomSlots.map((s) => s.imageBlobId).filter(Boolean) as string[],
-      ...homeworkSlots.map((s) => s.imageBlobId).filter(Boolean) as string[],
+      ...classroomSlots.flatMap((s) => getImageIds(s)),
+      ...homeworkSlots.flatMap((s) => getImageIds(s)),
     ],
     createdAt: Date.now(),
   };
@@ -131,6 +131,7 @@ export async function generateStudentDocx(args: GenerateArgs): Promise<Blob> {
   );
 
   // 4. 加载所有图片到内存 + 测真实宽高（docx ImageRun 不能 height:0）
+  // 支持多图：每张图独立 record，遍历 getImageIds() 加载所有
   const imageCache = new Map<
     string,
     { blob: Blob; buffer: Uint8Array; width: number; height: number }
@@ -139,31 +140,34 @@ export async function generateStudentDocx(args: GenerateArgs): Promise<Blob> {
     for (const slotJson of [section.classroomSlotsJson, section.homeworkSlotsJson]) {
       const slots: QNumberSlot[] = JSON.parse(slotJson);
       for (const slot of slots) {
-        if (slot.imageBlobId && !imageCache.has(slot.imageBlobId)) {
-          const record = await loadImage(slot.imageBlobId);
-          if (record) {
-            const buffer = new Uint8Array(await record.blob.arrayBuffer());
-            // 测真实宽高（fallback 800x600 防 createImageBitmap 失败）
-            let width = 800;
-            let height = 600;
-            try {
-              const bitmap = await createImageBitmap(record.blob);
-              width = bitmap.width;
-              height = bitmap.height;
-              bitmap.close();
-            } catch {
-              // HEIC 等异常格式走 fallback
+        const ids = getImageIds(slot);
+        for (const imageId of ids) {
+          if (!imageCache.has(imageId)) {
+            const record = await loadImage(imageId);
+            if (record) {
+              const buffer = new Uint8Array(await record.blob.arrayBuffer());
+              // 测真实宽高（fallback 800x600 防 createImageBitmap 失败）
+              let width = 800;
+              let height = 600;
+              try {
+                const bitmap = await createImageBitmap(record.blob);
+                width = bitmap.width;
+                height = bitmap.height;
+                bitmap.close();
+              } catch {
+                // HEIC 等异常格式走 fallback
+              }
+              imageCache.set(imageId, {
+                blob: record.blob,
+                buffer,
+                width,
+                height,
+              });
+            } else {
+              console.warn(
+                `[docx] 图片未找到: ${imageId} (section ${section.id})`,
+              );
             }
-            imageCache.set(slot.imageBlobId, {
-              blob: record.blob,
-              buffer,
-              width,
-              height,
-            });
-          } else {
-            console.warn(
-              `[docx] 图片未找到: ${slot.imageBlobId} (section ${section.id})`,
-            );
           }
         }
       }
@@ -519,7 +523,7 @@ function emptyLine(): Paragraph {
 
 function hasSlotContent(slot: QNumberSlot): boolean {
   return Boolean(
-    slot.imageBlobId || (slot.textContent && slot.textContent.trim()),
+    hasImages(slot) || (slot.textContent && slot.textContent.trim()),
   );
 }
 
@@ -545,9 +549,11 @@ async function buildSlotParagraphs(
     }),
   );
 
-  // 图片（Round 2026-06-20 修：transformation.height 必须 > 0，否则 docx 忽略整张图）
-  if (slot.imageBlobId) {
-    const cached = imageCache.get(slot.imageBlobId);
+  // 图片（支持多图：v2 升级 2026-06-22，每题最多 3 张）
+  // Round 2026-06-20 修：transformation.height 必须 > 0，否则 docx 忽略整张图
+  const imageIds = getImageIds(slot);
+  for (const imageId of imageIds) {
+    const cached = imageCache.get(imageId);
     if (cached) {
       try {
         const MAX_WIDTH = 500;
@@ -576,7 +582,7 @@ async function buildSlotParagraphs(
       }
     } else {
       console.warn(
-        `[docx] 题号 ${slot.qNumber} 的图片未找到（imageBlobId=${slot.imageBlobId}），跳过图片`,
+        `[docx] 题号 ${slot.qNumber} 的图片未找到（imageId=${imageId}），跳过图片`,
       );
     }
   }

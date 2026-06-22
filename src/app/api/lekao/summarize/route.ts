@@ -294,8 +294,22 @@ async function handleSummarize(
   try {
     visionResult = await recognizeHandout(body.images);
   } catch (err) {
+    // ⭐ 2026-06-22：把 AI 错误转成友好提示（不再 "AI provider call failed"）
+    // 注意：vision 失败时已扣费，需要退款（先记 TODO，后续 P1 实现自动退款）
     console.error(`[${correlationId}] 视觉识别失败:`, err);
-    return jsonError(500, "AI provider call failed", correlationId);
+    const errorInfo = classifyAIError(err, correlationId);
+    return new Response(
+      JSON.stringify({
+        error: errorInfo.message,
+        code: errorInfo.code,
+        correlationId,
+        refunded: false, // TODO: 实现自动退款
+      }),
+      {
+        status: errorInfo.code === "AI_INSUFFICIENT_BALANCE" ? 402 : 500,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
   }
 
   // 8. 文本生成（流式）
@@ -378,8 +392,23 @@ async function handleSummarize(
 
           controller.close();
         } catch (err) {
+          // ⭐ 2026-06-22：流式错误 → 转 SSE error 事件，让前端显示友好提示
+          // 之前直接 controller.error(err) → 客户端 reader.read() 抛原生 NetworkError
+          // 用户看到 "network error" 不知道是 AI provider 余额不足
           console.error(`[${correlationId}] 文本生成流错误:`, err);
-          controller.error(err);
+
+          const errorInfo = classifyAIError(err, correlationId);
+          const errorPayload = `__ERROR__${JSON.stringify({
+            code: errorInfo.code,
+            message: errorInfo.message,
+            correlationId,
+          })}\n\n`;
+          try {
+            controller.enqueue(encoder.encode(errorPayload));
+            controller.close();
+          } catch {
+            // controller 已关闭，忽略
+          }
         }
       },
     });
@@ -402,4 +431,89 @@ function jsonError(status: number, error: string, correlationId: string): Respon
     JSON.stringify({ error, correlationId }),
     { status, headers: { "Content-Type": "application/json" } },
   );
+}
+
+// ============================================
+// ⭐ AI 错误分类（2026-06-22）
+// 把 OpenAI SDK 抛出的各种 error 转成前端友好的 code + message
+// 避免用户看到模糊的 "network error"
+// ============================================
+type AIErrorInfo = {
+  code: string;
+  message: string;
+};
+
+function classifyAIError(err: unknown, correlationId: string): AIErrorInfo {
+  const errAny = err as {
+    status?: number;
+    code?: string;
+    error?: { code?: string; type?: string; message?: string };
+    message?: string;
+  };
+
+  const status = errAny?.status;
+  const apiCode = errAny?.error?.code || errAny?.code;
+  const apiMessage = errAny?.error?.message || errAny?.message;
+
+  // 1. AI provider 余额不足（DeepSeek 402 / OpenAI 402）
+  if (
+    status === 402 ||
+    apiMessage?.includes("Insufficient Balance") ||
+    apiMessage?.includes("insufficient_quota")
+  ) {
+    return {
+      code: "AI_INSUFFICIENT_BALANCE",
+      message: "AI 服务余额暂时不足，请稍后再试或联系管理员充值",
+    };
+  }
+
+  // 2. 限流（429）
+  if (status === 429 || apiCode === "rate_limit_exceeded") {
+    return {
+      code: "AI_RATE_LIMITED",
+      message: "AI 服务请求过于频繁，请稍后再试",
+    };
+  }
+
+  // 3. 用户 T-Coin 不足（如果上游传了相关信息）
+  if (apiMessage?.includes("T-Coin") || apiMessage?.includes("余额不足")) {
+    return {
+      code: "USER_INSUFFICIENT_BALANCE",
+      message: "T-Coin 余额不足，请充值后再试",
+    };
+  }
+
+  // 4. 超时
+  if (
+    apiCode === "timeout" ||
+    apiMessage?.toLowerCase().includes("timeout") ||
+    apiMessage?.toLowerCase().includes("timed out")
+  ) {
+    return {
+      code: "AI_TIMEOUT",
+      message: "AI 生成超时，请重试（correlatedId 可联系管理员排查）",
+    };
+  }
+
+  // 5. 上下文超长
+  if (
+    apiCode === "context_length_exceeded" ||
+    apiMessage?.includes("maximum context length")
+  ) {
+    return {
+      code: "AI_CONTEXT_TOO_LONG",
+      message: "输入内容过长，请减少图片数量或拆分任务",
+    };
+  }
+
+  // 6. 默认
+  console.error(`[${correlationId}] 未分类的 AI 错误:`, {
+    status,
+    apiCode,
+    apiMessage,
+  });
+  return {
+    code: "AI_GENERATION_FAILED",
+    message: `AI 生成失败（${apiMessage?.slice(0, 100) || "未知原因"}，correlatedId 可联系管理员排查）`,
+  };
 }

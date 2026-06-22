@@ -111,6 +111,8 @@ export function SummaryWorkflow({ template }: Props) {
 
       if (!res.ok) {
         const errBody = await res.json().catch(() => ({}));
+        // ⭐ 2026-06-22：使用后端 code 字段给用户更具体的提示
+        // 例如 AI_INSUFFICIENT_BALANCE → "AI 服务余额不足"
         throw new Error(errBody.error || `HTTP ${res.status}`);
       }
 
@@ -125,11 +127,43 @@ export function SummaryWorkflow({ template }: Props) {
       let buffered = "";
       let metaParsed = false;
       let metaResult: Meta | null = null;
+      let errored = false;
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
         buffered += decoder.decode(value, { stream: true });
+
+        // ⭐ 2026-06-22：检测 __ERROR__ SSE 事件
+        // 后端把 AI 错误（余额不足 / 超时 / 限流等）转成友好提示通过 SSE 发送
+        if (!errored) {
+          const errorStart = buffered.indexOf("__ERROR__");
+          if (errorStart >= 0) {
+            const errorEnd = buffered.indexOf("\n\n", errorStart);
+            if (errorEnd > 0) {
+              const errorLine = buffered.slice(
+                errorStart + "__ERROR__".length,
+                errorEnd,
+              );
+              try {
+                const parsedErr = JSON.parse(errorLine) as {
+                  code: string;
+                  message: string;
+                  correlationId: string;
+                };
+                errored = true;
+                throw new Error(parsedErr.message);
+              } catch (e) {
+                // 重新抛出我们设置的错误，不要吞掉
+                if (e instanceof Error && !e.message.startsWith("Unexpected")) {
+                  throw e;
+                }
+                // JSON 解析失败时回退到原始错误
+                throw new Error(`AI 生成失败（错误标记: __ERROR__，请重试）`);
+              }
+            }
+          }
+        }
 
         // 解析 __META__ 块（一次性）
         if (!metaParsed) {
@@ -154,7 +188,7 @@ export function SummaryWorkflow({ template }: Props) {
           }
         }
 
-        if (metaParsed) {
+        if (metaParsed && !errored) {
           setStreamedText(buffered);
         }
       }
@@ -183,7 +217,20 @@ export function SummaryWorkflow({ template }: Props) {
 
       setStatus("done");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "生成失败");
+      let errorMsg = e instanceof Error ? e.message : "生成失败";
+
+      // ⭐ 2026-06-22：浏览器原生 fetch 网络错误 → 友好提示
+      // "Failed to fetch" / "NetworkError when attempting to fetch resource"
+      // 之前用户看到 "network error" 不知道是网络断了还是服务端挂了
+      if (e instanceof TypeError && /fetch|network/i.test(e.message)) {
+        errorMsg = "网络连接失败，请检查网络后重试";
+      }
+      // 客户端主动 abort
+      if (e instanceof DOMException && e.name === "AbortError") {
+        errorMsg = "请求已取消";
+      }
+
+      setError(errorMsg);
       setStatus("error");
     }
   };
