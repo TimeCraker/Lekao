@@ -190,3 +190,39 @@ body {
 .anim-rise         { animation: slotRise 0.4s cubic-bezier(0.22, 1, 0.36, 1) both; }
 .anim-hero-rise    { animation: heroCharRise 0.6s cubic-bezier(0.22, 1, 0.36, 1) both; }
 .anim-row-flash    { animation: rowHighlight 1.2s ease-out; }
+.anim-bob          { animation: bobFloat 3.2s ease-in-out infinite; }
+.anim-error-pulse  { animation: errorPulse 2s ease-in-out infinite; }
+
+/* 表格行左侧色条 (table-row 上下文，::before 在 td 上) */
+.tbl-row-stripe > td {
+  position: relative;
+  transition: background-color 0.15s ease-out;
+}
+.tbl-row-stripe > td:first-child::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--accent-text);
+  transform: scaleY(0);
+  transform-origin: center;
+  transition: transform 0.18s ease-out;
+}
+.tbl-row-stripe:hover > td {
+  background-color: rgba(219, 234, 254, 0.4);
+}
+.tbl-row-stripe:hover > td:first-child::before {
+  transform: scaleY(1);
+}
+
+@keyframes bobFloat {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+
+@keyframes errorPulse {
+  0%, 100% { transform: scale(1);    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.0); }
+  50%      { transform: scale(1.05); box-shadow: 0 0 0 8px rgba(239, 68, 68, 0.08); }
+}

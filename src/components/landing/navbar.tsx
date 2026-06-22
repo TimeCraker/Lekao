@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
+import { cn } from "@/lib/utils";
 import { ArrowRightIcon } from "@/components/icons";
 
 const ACCOUNT_KEY = "lekao-account-exists";
@@ -10,6 +11,8 @@ const ACCOUNT_KEY = "lekao-account-exists";
 export function Navbar() {
   const { data: session, status } = useSession();
   const [freeStartHref, setFreeStartHref] = useState("/register");
+  // ⭐ 2026-06-22 v2.0.0+：滚动渐浓
+  const [scrolled, setScrolled] = useState(false);
 
   // localStorage 记忆：用户是否已注册过
   useEffect(() => {
@@ -17,10 +20,26 @@ export function Navbar() {
     setFreeStartHref(has ? "/login" : "/register");
   }, []);
 
+  // 滚动监听（20px 阈值）
+  useEffect(() => {
+    const handler = () => setScrolled(window.scrollY > 20);
+    handler();
+    window.addEventListener("scroll", handler, { passive: true });
+    return () => window.removeEventListener("scroll", handler);
+  }, []);
+
+  // 共享 nav class：滚动后背景更实、border 显隐
+  const navClass = cn(
+    "fixed top-0 left-0 right-0 z-50 backdrop-blur-md transition-colors duration-300",
+    scrolled
+      ? "bg-canvas/95 border-b border-hairline"
+      : "bg-canvas/60 border-b border-transparent",
+  );
+
   // 已登录 → 直接跳 dashboard
   if (status === "authenticated" && session) {
     return (
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-canvas/80 backdrop-blur-md border-b border-hairline">
+      <nav className={navClass}>
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-3">
           {/* ⭐ 2026-06-22 收尾：移动端紧凑布局 */}
           <Link href="/" className="flex items-center gap-2 min-w-0">
@@ -52,7 +71,7 @@ export function Navbar() {
   }
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-canvas/80 backdrop-blur-md border-b border-hairline">
+    <nav className={navClass}>
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-2">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 min-w-0">

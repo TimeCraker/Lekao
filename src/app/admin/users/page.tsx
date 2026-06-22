@@ -122,7 +122,7 @@ export default function AdminUsersPage() {
             {users.map((u) => (
               <tr
                 key={u.id}
-                className="border-b border-hairline hover:bg-canvas-alt/50"
+                className="border-b border-hairline tbl-row-stripe"
               >
                 <td className="px-4 py-2.5 text-ink">{u.email}</td>
                 <td className="px-4 py-2.5 text-ink-muted">{u.name || "—"}</td>

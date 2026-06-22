@@ -160,7 +160,7 @@ export default function AdminInviteCodesPage() {
           </thead>
           <tbody>
             {codes.map((c) => (
-              <tr key={c.id} className="border-b border-hairline hover:bg-canvas-alt/50">
+              <tr key={c.id} className="border-b border-hairline tbl-row-stripe">
                 <td className="px-5 py-2.5 font-mono text-xs text-ink">{c.code}</td>
                 <td className="px-5 py-2.5">
                   {c.used ? (

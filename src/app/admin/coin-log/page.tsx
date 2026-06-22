@@ -101,7 +101,7 @@ export default function AdminCoinLogPage() {
               </tr>
             ) : (
               logs.map((l) => (
-                <tr key={l.id} className="border-b border-hairline hover:bg-canvas-alt/50">
+                <tr key={l.id} className="border-b border-hairline tbl-row-stripe">
                   <td className="px-4 py-2.5 text-xs text-ink-subtle whitespace-nowrap">
                     {new Date(l.createdAt).toLocaleString("zh-CN")}
                   </td>

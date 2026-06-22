@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { motion } from "motion/react";
 import { ShieldIcon } from "@/components/icons";
 
 interface AuditLog {
@@ -98,12 +99,19 @@ export default function AdminAuditLogPage() {
               setActionFilter(opt.v);
               setPage(1);
             }}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+            className={`relative rounded-full px-3 py-1 text-xs font-medium transition-colors ${
               actionFilter === opt.v
-                ? "bg-accent-text text-white"
+                ? "text-white"
                 : "border border-hairline text-ink-muted hover:text-ink"
             }`}
           >
+            {actionFilter === opt.v && (
+              <motion.span
+                layoutId="audit-action-indicator"
+                className="absolute inset-0 rounded-full bg-accent-text -z-10"
+                transition={{ type: "spring", stiffness: 380, damping: 30 }}
+              />
+            )}
             {opt.l}
           </button>
         ))}
@@ -132,7 +140,7 @@ export default function AdminAuditLogPage() {
               logs.map((l) => {
                 const meta = actionMeta(l.action);
                 return (
-                  <tr key={l.id} className="border-b border-hairline hover:bg-canvas-alt/50">
+                  <tr key={l.id} className="border-b border-hairline tbl-row-stripe">
                     <td className="px-4 py-2.5 text-xs text-ink-subtle whitespace-nowrap">
                       {new Date(l.createdAt).toLocaleString("zh-CN")}
                     </td>
