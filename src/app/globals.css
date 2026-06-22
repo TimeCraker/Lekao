@@ -226,3 +226,15 @@ body {
   0%, 100% { transform: scale(1);    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.0); }
   50%      { transform: scale(1.05); box-shadow: 0 0 0 8px rgba(239, 68, 68, 0.08); }
 }
+
+/* 鼠标拖尾 Canvas（landing 专属）— 2026-06-22 从 my-portfolio 搬 */
+.lekao-mouse-trail {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  mix-blend-mode: multiply;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lekao-mouse-trail { display: none; }
+}

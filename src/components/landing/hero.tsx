@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { motion, type Variants } from "motion/react";
 import { MeshGradientBg } from "./mesh-gradient";
 import { HeroTitle } from "./hero-title";
+import { MouseTrail } from "./mouse-trail";
 import { ArrowRightIcon, FreeIcon } from "@/components/icons";
 
 const ACCOUNT_KEY = "lekao-account-exists";
@@ -22,6 +23,12 @@ const fadeUp: Variants = {
   }),
 };
 
+/**
+ * fadeUpSSR — 同 fadeUp 视觉，但 SSR 保留可见文本（opacity:1）确保 SEO 抓取
+ * 入场动画仍由浏览器 client mount 时 motion 自动接管（hidden → show）
+ * 关键：initial 不预隐藏，避免 SSR HTML 丢失关键词
+ */
+
 export function Hero() {
   const [freeStartHref, setFreeStartHref] = useState("/register");
 
@@ -33,6 +40,8 @@ export function Hero() {
   return (
     <section className="relative min-h-[88vh] flex items-center justify-center overflow-hidden">
       <MeshGradientBg />
+      {/* 鼠标拖尾（桌面端，淡蓝色系）— 2026-06-22 从 my-portfolio 搬 */}
+      <MouseTrail />
 
       <div className="relative z-10 max-w-5xl mx-auto px-6 py-32 text-center">
         {/* Badge */}
@@ -47,28 +56,27 @@ export function Hero() {
           Lekao Agent · 内测中
         </motion.div>
 
-        {/* 巨型 H1 */}
+        {/* 巨型 H1：主标（视觉锤，整段 fadeUp 浮现） */}
         <motion.div
           variants={fadeUp}
           initial="hidden"
           animate="show"
           custom={1}
         >
-          <HeroTitle>拒绝重复冗余的操作</HeroTitle>
+          <HeroTitle>AI 智能助教助手</HeroTitle>
         </motion.div>
 
-        {/* Subtitle */}
-        <motion.p
+        {/* 副标 2 行对仗（用户原话："帮你提高效率 / 节省冗余工作"） */}
+        <motion.div
           variants={fadeUp}
           initial="hidden"
           animate="show"
           custom={2}
-          className="mt-8 text-xl md:text-2xl text-ink-muted max-w-2xl mx-auto leading-relaxed"
+          className="mt-8 text-xl md:text-2xl text-ink-muted max-w-2xl mx-auto leading-relaxed space-y-2"
         >
-          AI 智能助手，专为助教设计
-          <br />
-          让助教从抄错题、写小结、写反馈的重复冗余工作里解放出来
-        </motion.p>
+          <p>帮你提高效率</p>
+          <p>节省冗余工作</p>
+        </motion.div>
 
         {/* CTA */}
         <motion.div
@@ -78,7 +86,6 @@ export function Hero() {
           custom={3}
           className="mt-12 flex flex-wrap items-center justify-center gap-4"
         >
-          {/* 登录 = 蓝色实心 */}
           <Link
             href="/login"
             className="group px-8 py-3.5 bg-accent-text text-white text-base font-medium rounded-xl hover:bg-accent-hover transition shadow-md hover:shadow-lg flex items-center gap-2"
@@ -86,7 +93,6 @@ export function Hero() {
             登录
             <ArrowRightIcon className="w-4 h-4 transition-transform group-hover:translate-x-1" />
           </Link>
-          {/* 免费开始 = 白色边框 */}
           <Link
             href={freeStartHref}
             className="px-8 py-3.5 bg-white/60 backdrop-blur-sm border border-hairline text-ink text-base font-medium rounded-xl hover:bg-white hover:border-accent/40 transition flex items-center gap-2"

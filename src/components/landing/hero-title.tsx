@@ -4,6 +4,7 @@ import { useRef, useState, useEffect } from "react";
 import {
   motion,
   useMotionValue,
+  useScroll,
   useTransform,
   type MotionValue,
 } from "motion/react";
@@ -13,22 +14,31 @@ interface HeroTitleProps {
 }
 
 /**
- * PRD §3.5.1 HeroTitle 字符级 3D rotateY
- * ±15° (比 my-portfolio ±30° 轻), 鼠标静止 → 归零 (符合 Hard Rules #2)
- * prefers-reduced-motion → CSS 媒体查询自动禁用 (globals.css)
+ * HeroTitle — 巨型排版字符级 3D rotateY + 整段浮现入场 + 滚走淡出
  *
- * 2026-06-22 收尾：触屏设备禁用 3D tilt（移动端 mouseX 永远是 0，没意义且浪费 GPU）
- * 2026-06-22 v2.0.0+: 字符级入场动画（mount 时 y/opacity/rotateX 错位升起）
- *  - 与 mouseX-driven rotateY 不冲突（rotateX 是一次性，rotateY 是 motionValue）
- *  - stagger 0.04s 字符间延迟
+ * 2026-06-22 v2.1.0+ 重构：
+ *  - 入场：去掉 per-char stagger 0.04s（用户反馈"一个字一个字翻上来太繁琐"）
+ *  - 改为整段 fadeUp（外层 hero.tsx 的 fadeUp variants 控制）
+ *  - 内部仍保留 mouseX-driven rotateY ±15° 字符级 3D 交互
+ *  - 新增 useScroll 监听 hero 容器在视口的位置，滚走时整段 fadeOut + y 上移
+ *  - 触屏设备不应用 3D tilt
+ *  - prefers-reduced-motion → CSS 自动禁用 rotateY + JS 跳过 scroll fade
  */
 export function HeroTitle({ children }: HeroTitleProps) {
   const ref = useRef<HTMLHeadingElement>(null);
   const mouseX = useMotionValue(0);
   const [isTouchDevice, setIsTouchDevice] = useState(false);
 
+  // 整段滚走淡出（基于 hero section 在视口的可见度）
+  // element scroll progress: 0=刚进视口 1=完全滚出
+  const { scrollYProgress } = useScroll({
+    target: ref,
+    offset: ["start start", "end start"],
+  });
+  const opacityOut = useTransform(scrollYProgress, [0, 0.7], [1, 0]);
+  const yOut = useTransform(scrollYProgress, [0, 0.7], [0, -40]);
+
   useEffect(() => {
-    // 触屏检测（pointer: coarse = 触屏设备）
     if (typeof window !== "undefined") {
       setIsTouchDevice(!window.matchMedia("(pointer: fine)").matches);
     }
@@ -47,13 +57,13 @@ export function HeroTitle({ children }: HeroTitleProps) {
   const chars = Array.from(children);
 
   return (
-    <h1
+    <motion.h1
       ref={ref}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
-      // 2026-06-22：移动端字号下限 40px（小屏字号过大挤）
+      // 移动端字号下限 40px（小屏字号过大挤）
       className="text-[clamp(40px,9vw,144px)] font-bold leading-[1.05] tracking-tight text-ink select-none"
-      style={{ perspective: "1000px" }}
+      style={{ perspective: "1000px", opacity: opacityOut, y: yOut }}
     >
       {chars.map((char, i) => (
         <CharSpan
@@ -65,7 +75,7 @@ export function HeroTitle({ children }: HeroTitleProps) {
           isTouchDevice={isTouchDevice}
         />
       ))}
-    </h1>
+    </motion.h1>
   );
 }
 
@@ -82,14 +92,12 @@ function CharSpan({
   total: number;
   isTouchDevice: boolean;
 }) {
-  // 中间字符更敏感, 两端衰减
   const distance = Math.abs(index - (total - 1) / 2) / Math.max((total - 1) / 2, 1);
-  const factor = 1 - distance * 0.6; // 中间 1.0, 两端 0.4
-  const maxDeg = 15 * factor; // 中间 ±15°, 两端 ±6°
+  const factor = 1 - distance * 0.6;
+  const maxDeg = 15 * factor;
 
   const rotateY = useTransform(mouseX, [-0.5, 0, 0.5], [-maxDeg, 0, maxDeg]);
 
-  // 触屏设备不应用 3D transform，节省 GPU
   if (isTouchDevice) {
     return (
       <span style={{ display: "inline-block" }}>
@@ -100,15 +108,8 @@ function CharSpan({
 
   return (
     <motion.span
-      // 入场：y 升起 + opacity 0→1 + rotateX 从 -30° 翻平
-      // 与 style.rotateY (motionValue) 不冲突：rotateX 一次性，rotateY 持续
-      initial={{ y: 28, opacity: 0, rotateX: -30 }}
-      animate={{ y: 0, opacity: 1, rotateX: 0 }}
-      transition={{
-        delay: 0.1 + index * 0.04,
-        duration: 0.55,
-        ease: [0.22, 1, 0.36, 1],
-      }}
+      // 入场不再做逐字 stagger：跟随外层 hero.tsx 的 fadeUp variants 整段浮现
+      // 内部只保留 mouseX-driven rotateY 字符级 3D 交互
       style={{
         rotateY,
         display: "inline-block",
