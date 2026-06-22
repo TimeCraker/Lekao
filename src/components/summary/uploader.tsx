@@ -10,7 +10,7 @@ import {
 } from "@/components/icons";
 
 const ACCEPT = "image/png,image/jpeg,image/webp";
-const MAX_IMAGES = 10;
+const MAX_IMAGES = 5;
 // 安全裕度：服务端 4MB 上限（含 base64 编码后），压缩到 1.5MB 留余量
 const COMPRESS_MAX_MB = 1.5;
 

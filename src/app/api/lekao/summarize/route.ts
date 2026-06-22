@@ -32,7 +32,7 @@ export const maxDuration = 60;
 // ============================================
 const MAX_BODY_BYTES = 25 * 1024 * 1024;
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
-const MAX_IMAGES_COUNT = 10;
+const MAX_IMAGES_COUNT = 5;
 const RATE_LIMIT_PER_USER = 5;
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 
