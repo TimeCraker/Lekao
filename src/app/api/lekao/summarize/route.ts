@@ -38,36 +38,73 @@ const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 
 // ============================================
 // ⭐ 全局并发限流 semaphore（2026-06-22）
-// 单实例 in-memory 够用（lekao 单进程）；多实例时再换 Redis
+// ⚠️ 命名明确: PER_INSTANCE 表示本进程内计数
+//    lekao 是 systemd 管理的单进程 = 安全
+//    若以后多实例 (cluster / k8s), 需切到 Redis (原子 INCR/DECR + TTL)
 // ============================================
-const MAX_CONCURRENT_REQUESTS = 5;
+const MAX_CONCURRENT_REQUESTS_PER_INSTANCE = 5;
 const CONCURRENCY_QUEUE_TIMEOUT_MS = 60 * 1000;
+const CONCURRENCY_QUEUE_MAX = 100; // 队列硬上限防 OOM
 let activeRequests = 0;
 interface QueueItem {
   resolve: () => void;
   reject: (err: Error) => void;
   timer: ReturnType<typeof setTimeout>;
+  onAbort?: () => void;
 }
 const concurrencyQueue: QueueItem[] = [];
 
-async function acquireConcurrencySlot(): Promise<void> {
-  if (activeRequests < MAX_CONCURRENT_REQUESTS) {
+async function acquireConcurrencySlot(signal?: AbortSignal): Promise<void> {
+  if (activeRequests < MAX_CONCURRENT_REQUESTS_PER_INSTANCE) {
     activeRequests++;
     return;
   }
+
+  // 队列已满 → 立即拒, 防止 OOM
+  if (concurrencyQueue.length >= CONCURRENCY_QUEUE_MAX) {
+    throw new Error("CONCURRENCY_QUEUE_FULL");
+  }
+
   return new Promise<void>((resolve, reject) => {
-    const timer = setTimeout(() => {
-      const idx = concurrencyQueue.findIndex((q) => q.resolve === wrappedResolve);
-      if (idx >= 0) concurrencyQueue.splice(idx, 1);
-      reject(new Error("CONCURRENCY_TIMEOUT"));
-    }, CONCURRENCY_QUEUE_TIMEOUT_MS);
-    const wrappedResolve = () => {
-      clearTimeout(timer);
+    // ⚠️ wrappedResolve 在 setTimeout 前定义 (让 abort handler 能引用)
+    const item: QueueItem = {
+      resolve: () => {},
+      reject: () => {},
+      timer: setTimeout(() => {
+        removeFromQueue(item);
+        reject(new Error("CONCURRENCY_TIMEOUT"));
+      }, CONCURRENCY_QUEUE_TIMEOUT_MS),
+    };
+    item.resolve = () => {
+      clearTimeout(item.timer);
+      if (item.onAbort) signal?.removeEventListener("abort", item.onAbort);
       activeRequests++;
       resolve();
     };
-    concurrencyQueue.push({ resolve: wrappedResolve, reject, timer });
+    item.reject = (err: Error) => {
+      clearTimeout(item.timer);
+      if (item.onAbort) signal?.removeEventListener("abort", item.onAbort);
+      reject(err);
+    };
+
+    // ⭐ 客户端断开 → 立刻从队列移除, 释放 slot 位置
+    if (signal) {
+      item.onAbort = () => item.reject(new Error("CLIENT_ABORTED"));
+      if (signal.aborted) {
+        clearTimeout(item.timer);
+        reject(new Error("CLIENT_ABORTED"));
+        return;
+      }
+      signal.addEventListener("abort", item.onAbort, { once: true });
+    }
+
+    concurrencyQueue.push(item);
   });
+}
+
+function removeFromQueue(item: QueueItem) {
+  const idx = concurrencyQueue.indexOf(item);
+  if (idx >= 0) concurrencyQueue.splice(idx, 1);
 }
 
 function releaseConcurrencySlot() {
@@ -151,12 +188,27 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // 3. ⭐ 全局并发限流（多用户并发保护）— 失败不扣费不调 AI
+  // 3. ⭐ 廉价预检 (acquire slot 之前做, 避免攻击者用大 body 占槽)
+  const clRaw = req.headers.get("content-length");
+  const cl = Number(clRaw);
+  if (Number.isFinite(cl) && cl > MAX_BODY_BYTES) {
+    return jsonError(413, `请求体超过 ${MAX_BODY_BYTES / 1024 / 1024} MB 上限`, correlationId);
+  }
+  const ctype = req.headers.get("content-type") ?? "";
+  if (!ctype.toLowerCase().includes("application/json")) {
+    return jsonError(415, "Content-Type 必须是 application/json", correlationId);
+  }
+
+  // 4. ⭐ 全局并发限流 (带 abort signal, 客户端断开 → 立刻从队列移除)
   let acquired = false;
   try {
-    await acquireConcurrencySlot();
+    await acquireConcurrencySlot(req.signal);
     acquired = true;
   } catch (err) {
+    if (err instanceof Error && err.message === "CLIENT_ABORTED") {
+      // 客户端断开, 静默 499 (nginx 风格)
+      return new Response(null, { status: 499 });
+    }
     if (err instanceof Error && err.message === "CONCURRENCY_TIMEOUT") {
       const queueLen = concurrencyQueue.length;
       console.warn(
@@ -176,6 +228,13 @@ export async function POST(req: NextRequest) {
         },
       );
     }
+    if (err instanceof Error && err.message === "CONCURRENCY_QUEUE_FULL") {
+      return jsonError(
+        503,
+        `服务器排队已满 (${CONCURRENCY_QUEUE_MAX}), 请稍后重试`,
+        correlationId,
+      );
+    }
     throw err;
   }
 
@@ -192,13 +251,8 @@ async function handleSummarize(
   userId: string,
   correlationId: string,
 ): Promise<Response> {
-  // 4. 请求体大小限制
-  const contentLength = req.headers.get("content-length");
-  if (contentLength && parseInt(contentLength, 10) > MAX_BODY_BYTES) {
-    return jsonError(413, `请求体超过 ${MAX_BODY_BYTES / 1024 / 1024} MB 上限`, correlationId);
-  }
+  // 4. 参数校验 (Content-Length + Content-Type 已在 POST 主路由预检)
 
-  // 5. 参数校验
   let body: RequestBody;
   try {
     body = await req.json();
