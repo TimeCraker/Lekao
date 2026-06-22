@@ -38,7 +38,7 @@ export type GenerationInput = {
   className?: string;
   date: string;
   feedbackCount?: number;
-  feedbackLength?: "short" | "standard" | "long";
+  feedbackLength?: "standard" | "1.5x" | "2x" | "3x";
   contentSections?: number;
   requirementCount?: number;
   showFeedback?: boolean;

@@ -130,18 +130,40 @@ export function buildFeedbackPrompt({
   className?: string;
   date: string;
   feedbackCount?: number;
-  feedbackLength?: "short" | "standard" | "long";
+  feedbackLength?: "standard" | "1.5x" | "2x" | "3x";
 }): string {
   const kp = keyPoints.length > 0 ? keyPoints.join("、") : "本节课内容";
 
+  // ⭐ 2026-06-22：4 挡字数（标准 / ×1.5 / ×2 / ×3）
+  // 标准 = base（25-55 字 / 总体 150-300 字），×N = 1.5/2/3 倍
   const lengthGuide =
-    feedbackLength === "short"
-      ? "每条 15-35 字"
-      : feedbackLength === "long"
-        ? "每条 50-90 字"
-        : "每条 25-55 字";
+    feedbackLength === "1.5x"
+      ? "每条 38-83 字"
+      : feedbackLength === "2x"
+        ? "每条 50-110 字"
+        : feedbackLength === "3x"
+          ? "每条 75-165 字"
+          : "每条 25-55 字";
 
-  return `你是一位助教。根据以下信息，生成作业/堂测反馈。
+  const summaryLengthGuide =
+    feedbackLength === "1.5x"
+      ? "225-450 字"
+      : feedbackLength === "2x"
+        ? "300-600 字"
+        : feedbackLength === "3x"
+          ? "450-900 字"
+          : "150-300 字";
+
+  const lengthLabel =
+    feedbackLength === "1.5x"
+      ? "×1.5"
+      : feedbackLength === "2x"
+        ? "×2"
+        : feedbackLength === "3x"
+          ? "×3"
+          : "标准";
+
+  return `你是一位助教。根据以下信息，生成作业/堂测反馈（字数挡位：${lengthLabel}）。
 
 班级：${className}
 学科：${subject}
@@ -154,7 +176,7 @@ export function buildFeedbackPrompt({
 2. 接下来 ${feedbackCount} 行，每行一条反馈。每条 ${lengthGuide}，只讲一个具体知识点，不能把全部知识点列在同一条里。
 3. 每条开头用"巩固/加强/掌握/熟练/注意/理解/强化"之一，结尾用"继续加油/再接再厉/继续努力/继续保持/多总结方法"之一，不要连续两条用一样的开头或结尾。
 4. 不同条目的角度要不同：概念理解、方法运用、易错提醒、解题技巧等交替来。
-5. 空一行后输出：本次${subject}作业总体小结，然后写一段 150-300 字的总结（包含核心考点、解题关键、鼓励），最后一句写"作业未交的同学请课后及时补做，下次要记得交作业哦！"
+5. 空一行后输出：本次${subject}作业总体小结，然后写一段 ${summaryLengthGuide} 的总结（包含核心考点、解题关键、鼓励），最后一句写"作业未交的同学请课后及时补做，下次要记得交作业哦！"
 6. 不要任何序号、数字、符号前缀。每条就是纯文字一行。
 7. 语气像老师批改作业后的真实评语。`;
 }
@@ -180,7 +202,7 @@ export const TEXT_PROMPT = ({
   className?: string;
   date: string;
   feedbackCount?: number;
-  feedbackLength?: "short" | "standard" | "long";
+  feedbackLength?: "standard" | "1.5x" | "2x" | "3x";
   contentSections?: number;
   requirementCount?: number;
   showFeedback?: boolean;
