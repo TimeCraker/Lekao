@@ -18,6 +18,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import {
   blobToObjectURL,
   compressImage,
@@ -53,6 +54,7 @@ export function QNumberSlot({
   initialSlot,
   onChange,
 }: QNumberSlotProps) {
+  const reduced = useReducedMotion();
   const [slot, setSlot] = useState<QNumberSlotData>(
     initialSlot ?? {
       qNumber,
@@ -405,38 +407,47 @@ export function QNumberSlot({
       {/* 图片预览区（grid · 最多 3 张） */}
       {hasImages(slot) && (
         <div className="grid grid-cols-3 gap-2 mb-2">
-          {previewUrls.map((url, idx) => (
-            <div
-              key={url}
-              className="relative group rounded-lg overflow-hidden bg-canvas-alt aspect-square"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={url}
-                alt={`题号 ${qNumber} 第 ${idx + 1} 张图`}
-                className="w-full h-full object-contain"
-              />
-              <button
-                type="button"
-                onClick={() => removeImageAt(idx)}
-                aria-label={`删除第 ${idx + 1} 张图`}
-                className="absolute top-1 right-1 w-6 h-6 rounded-full bg-danger text-white text-xs leading-none flex items-center justify-center opacity-0 group-hover:opacity-100 transition hover:bg-danger/90"
+          <AnimatePresence mode="popLayout" initial={false}>
+            {previewUrls.map((url, idx) => (
+              <motion.div
+                key={url}
+                layout
+                initial={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.7 }}
+                animate={reduced ? { opacity: 1 } : { opacity: 1, scale: 1 }}
+                exit={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.6 }}
+                transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                className="relative group rounded-lg overflow-hidden bg-canvas-alt aspect-square"
               >
-                ✕
-              </button>
-              <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded bg-black/60 text-white text-[10px]">
-                {idx + 1}
-              </span>
-            </div>
-          ))}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={url}
+                  alt={`题号 ${qNumber} 第 ${idx + 1} 张图`}
+                  className="w-full h-full object-contain"
+                />
+                <button
+                  type="button"
+                  onClick={() => removeImageAt(idx)}
+                  aria-label={`删除第 ${idx + 1} 张图`}
+                  className="absolute top-1 right-1 w-6 h-6 rounded-full bg-danger text-white text-xs leading-none flex items-center justify-center opacity-0 group-hover:opacity-100 transition hover:bg-danger/90"
+                >
+                  ✕
+                </button>
+                <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded bg-black/60 text-white text-[10px]">
+                  {idx + 1}
+                </span>
+              </motion.div>
+            ))}
+          </AnimatePresence>
 
           {/* 还可继续上传时显示"+"占位 */}
           {canUploadMore && (
-            <button
+            <motion.button
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading}
               aria-label="再添加一张图"
+              whileTap={reduced ? undefined : { scale: 0.92 }}
+              transition={{ type: "spring", stiffness: 400, damping: 17 }}
               className="aspect-square rounded-lg border-2 border-dashed border-hairline hover:border-accent hover:bg-accent-soft/20 transition flex items-center justify-center text-ink-subtle hover:text-accent-ink disabled:opacity-50"
             >
               {uploading ? (
@@ -444,7 +455,7 @@ export function QNumberSlot({
               ) : (
                 <span className="text-2xl leading-none">+</span>
               )}
-            </button>
+            </motion.button>
           )}
         </div>
       )}

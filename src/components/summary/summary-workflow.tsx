@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
+import { motion, useReducedMotion } from "motion/react";
 import { cn } from "@/lib/utils";
 import { parseSummaryOutput } from "@/lib/summary/parser";
 import { buildSummaryPrompt, buildFeedbackPrompt } from "@/lib/ai/prompts";
@@ -9,6 +10,8 @@ import { saveGeneration } from "@/lib/storage/local-history";
 import { Uploader, type ImageItem } from "./uploader";
 import { OutputCard } from "./output-card";
 import { PromptCard } from "./prompt-card";
+import { PressableButton } from "@/components/ui/pressable-button";
+import { SuccessBurst } from "@/components/ui/success-burst";
 import {
   SparkleIcon,
   ResetIcon,
@@ -64,6 +67,7 @@ export function SummaryWorkflow({ template }: Props) {
   const [requirementCount, setRequirementCount] = useState(3);
   const [showFeedback, setShowFeedback] = useState(false);
   const { data: session } = useSession();
+  const reduced = useReducedMotion();
 
   const isWorking = status === "vision" || status === "generating";
 
@@ -294,13 +298,20 @@ export function SummaryWorkflow({ template }: Props) {
                   disabled={isWorking}
                   className={cn(
                     // ⭐ 移动端按钮更紧凑 + 触控目标 ≥ 36px
-                    "px-2.5 sm:px-3 py-2 sm:py-1.5 text-xs sm:text-sm font-medium transition disabled:opacity-50",
+                    "relative px-2.5 sm:px-3 py-2 sm:py-1.5 text-xs sm:text-sm font-medium transition-colors disabled:opacity-50",
                     contentSections === n
-                      ? "bg-accent text-white"
+                      ? "text-white"
                       : "bg-white text-ink-muted hover:text-ink hover:bg-canvas-alt",
                     "border-r last:border-r-0 border-hairline",
                   )}
                 >
+                  {contentSections === n && (
+                    <motion.span
+                      layoutId="summary-content-indicator"
+                      className="absolute inset-0 bg-accent -z-10"
+                      transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                    />
+                  )}
                   {n} 个序号
                 </button>
               ))}
@@ -316,13 +327,20 @@ export function SummaryWorkflow({ template }: Props) {
                   onClick={() => setRequirementCount(n)}
                   disabled={isWorking}
                   className={cn(
-                    "px-2.5 sm:px-3 py-2 sm:py-1.5 text-xs sm:text-sm font-medium transition disabled:opacity-50",
+                    "relative px-2.5 sm:px-3 py-2 sm:py-1.5 text-xs sm:text-sm font-medium transition-colors disabled:opacity-50",
                     requirementCount === n
-                      ? "bg-accent text-white"
+                      ? "text-white"
                       : "bg-white text-ink-muted hover:text-ink hover:bg-canvas-alt",
                     "border-r last:border-r-0 border-hairline",
                   )}
                 >
+                  {requirementCount === n && (
+                    <motion.span
+                      layoutId="summary-req-indicator"
+                      className="absolute inset-0 bg-accent -z-10"
+                      transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                    />
+                  )}
                   {n} 条
                 </button>
               ))}
@@ -339,11 +357,10 @@ export function SummaryWorkflow({ template }: Props) {
                 showFeedback ? "bg-accent" : "bg-gray-200",
               )}
             >
-              <span
-                className={cn(
-                  "inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform",
-                  showFeedback ? "translate-x-6" : "translate-x-1",
-                )}
+              <motion.span
+                layout
+                transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                className="inline-block h-5 w-5 rounded-full bg-white shadow-sm"
               />
             </button>
             <span className="text-xs text-ink-muted">
@@ -366,13 +383,20 @@ export function SummaryWorkflow({ template }: Props) {
                   onClick={() => setFeedbackCount(n)}
                   disabled={isWorking}
                   className={cn(
-                    "px-2.5 sm:px-3 py-2 sm:py-1.5 text-xs sm:text-sm font-medium transition disabled:opacity-50",
+                    "relative px-2.5 sm:px-3 py-2 sm:py-1.5 text-xs sm:text-sm font-medium transition-colors disabled:opacity-50",
                     feedbackCount === n
-                      ? "bg-accent text-white"
+                      ? "text-white"
                       : "bg-white text-ink-muted hover:text-ink hover:bg-canvas-alt",
                     "border-r last:border-r-0 border-hairline",
                   )}
                 >
+                  {feedbackCount === n && (
+                    <motion.span
+                      layoutId="feedback-count-indicator"
+                      className="absolute inset-0 bg-accent -z-10"
+                      transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                    />
+                  )}
                   {n}
                 </button>
               ))}
@@ -394,13 +418,20 @@ export function SummaryWorkflow({ template }: Props) {
                   disabled={isWorking}
                   title={`${opt.label} · 作业总体小结 ${opt.sub}`}
                   className={cn(
-                    "px-2.5 sm:px-3 py-2 sm:py-1.5 text-xs sm:text-sm font-medium transition disabled:opacity-50",
+                    "relative px-2.5 sm:px-3 py-2 sm:py-1.5 text-xs sm:text-sm font-medium transition-colors disabled:opacity-50",
                     summaryLength === opt.value
-                      ? "bg-accent text-white"
+                      ? "text-white"
                       : "bg-white text-ink-muted hover:text-ink hover:bg-canvas-alt",
                     "border-r last:border-r-0 border-hairline",
                   )}
                 >
+                  {summaryLength === opt.value && (
+                    <motion.span
+                      layoutId="feedback-length-indicator"
+                      className="absolute inset-0 bg-accent -z-10"
+                      transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                    />
+                  )}
                   {opt.label}
                 </button>
               ))}
@@ -410,29 +441,31 @@ export function SummaryWorkflow({ template }: Props) {
       )}
 
       <div className="flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          onClick={handleGenerate}
-          disabled={images.length === 0 || isWorking}
-          className={cn(
-            // ⭐ 移动端按钮略小 + 全宽触感更好
-            "inline-flex items-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 rounded-xl font-semibold text-sm sm:text-base transition-all",
-            "disabled:opacity-50 disabled:cursor-not-allowed",
-            "bg-accent text-white hover:bg-accent-hover shadow-sm hover:shadow-md",
-          )}
-        >
-          {isWorking ? (
-            <>
-              <span className="inline-block w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-              {status === "vision" ? "识别讲义中..." : "生成内容中..."}
-            </>
-          ) : (
-            <>
-              <SparkleIcon className="w-[18px] h-[18px]" />
-              一键生成
-            </>
-          )}
-        </button>
+        <div className="relative">
+          <PressableButton
+            onClick={handleGenerate}
+            disabled={images.length === 0 || isWorking}
+            className={cn(
+              // ⭐ 移动端按钮略小 + 全宽触感更好
+              "inline-flex items-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 rounded-xl font-semibold text-sm sm:text-base",
+              "bg-accent text-white hover:bg-accent-hover shadow-sm hover:shadow-md",
+            )}
+          >
+            {isWorking ? (
+              <>
+                <span className="inline-block w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                {status === "vision" ? "识别讲义中..." : "生成内容中..."}
+              </>
+            ) : (
+              <>
+                <SparkleIcon className="w-[18px] h-[18px]" />
+                一键生成
+              </>
+            )}
+          </PressableButton>
+          {/* 生成完成时在按钮位置喷 6 颗绿点 */}
+          <SuccessBurst show={status === "done"} count={6} distance={28} />
+        </div>
 
         {!isWorking && (
           <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-accent-soft text-accent-ink text-xs font-semibold rounded-full border border-accent/20">
@@ -454,13 +487,28 @@ export function SummaryWorkflow({ template }: Props) {
       </div>
 
       {error && (
-        <div className="bg-danger/5 border border-danger/20 rounded-xl p-4 text-sm text-danger">
+        <motion.div
+          key={error}
+          initial={reduced ? { opacity: 0 } : { opacity: 0, y: -8, x: 0 }}
+          animate={
+            reduced
+              ? { opacity: 1 }
+              : { opacity: 1, y: 0, x: [0, -6, 6, -4, 4, 0] }
+          }
+          transition={{ duration: 0.4 }}
+          className="bg-danger/5 border border-danger/20 rounded-xl p-4 text-sm text-danger"
+        >
           {error}
-        </div>
+        </motion.div>
       )}
 
       {meta && (
-        <div className="bg-accent-soft rounded-xl p-5 border border-accent/20">
+        <motion.div
+          initial={{ opacity: 0, y: 12, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+          className="bg-accent-soft rounded-xl p-5 border border-accent/20"
+        >
           <div className="text-xs font-semibold text-accent-ink uppercase tracking-wider mb-3 flex items-center gap-1.5">
             <CheckIcon className="w-3.5 h-3.5" />
             视觉识别结果
@@ -480,21 +528,29 @@ export function SummaryWorkflow({ template }: Props) {
               <div className="text-ink-subtle text-xs mb-1.5">知识点</div>
               <div className="flex flex-wrap gap-1.5">
                 {meta.keyPoints.map((kp, i) => (
-                  <span
+                  <motion.span
                     key={i}
+                    initial={{ opacity: 0, scale: 0.8, y: 4 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    transition={{ delay: 0.1 + i * 0.04, duration: 0.3 }}
                     className="inline-block px-2.5 py-1 bg-white text-ink-mute rounded-md text-xs border border-accent/20"
                   >
                     {kp}
-                  </span>
+                  </motion.span>
                 ))}
               </div>
             </div>
           )}
-        </div>
+        </motion.div>
       )}
 
       {hasOutput && (
-        <div className="space-y-3">
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+          className="space-y-3"
+        >
           <div className="flex items-center justify-between">
             <div className="text-sm font-medium text-ink-mute">生成结果</div>
             {status === "generating" && (
@@ -511,17 +567,22 @@ export function SummaryWorkflow({ template }: Props) {
             summaryTitle={parsed.summaryTitle}
             template={template}
           />
-        </div>
+        </motion.div>
       )}
 
       {/* ⭐ Prompt 展示卡片 — 始终可见 */}
       {visiblePrompt && (
-        <div className="pt-4">
+        <motion.div
+          className="pt-4"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.1 }}
+        >
           <PromptCard
             prompt={visiblePrompt}
             label={`${template === "summary" ? "课堂小结" : "作业/堂测反馈"}提示词${template === "feedback" ? `（${feedbackCount}条 · 小结${summaryLength === "1.5x" ? "×1.5" : summaryLength === "2x" ? "×2" : summaryLength === "3x" ? "×3" : "标准"}）` : ""} · 可复制到 DeepSeek 使用`}
           />
-        </div>
+        </motion.div>
       )}
     </div>
   );

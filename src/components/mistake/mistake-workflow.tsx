@@ -14,6 +14,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { motion, AnimatePresence } from "motion/react";
 import type * as XLSX from "xlsx";
 import {
   dedupQNumbers,
@@ -658,20 +659,34 @@ function SlotColumn({
             没有错题（全班全对）
           </div>
         ) : (
-          items.map((item) => {
-            const key = slotKey(qType, item.qNumber);
-            const initial = slots[key];
-            return (
-              <QNumberSlotUI
-                key={key}
-                qNumber={item.qNumber}
-                qType={qType}
-                errorCount={item.errorCount}
-                initialSlot={initial}
-                onChange={onSlotChange}
-              />
-            );
-          })
+          <AnimatePresence mode="popLayout" initial={false}>
+            {items.map((item, idx) => {
+              const key = slotKey(qType, item.qNumber);
+              const initial = slots[key];
+              return (
+                <motion.div
+                  key={key}
+                  layout
+                  initial={{ opacity: 0, y: 12, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, x: -30, scale: 0.96 }}
+                  transition={{
+                    duration: 0.35,
+                    delay: idx * 0.05,
+                    ease: [0.22, 1, 0.36, 1],
+                  }}
+                >
+                  <QNumberSlotUI
+                    qNumber={item.qNumber}
+                    qType={qType}
+                    errorCount={item.errorCount}
+                    initialSlot={initial}
+                    onChange={onSlotChange}
+                  />
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
         )}
       </div>
     </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import { cn } from "@/lib/utils";
 import { compressImages } from "@/lib/image-compress";
 import {
@@ -186,37 +187,48 @@ export function Uploader({
       {images.length > 0 && (
         // ⭐ 2026-06-22：移动端 grid-cols-2, sm:grid-cols-3, md:grid-cols-5 (渐进)
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3">
-          {images.map((img) => (
-            <div
-              key={img.id}
-              className="relative group rounded-lg overflow-hidden border border-hairline bg-white aspect-square"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={img.dataUrl}
-                alt={img.fileName}
-                className="w-full h-full object-cover"
-              />
-              {/* ⭐ 触屏设备：删除按钮永远显示（不能 hover） */}
-              <button
-                type="button"
-                disabled={disabled}
-                onClick={() => remove(img.id)}
-                className="absolute top-1 right-1 w-7 h-7 sm:w-6 sm:h-6 rounded-full bg-black/60 text-white flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition disabled:opacity-0"
-                aria-label="删除图片"
+          <AnimatePresence mode="popLayout">
+            {images.map((img, idx) => (
+              <motion.div
+                key={img.id}
+                layout
+                initial={{ opacity: 0, scale: 0.85, y: 12 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, x: -40, scale: 0.9 }}
+                transition={{
+                  duration: 0.3,
+                  delay: idx * 0.04,
+                  ease: [0.22, 1, 0.36, 1],
+                }}
+                className="relative group rounded-lg overflow-hidden border border-hairline bg-white aspect-square"
               >
-                <CloseIcon className="w-3.5 h-3.5 sm:w-3 sm:h-3" />
-              </button>
-              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent px-2 py-1.5">
-                <div className="text-[10px] text-white truncate">
-                  {img.fileName}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={img.dataUrl}
+                  alt={img.fileName}
+                  className="w-full h-full object-cover"
+                />
+                {/* ⭐ 触屏设备：删除按钮永远显示（不能 hover） */}
+                <button
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => remove(img.id)}
+                  className="absolute top-1 right-1 w-7 h-7 sm:w-6 sm:h-6 rounded-full bg-black/60 text-white flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition disabled:opacity-0"
+                  aria-label="删除图片"
+                >
+                  <CloseIcon className="w-3.5 h-3.5 sm:w-3 sm:h-3" />
+                </button>
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent px-2 py-1.5">
+                  <div className="text-[10px] text-white truncate">
+                    {img.fileName}
+                  </div>
+                  <div className="text-[10px] text-white/70">
+                    {(img.sizeBytes / 1024).toFixed(0)} KB
+                  </div>
                 </div>
-                <div className="text-[10px] text-white/70">
-                  {(img.sizeBytes / 1024).toFixed(0)} KB
-                </div>
-              </div>
-            </div>
-          ))}
+              </motion.div>
+            ))}
+          </AnimatePresence>
         </div>
       )}
     </div>
