@@ -119,7 +119,8 @@ export function Uploader({
         onDrop={onDrop}
         onClick={() => !disabled && inputRef.current?.click()}
         className={cn(
-          "relative cursor-pointer rounded-2xl border-2 border-dashed p-10 text-center transition-all",
+          // ⭐ 2026-06-22 收尾：移动端 padding 减小 + 触控目标 ≥ 44px
+          "relative cursor-pointer rounded-2xl border-2 border-dashed p-6 sm:p-10 text-center transition-all",
           disabled && "opacity-50 cursor-not-allowed",
           isDragging
             ? "border-accent bg-accent-soft/50"
@@ -139,14 +140,14 @@ export function Uploader({
           }}
         />
 
-        <div className="mb-3 inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-accent-soft text-accent-text">
+        <div className="mb-3 inline-flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-accent-soft text-accent-text">
           {isProcessing ? (
-            <ResetIcon className="w-7 h-7 animate-spin" />
+            <ResetIcon className="w-6 h-6 sm:w-7 sm:h-7 animate-spin" />
           ) : (
-            <UploadIcon className="w-7 h-7" />
+            <UploadIcon className="w-6 h-6 sm:w-7 sm:h-7" />
           )}
         </div>
-        <div className="text-base font-semibold text-ink mb-1">
+        <div className="text-sm sm:text-base font-semibold text-ink mb-1 px-2">
           {isProcessing
             ? progress
               ? `正在压缩 ${progress.current} / ${progress.total}…`
@@ -155,10 +156,10 @@ export function Uploader({
               ? "松开鼠标即可上传"
               : "拖拽讲义图片到这里"}
         </div>
-        <div className="text-sm text-ink-muted">
+        <div className="text-xs sm:text-sm text-ink-muted px-2">
           {isProcessing
             ? "大图自动降级，低配手机也不会卡"
-            : "或点击选择 · 支持 PNG / JPG / JPEG / WebP · 单张自动压缩"}
+            : "或点击选择 · 支持 PNG / JPG / JPEG / WebP"}
         </div>
         <div className="text-xs text-ink-subtle mt-2">
           最多 {maxImages} 张 · 当前已选 {images.length} 张
@@ -183,7 +184,8 @@ export function Uploader({
       )}
 
       {images.length > 0 && (
-        <div className="grid grid-cols-3 md:grid-cols-5 gap-3">
+        // ⭐ 2026-06-22：移动端 grid-cols-2, sm:grid-cols-3, md:grid-cols-5 (渐进)
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3">
           {images.map((img) => (
             <div
               key={img.id}
@@ -195,14 +197,15 @@ export function Uploader({
                 alt={img.fileName}
                 className="w-full h-full object-cover"
               />
+              {/* ⭐ 触屏设备：删除按钮永远显示（不能 hover） */}
               <button
                 type="button"
                 disabled={disabled}
                 onClick={() => remove(img.id)}
-                className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition disabled:opacity-0"
+                className="absolute top-1 right-1 w-7 h-7 sm:w-6 sm:h-6 rounded-full bg-black/60 text-white flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition disabled:opacity-0"
                 aria-label="删除图片"
               >
-                <CloseIcon className="w-3 h-3" />
+                <CloseIcon className="w-3.5 h-3.5 sm:w-3 sm:h-3" />
               </button>
               <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent px-2 py-1.5">
                 <div className="text-[10px] text-white truncate">

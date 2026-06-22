@@ -281,9 +281,10 @@ export function SummaryWorkflow({ template }: Props) {
 
       {/* 课堂小结选项：授课内容序号 + 学习要求条数（仅 summary 模式） */}
       {template === "summary" && (
-        <div className="flex flex-wrap items-center gap-6">
+        // ⭐ 2026-06-22：移动端选项栏间距 gap-3 sm:gap-6（移动端紧凑）
+        <div className="flex flex-wrap items-center gap-3 sm:gap-6">
           <div className="flex items-center gap-2">
-            <label className="text-sm text-ink-muted font-medium">授课内容</label>
+            <label className="text-xs sm:text-sm text-ink-muted font-medium">授课内容</label>
             <div className="flex rounded-lg border border-hairline overflow-hidden">
               {[1, 2].map((n) => (
                 <button
@@ -292,7 +293,8 @@ export function SummaryWorkflow({ template }: Props) {
                   onClick={() => setContentSections(n)}
                   disabled={isWorking}
                   className={cn(
-                    "px-3 py-1.5 text-sm font-medium transition disabled:opacity-50",
+                    // ⭐ 移动端按钮更紧凑 + 触控目标 ≥ 36px
+                    "px-2.5 sm:px-3 py-2 sm:py-1.5 text-xs sm:text-sm font-medium transition disabled:opacity-50",
                     contentSections === n
                       ? "bg-accent text-white"
                       : "bg-white text-ink-muted hover:text-ink hover:bg-canvas-alt",
@@ -305,7 +307,7 @@ export function SummaryWorkflow({ template }: Props) {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <label className="text-sm text-ink-muted font-medium">学习要求</label>
+            <label className="text-xs sm:text-sm text-ink-muted font-medium">学习要求</label>
             <div className="flex rounded-lg border border-hairline overflow-hidden">
               {[2, 3, 4].map((n) => (
                 <button
@@ -314,7 +316,7 @@ export function SummaryWorkflow({ template }: Props) {
                   onClick={() => setRequirementCount(n)}
                   disabled={isWorking}
                   className={cn(
-                    "px-3 py-1.5 text-sm font-medium transition disabled:opacity-50",
+                    "px-2.5 sm:px-3 py-2 sm:py-1.5 text-xs sm:text-sm font-medium transition disabled:opacity-50",
                     requirementCount === n
                       ? "bg-accent text-white"
                       : "bg-white text-ink-muted hover:text-ink hover:bg-canvas-alt",
@@ -327,7 +329,7 @@ export function SummaryWorkflow({ template }: Props) {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <label className="text-sm text-ink-muted font-medium">作业反馈</label>
+            <label className="text-xs sm:text-sm text-ink-muted font-medium">作业反馈</label>
             <button
               type="button"
               onClick={() => setShowFeedback(!showFeedback)}
@@ -353,9 +355,9 @@ export function SummaryWorkflow({ template }: Props) {
 
       {/* 反馈条数 + 字数选择（仅 feedback 模式） */}
       {template === "feedback" && (
-        <div className="flex flex-wrap items-center gap-6">
+        <div className="flex flex-wrap items-center gap-3 sm:gap-6">
           <div className="flex items-center gap-2">
-            <label className="text-sm text-ink-muted font-medium">反馈条数</label>
+            <label className="text-xs sm:text-sm text-ink-muted font-medium">反馈条数</label>
             <div className="flex rounded-lg border border-hairline overflow-hidden">
               {[10, 20, 30, 40, 50].map((n) => (
                 <button
@@ -364,7 +366,7 @@ export function SummaryWorkflow({ template }: Props) {
                   onClick={() => setFeedbackCount(n)}
                   disabled={isWorking}
                   className={cn(
-                    "px-3 py-1.5 text-sm font-medium transition disabled:opacity-50",
+                    "px-2.5 sm:px-3 py-2 sm:py-1.5 text-xs sm:text-sm font-medium transition disabled:opacity-50",
                     feedbackCount === n
                       ? "bg-accent text-white"
                       : "bg-white text-ink-muted hover:text-ink hover:bg-canvas-alt",
@@ -377,7 +379,7 @@ export function SummaryWorkflow({ template }: Props) {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <label className="text-sm text-ink-muted font-medium">作业小结字数</label>
+            <label className="text-xs sm:text-sm text-ink-muted font-medium">作业小结字数</label>
             <div className="flex rounded-lg border border-hairline overflow-hidden">
               {([
                 { value: "standard" as const, label: "标准", sub: "150-300 字" },
@@ -392,7 +394,7 @@ export function SummaryWorkflow({ template }: Props) {
                   disabled={isWorking}
                   title={`${opt.label} · 作业总体小结 ${opt.sub}`}
                   className={cn(
-                    "px-3 py-1.5 text-sm font-medium transition disabled:opacity-50",
+                    "px-2.5 sm:px-3 py-2 sm:py-1.5 text-xs sm:text-sm font-medium transition disabled:opacity-50",
                     summaryLength === opt.value
                       ? "bg-accent text-white"
                       : "bg-white text-ink-muted hover:text-ink hover:bg-canvas-alt",
@@ -413,7 +415,8 @@ export function SummaryWorkflow({ template }: Props) {
           onClick={handleGenerate}
           disabled={images.length === 0 || isWorking}
           className={cn(
-            "inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-base transition-all",
+            // ⭐ 移动端按钮略小 + 全宽触感更好
+            "inline-flex items-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 rounded-xl font-semibold text-sm sm:text-base transition-all",
             "disabled:opacity-50 disabled:cursor-not-allowed",
             "bg-accent text-white hover:bg-accent-hover shadow-sm hover:shadow-md",
           )}
