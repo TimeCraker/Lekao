@@ -59,7 +59,7 @@ export function SummaryWorkflow({ template }: Props) {
   const [className, setClassName] = useState("超火1班");
   const [date, setDate] = useState(todayStr);
   const [feedbackCount, setFeedbackCount] = useState(20);
-  const [feedbackLength, setFeedbackLength] = useState<"standard" | "1.5x" | "2x" | "3x">("standard");
+  const [summaryLength, setSummaryLength] = useState<"standard" | "1.5x" | "2x" | "3x">("standard");
   const [contentSections, setContentSections] = useState(1);
   const [requirementCount, setRequirementCount] = useState(3);
   const [showFeedback, setShowFeedback] = useState(false);
@@ -84,8 +84,8 @@ export function SummaryWorkflow({ template }: Props) {
       date,
     };
     if (template === "summary") return builder({ ...common, contentSections, requirementCount, showFeedback });
-    return builder({ ...common, feedbackCount, feedbackLength });
-  }, [meta, template, className, date, feedbackCount, feedbackLength, contentSections, requirementCount, showFeedback]);
+    return builder({ ...common, feedbackCount, summaryLength });
+  }, [meta, template, className, date, feedbackCount, summaryLength, contentSections, requirementCount, showFeedback]);
 
   const handleGenerate = async () => {
     if (images.length === 0) return;
@@ -104,7 +104,7 @@ export function SummaryWorkflow({ template }: Props) {
           template,
           className,
           date,
-          ...(template === "feedback" ? { feedbackCount, feedbackLength } : {}),
+          ...(template === "feedback" ? { feedbackCount, summaryLength } : {}),
           ...(template === "summary" ? { contentSections, requirementCount, showFeedback } : {}),
         }),
       });
@@ -377,23 +377,23 @@ export function SummaryWorkflow({ template }: Props) {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <label className="text-sm text-ink-muted font-medium">每条字数</label>
+            <label className="text-sm text-ink-muted font-medium">作业小结字数</label>
             <div className="flex rounded-lg border border-hairline overflow-hidden">
               {([
-                { value: "standard" as const, label: "标准", sub: "25-55 字" },
-                { value: "1.5x" as const, label: "×1.5", sub: "38-83 字" },
-                { value: "2x" as const, label: "×2", sub: "50-110 字" },
-                { value: "3x" as const, label: "×3", sub: "75-165 字" },
+                { value: "standard" as const, label: "标准", sub: "150-300 字" },
+                { value: "1.5x" as const, label: "×1.5", sub: "225-450 字" },
+                { value: "2x" as const, label: "×2", sub: "300-600 字" },
+                { value: "3x" as const, label: "×3", sub: "450-900 字" },
               ]).map((opt) => (
                 <button
                   key={opt.value}
                   type="button"
-                  onClick={() => setFeedbackLength(opt.value)}
+                  onClick={() => setSummaryLength(opt.value)}
                   disabled={isWorking}
-                  title={`${opt.label} · ${opt.sub} · 总体小结同步缩放`}
+                  title={`${opt.label} · 作业总体小结 ${opt.sub}`}
                   className={cn(
                     "px-3 py-1.5 text-sm font-medium transition disabled:opacity-50",
-                    feedbackLength === opt.value
+                    summaryLength === opt.value
                       ? "bg-accent text-white"
                       : "bg-white text-ink-muted hover:text-ink hover:bg-canvas-alt",
                     "border-r last:border-r-0 border-hairline",
@@ -516,7 +516,7 @@ export function SummaryWorkflow({ template }: Props) {
         <div className="pt-4">
           <PromptCard
             prompt={visiblePrompt}
-            label={`${template === "summary" ? "课堂小结" : "作业/堂测反馈"}提示词${template === "feedback" ? `（${feedbackCount}条 · ${feedbackLength === "1.5x" ? "×1.5" : feedbackLength === "2x" ? "×2" : feedbackLength === "3x" ? "×3" : "标准"}）` : ""} · 可复制到 DeepSeek 使用`}
+            label={`${template === "summary" ? "课堂小结" : "作业/堂测反馈"}提示词${template === "feedback" ? `（${feedbackCount}条 · 小结${summaryLength === "1.5x" ? "×1.5" : summaryLength === "2x" ? "×2" : summaryLength === "3x" ? "×3" : "标准"}）` : ""} · 可复制到 DeepSeek 使用`}
           />
         </div>
       )}

@@ -122,7 +122,7 @@ export function buildFeedbackPrompt({
   className = "超火1班",
   date,
   feedbackCount = 20,
-  feedbackLength = "standard",
+  summaryLength = "standard",
 }: {
   subject: string;
   topic: string;
@@ -130,40 +130,35 @@ export function buildFeedbackPrompt({
   className?: string;
   date: string;
   feedbackCount?: number;
-  feedbackLength?: "standard" | "1.5x" | "2x" | "3x";
+  /**
+   * 作业总体小结字数挡位（2026-06-22 用户决策 4 挡）
+   * 只控制"作业总体小结"段落的字数，反馈条目（一条条的）固定 25-55 字/条
+   */
+  summaryLength?: "standard" | "1.5x" | "2x" | "3x";
 }): string {
   const kp = keyPoints.length > 0 ? keyPoints.join("、") : "本节课内容";
 
-  // ⭐ 2026-06-22：4 挡字数（标准 / ×1.5 / ×2 / ×3）
-  // 标准 = base（25-55 字 / 总体 150-300 字），×N = 1.5/2/3 倍
-  const lengthGuide =
-    feedbackLength === "1.5x"
-      ? "每条 38-83 字"
-      : feedbackLength === "2x"
-        ? "每条 50-110 字"
-        : feedbackLength === "3x"
-          ? "每条 75-165 字"
-          : "每条 25-55 字";
-
+  // ⭐ 2026-06-22：4 挡字数 — 只控"作业总体小结"
+  // 反馈条目（一条条的）固定 25-55 字（不按挡位变）
   const summaryLengthGuide =
-    feedbackLength === "1.5x"
+    summaryLength === "1.5x"
       ? "225-450 字"
-      : feedbackLength === "2x"
+      : summaryLength === "2x"
         ? "300-600 字"
-        : feedbackLength === "3x"
+        : summaryLength === "3x"
           ? "450-900 字"
           : "150-300 字";
 
-  const lengthLabel =
-    feedbackLength === "1.5x"
+  const summaryLengthLabel =
+    summaryLength === "1.5x"
       ? "×1.5"
-      : feedbackLength === "2x"
+      : summaryLength === "2x"
         ? "×2"
-        : feedbackLength === "3x"
+        : summaryLength === "3x"
           ? "×3"
           : "标准";
 
-  return `你是一位助教。根据以下信息，生成作业/堂测反馈（字数挡位：${lengthLabel}）。
+  return `你是一位助教。根据以下信息，生成作业/堂测反馈（作业总体小结字数：${summaryLengthLabel}）。
 
 班级：${className}
 学科：${subject}
@@ -173,7 +168,7 @@ export function buildFeedbackPrompt({
 
 要求：
 1. 第一行输出：本次${subject}作业反馈（${topic}）
-2. 接下来 ${feedbackCount} 行，每行一条反馈。每条 ${lengthGuide}，只讲一个具体知识点，不能把全部知识点列在同一条里。
+2. 接下来 ${feedbackCount} 行，每行一条反馈。每条 25-55 字，只讲一个具体知识点，不能把全部知识点列在同一条里。
 3. 每条开头用"巩固/加强/掌握/熟练/注意/理解/强化"之一，结尾用"继续加油/再接再厉/继续努力/继续保持/多总结方法"之一，不要连续两条用一样的开头或结尾。
 4. 不同条目的角度要不同：概念理解、方法运用、易错提醒、解题技巧等交替来。
 5. 空一行后输出：本次${subject}作业总体小结，然后写一段 ${summaryLengthGuide} 的总结（包含核心考点、解题关键、鼓励），最后一句写"作业未交的同学请课后及时补做，下次要记得交作业哦！"
@@ -190,7 +185,7 @@ export const TEXT_PROMPT = ({
   className = "超火1班",
   date,
   feedbackCount = 20,
-  feedbackLength,
+  summaryLength,
   contentSections,
   requirementCount,
   showFeedback,
@@ -202,12 +197,12 @@ export const TEXT_PROMPT = ({
   className?: string;
   date: string;
   feedbackCount?: number;
-  feedbackLength?: "standard" | "1.5x" | "2x" | "3x";
+  summaryLength?: "standard" | "1.5x" | "2x" | "3x";
   contentSections?: number;
   requirementCount?: number;
   showFeedback?: boolean;
 }) => {
   return template === "summary"
     ? buildSummaryPrompt({ subject, topic, keyPoints, className, date, contentSections, requirementCount, showFeedback })
-    : buildFeedbackPrompt({ subject, topic, keyPoints, className, date, feedbackCount, feedbackLength });
+    : buildFeedbackPrompt({ subject, topic, keyPoints, className, date, feedbackCount, summaryLength });
 };

@@ -150,7 +150,8 @@ type RequestBody = {
   className?: string;
   date: string;
   feedbackCount?: number;
-  feedbackLength?: "standard" | "1.5x" | "2x" | "3x";
+  feedbackLength?: never; // 已废弃（2026-06-22）：改用 summaryLength
+  summaryLength?: "standard" | "1.5x" | "2x" | "3x";
   contentSections?: number;
   requirementCount?: number;
   showFeedback?: boolean;
@@ -322,7 +323,7 @@ async function handleSummarize(
       className: body.className,
       date: body.date,
       feedbackCount: body.template === "feedback" ? body.feedbackCount : undefined,
-      feedbackLength: body.template === "feedback" ? body.feedbackLength : undefined,
+      summaryLength: body.template === "feedback" ? body.summaryLength : undefined,
       contentSections: body.template === "summary" ? body.contentSections : undefined,
       requirementCount: body.template === "summary" ? body.requirementCount : undefined,
       showFeedback: body.template === "summary" ? body.showFeedback : undefined,

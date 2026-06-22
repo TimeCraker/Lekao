@@ -38,7 +38,8 @@ export type GenerationInput = {
   className?: string;
   date: string;
   feedbackCount?: number;
-  feedbackLength?: "standard" | "1.5x" | "2x" | "3x";
+  feedbackLength?: never; // 已废弃（2026-06-22）：改用 summaryLength
+  summaryLength?: "standard" | "1.5x" | "2x" | "3x";
   contentSections?: number;
   requirementCount?: number;
   showFeedback?: boolean;
@@ -73,10 +74,10 @@ export function generateStream(
     className: input.className,
     date: input.date,
     feedbackCount: input.feedbackCount,
-    feedbackLength: input.feedbackLength,
+    summaryLength: input.summaryLength,
     contentSections: input.contentSections,
     requirementCount: input.requirementCount,
-	    showFeedback: input.showFeedback,
+    showFeedback: input.showFeedback,
   });
 
   const encoder = new TextEncoder();
@@ -133,7 +134,7 @@ export async function generate(input: GenerationInput): Promise<GenerationResult
     className: input.className,
     date: input.date,
     feedbackCount: input.feedbackCount,
-    feedbackLength: input.feedbackLength,
+    summaryLength: input.summaryLength,
     contentSections: input.contentSections,
     requirementCount: input.requirementCount,
     showFeedback: input.showFeedback,
