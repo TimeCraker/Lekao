@@ -47,10 +47,17 @@ export const authOptions: NextAuthOptions = {
             password: true,
             lekao_gift_coin: true,
             t_coin: true,
+            banned: true,
           },
         });
 
         if (!user || !user.password) {
+          return null;
+        }
+
+        // ⭐ P0#3 封禁拦截 — banned=true 直接拒绝登录
+        if (user.banned) {
+          console.warn(`[auth] banned 登录被拒: ${user.email}`);
           return null;
         }
 
@@ -66,6 +73,7 @@ export const authOptions: NextAuthOptions = {
           role: user.role,
           lekao_gift_coin: user.lekao_gift_coin,
           t_coin: user.t_coin,
+          banned: user.banned,
         };
       },
     }),
@@ -80,16 +88,23 @@ export const authOptions: NextAuthOptions = {
      * ⭐ 延迟初始化赠币 (PRD §3.4.1.2)
      * 仅当 lekao_gift_coin === -1 时补发 5 枚
      * 多次登录不会重复发币
+     *
+     * ⭐ P0#3 二次校验 banned（authorize 已查过, 但 verify-code 旁路没 authorize,
+     *    所以 signIn callback 是最后一道关卡, 防验证码登录被绕过）
      */
     async signIn({ user }) {
       if (!user.id) return false;
 
       const dbUser = await prisma.user.findUnique({
         where: { id: user.id },
-        select: { lekao_gift_coin: true },
+        select: { lekao_gift_coin: true, banned: true },
       });
 
       if (!dbUser) return false;
+      if (dbUser.banned) {
+        console.warn(`[auth] banned signIn 被拒: ${user.email}`);
+        return false;
+      }
 
       if (dbUser.lekao_gift_coin === -1) {
         await prisma.user.update({
@@ -105,8 +120,9 @@ export const authOptions: NextAuthOptions = {
     },
 
     /**
-     * 把 role / lekao_gift_coin / tCoin 塞进 JWT token
+     * 把 role / lekao_gift_coin / tCoin / banned 塞进 JWT token
      * 客户端 useSession() 时通过 session callback 拿到
+     * middleware 也会用 token.banned 判定是否踢出
      */
     async jwt({ token, user, trigger }) {
       if (user) {
@@ -115,18 +131,21 @@ export const authOptions: NextAuthOptions = {
         token.lekao_gift_coin =
           (user as { lekao_gift_coin?: number }).lekao_gift_coin ?? 0;
         token.t_coin = (user as { t_coin?: number }).t_coin ?? 0;
+        token.banned = (user as { banned?: boolean }).banned ?? false;
       }
 
-      // ⭐ 刷新机制: 当客户端调用 update() 时重新拉最新余额
+      // ⭐ 刷新机制: 当客户端调用 update() 时重新拉最新状态
+      // Why: admin 封禁/解封后, 用户下一次 useSession().update() 即可生效
       if (trigger === "update" && token.id) {
         const fresh = await prisma.user.findUnique({
           where: { id: token.id as string },
-          select: { lekao_gift_coin: true, t_coin: true, role: true },
+          select: { lekao_gift_coin: true, t_coin: true, role: true, banned: true },
         });
         if (fresh) {
           token.lekao_gift_coin = fresh.lekao_gift_coin;
           token.t_coin = fresh.t_coin;
           token.role = fresh.role;
+          token.banned = fresh.banned;
         }
       }
 
@@ -139,6 +158,7 @@ export const authOptions: NextAuthOptions = {
         session.user.role = token.role as string;
         session.user.lekao_gift_coin = token.lekao_gift_coin as number;
         session.user.t_coin = token.t_coin as number;
+        session.user.banned = (token.banned as boolean) ?? false;
       }
       return session;
     },

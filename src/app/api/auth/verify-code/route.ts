@@ -41,10 +41,20 @@ export async function POST(req: Request) {
         role: true,
         lekao_gift_coin: true,
         t_coin: true,
+        banned: true,
       },
     });
     if (!user) {
       return NextResponse.json({ error: "用户不存在" }, { status: 404 });
+    }
+
+    // ⭐ P0#3 封禁拦截 — banned=true 拒绝登录 (验证码旁路)
+    if (user.banned) {
+      console.warn(`[verify-code] banned 登录被拒: ${email}`);
+      return NextResponse.json(
+        { error: "账号已被封禁，请联系客服" },
+        { status: 403 },
+      );
     }
 
     // 3. ⭐ 延迟初始化赠币 (PRD §3.4.1.2)
@@ -102,6 +112,7 @@ export async function POST(req: Request) {
         role: user.role,
         lekao_gift_coin: user.lekao_gift_coin,
         t_coin: user.t_coin,
+        banned: user.banned,
       },
       secret: process.env.NEXTAUTH_SECRET!,
       maxAge: 30 * 24 * 60 * 60,
