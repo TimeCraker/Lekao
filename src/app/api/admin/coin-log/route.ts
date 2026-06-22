@@ -14,10 +14,24 @@ export async function GET(req: NextRequest) {
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "50")));
     const userId = searchParams.get("userId");
     const adminId = searchParams.get("adminId");
+    const email = searchParams.get("email")?.trim();
 
     const where: Record<string, unknown> = {};
     if (userId) where.userId = userId;
     if (adminId) where.adminId = adminId;
+    if (email) {
+      // 模糊查用户 ID 列表再过滤
+      const matched = await prisma.user.findMany({
+        where: { email: { contains: email, mode: "insensitive" } },
+        select: { id: true },
+        take: 200,
+      });
+      const ids = matched.map((u) => u.id);
+      if (ids.length === 0) {
+        return NextResponse.json({ logs: [], total: 0, page, limit });
+      }
+      where.userId = { in: ids };
+    }
 
     const [logs, total] = await Promise.all([
       prisma.lekaoCoinLog.findMany({

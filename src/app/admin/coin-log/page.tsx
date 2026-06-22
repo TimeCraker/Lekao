@@ -22,19 +22,19 @@ export default function AdminCoinLogPage() {
   const [logs, setLogs] = useState<CoinLog[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [search, setSearch] = useState("");
-  const [searchInput, setSearchInput] = useState("");
+  const [emailQuery, setEmailQuery] = useState("");
+  const [emailInput, setEmailInput] = useState("");
 
   const load = useCallback(() => {
     const params = new URLSearchParams({ page: String(page), limit: "30" });
-    if (search) params.set("userId", search);
+    if (emailQuery) params.set("email", emailQuery);
     fetch(`/api/admin/coin-log?${params}`)
       .then((r) => r.json())
       .then((d) => {
         setLogs(d.logs ?? []);
         setTotal(d.total ?? 0);
       });
-  }, [page, search]);
+  }, [page, emailQuery]);
 
   useEffect(() => {
     load();
@@ -53,18 +53,30 @@ export default function AdminCoinLogPage() {
 
       <div className="relative max-w-sm">
         <input
-          placeholder="按用户 ID 过滤..."
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
+          placeholder="按用户邮箱模糊搜索..."
+          value={emailInput}
+          onChange={(e) => setEmailInput(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               setPage(1);
-              setSearch(searchInput.trim());
+              setEmailQuery(emailInput.trim());
             }
           }}
           className="w-full rounded-lg border border-hairline bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-accent text-ink placeholder:text-ink-subtle"
         />
         <SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-subtle" />
+        {emailQuery && (
+          <button
+            onClick={() => {
+              setEmailInput("");
+              setEmailQuery("");
+              setPage(1);
+            }}
+            className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-xs text-ink-subtle hover:bg-canvas-alt hover:text-ink"
+          >
+            清除
+          </button>
+        )}
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-hairline bg-white">
