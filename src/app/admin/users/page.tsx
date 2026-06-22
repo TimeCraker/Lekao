@@ -126,7 +126,7 @@ export default function AdminUsersPage() {
                 <td className="px-4 py-2.5 text-ink">{u.email}</td>
                 <td className="px-4 py-2.5 text-ink-muted">{u.name || "—"}</td>
                 <td className="px-4 py-2.5">
-                  {u.role === "admin" ? (
+                  {u.role === "ADMIN" ? (
                     <span className="rounded bg-amber-50 px-1.5 py-0.5 text-xs text-amber-700 font-medium">
                       Admin
                     </span>

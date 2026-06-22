@@ -8,7 +8,7 @@ export async function PATCH(
 ) {
   try {
     const session = await auth();
-    if (!session?.user || session.user.role !== "admin") {
+    if (!session?.user || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
     const { id } = await params;
@@ -17,7 +17,7 @@ export async function PATCH(
 
     const data: Record<string, unknown> = {};
     if (typeof name === "string") data.name = name;
-    if (role === "user" || role === "admin") data.role = role;
+    if (role === "USER" || role === "ADMIN") data.role = role;
 
     const user = await prisma.user.update({
       where: { id },

@@ -30,7 +30,7 @@ const STORAGE_KEY = "lekao-sidebar-collapsed";
 export function Sidebar() {
   const { data: session } = useSession();
   const pathname = usePathname();
-  const isAdmin = session?.user?.role === "admin";
+  const isAdmin = session?.user?.role === "ADMIN";
 
   // 收起状态（localStorage 持久化 + 初始 false 防 hydration mismatch）
   const [collapsed, setCollapsed] = useState(false);

@@ -196,7 +196,7 @@ export default function AdminDashboard() {
                 <td className="py-2 text-ink">{u.email}</td>
                 <td className="py-2 text-ink-muted">{u.name || "—"}</td>
                 <td className="py-2">
-                  {u.role === "admin" ? (
+                  {u.role === "ADMIN" ? (
                     <span className="rounded bg-amber-50 px-1.5 py-0.5 text-xs text-amber-700 font-medium">
                       Admin
                     </span>
