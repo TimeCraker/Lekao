@@ -37,12 +37,17 @@ model User {
   role            UserRole @default(USER) @map("role") // PG enum "UserRole" (USER/ADMIN)
   t_coin          Int      @default(0) @map("tCoin") // 充值 T-Coin (ResumeAIX/Lekao 共享) · PG 列名 tCoin
   lekao_gift_coin Int      @default(-1) @map("lekaoGiftCoin") // ⭐ Lekao 赠送 (默认 -1, signIn 延迟初始化为 5) · PG 列名 lekaoGiftCoin
+  banned          Boolean  @default(false) @map("banned") // ⭐ P0#3 admin 封禁 (true = 封禁, 默认 false)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   // 反向关系 (Lekao 业务表挂在 userId 上)
-  classSummaries LekaoClassSummary[]
-  classFeedbacks LekaoClassFeedback[]
+  classSummaries   LekaoClassSummary[]
+  classFeedbacks   LekaoClassFeedback[]
+  coinLogs         LekaoCoinLog[]          @relation("CoinLogUser")
+  coinLogsByAdmin  LekaoCoinLog[]          @relation("CoinLogAdmin")
+  auditLogsTarget  AuditLog[]              @relation("AuditLogTarget")
+  auditLogsByAdmin AuditLog[]              @relation("AuditLogAdmin")
 
   @@map("users")
 }
@@ -131,4 +136,47 @@ model InvitationCode {
   createdAt      DateTime  @default(now())
 
   @@map("invitation_codes")
+}
+
+// ============================================
+// P0 三件套 (2026-06-22) — admin 后台关键缺口补齐
+// ============================================
+
+// T-Coin 调币流水 (P0#1) — 客诉可查, 调币审计
+model LekaoCoinLog {
+  id          String   @id @default(cuid())
+  userId      String   // 被调币用户
+  adminId     String   // 操作 admin
+  amount      Int      // 正数=增加, 负数=扣除
+  beforeGift  Int      // 调前赠送币
+  beforePaid  Int      // 调前充值币
+  afterGift   Int      // 调后赠送币
+  afterPaid   Int      // 调后充值币
+  reason      String?  // 调币原因
+  createdAt   DateTime @default(now())
+
+  user        User     @relation("CoinLogUser", fields: [userId], references: [id])
+  admin       User     @relation("CoinLogAdmin", fields: [adminId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([adminId, createdAt])
+  @@map("lekao_coin_log")
+}
+
+// admin 操作审计日志 (P0#2) — 谁在什么时候干了什么
+model AuditLog {
+  id         String   @id @default(cuid())
+  adminId    String   // 操作的 admin
+  targetUserId String? // 操作对象 (用户) — 可空 (如邀请码生成无 target)
+  action     String   // tcoin_adjust | user_update | user_ban | user_unban | invite_create | ...
+  details    String?  @db.Text // JSON 详情 (改了什么字段 / 改前改后值)
+  ip         String?  // 操作 IP (from req.headers)
+  createdAt  DateTime @default(now())
+
+  admin      User     @relation("AuditLogAdmin", fields: [adminId], references: [id])
+  targetUser User?    @relation("AuditLogTarget", fields: [targetUserId], references: [id])
+
+  @@index([adminId, createdAt])
+  @@index([action, createdAt])
+  @@map("audit_log")
 }
