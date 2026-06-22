@@ -1231,17 +1231,44 @@ npx prisma migrate deploy --schema=packages/db/prisma/schema.prisma
 | 12 | **跨 Sheet 同名学生不合并**（按学科分文件夹） | "每一个学科的错题集单独用一个文件夹保管" | §4.1.1 T21' |
 | 13 | **全对作为题号槽** | "如果这个学生他是全对的话，那就是全对，他也算一个题号" | §3.5.5, §4.1.1 T18 |
 
-### 8.4 下一步（v0.5 · 2026-06-20 · Phase 1 全部完成）
+### 8.4 当前状态（v0.6 · 2026-06-22 · Phase 2 全部完成）
 
-**当前状态**：
-- ✅ **Phase 1 T1-T15 全部完成**（2026-06-20 v0.5）
-- ✅ 部署到 `https://lekao.asterforge.top` 公网可访问
-- ✅ Lighthouse mobile = 95/100/100/100（perf/a11y/bp/seo）
-- ✅ **安全加固 3 项已完成**（v0.5.1 - finding 1+2+3, 2026-06-20）
-- ⏳ Phase 2 错题集 T16-T25 未做（用户决策已固化到 PRD + BRD + STAGE spec）
-- ⏳ Phase 2 课堂小结 + 反馈 T26-T35 未做
-- ⏳ Phase 2 T-Coin 充值 + 管理员后台 T36-T40 未做
-- ⏳ Phase 3 微信 OAuth + 商业化 T41+ 未做（等公司主体）
+**🎉 Phase 1 + Phase 2 全部交付**：
+
+- ✅ **Phase 1 T1-T15**（脚手架 + 登录 + 仪表盘 + 部署）— 5 commits
+- ✅ **Phase 1.1 安全加固**（bcrypt + CHECK + 锁定 + 字段映射 3 连修）— 5 commits
+- ✅ **Phase 2 错题集 T16-T25**（Excel 解析 + 累积 docx + File System Access API + 多 Sheet + 真实场景样式 + 灵活列映射 + 手动日期 + HTML 预览）— 11 commits
+- ✅ **Phase 2 课堂小结 + 反馈 T26-T35**（AI 接入 + 4 项安全加固 + 上传 UI + 模板选择 + 输出展示 + T-Coin 扣费 + 落盘 + Lighthouse + E2E）— 20+ commits + `docs/E2E-summary-feedback.md`
+- ✅ **Phase 2 T-Coin 调币 UI + Admin 后台 T36-T40**（调币 API + 用户管理 + 邀请码 + 统计 + 历史 + 设置 共 6 模块）— 2 commits（221cbaa5 + a3fdaf46）
+- ✅ **品牌升级**（首页 Lekao Agent + SVG 图标 + 新 slogan + 个人中心 + 3 marketing 页 + dashboard UI + TopBar + 侧边栏可收起 + emoji 全转 SVG + 扣币标注）
+
+**部署 & 性能现状**：
+
+| 项 | 值 |
+|---|---|
+| 公网 | `https://lekao.asterforge.top` ✅ 200 OK |
+| 服务器 | 腾讯云 :3007 · `lekao-web` systemd active |
+| HEAD | `dd408ef`（本地 + 服务器一致） |
+| Lighthouse 本地 :3000 | 99 / 100 / 100 / 100（4-run avg） |
+| Lighthouse 生产 | **99.5 / 100 / 100 / 100**（4-run avg，比本地还快） |
+| LCP 生产 | 1.8s |
+| TBT 生产 | 40ms |
+| CLS | 0 |
+| 总 commits | 65（Phase 1 + 1.1 + 2 全部） |
+| 改动规模 | 98 文件 / +13,363 行 / -516 行 |
+
+**Phase 2 累计 commit（按 sprint 分组）**：
+
+| Sprint | Commits | 内容 |
+|--------|---------|------|
+| 错题集 MVP | 11 | T16-T25 全做完 |
+| 小结/反馈 5 阶段 | 20+ | T26-T35 + 多次 prompt/UX 迭代 |
+| Admin 后台 | 2 | 5 模块 + 完整 API |
+| Brand 升级 | 5 | 首页 + 个人中心 + marketing + UI 改 |
+| 安全加固 | 5 | bcrypt + CHECK + 锁定 + 邀请码 TOCTOU |
+| Deploy 修 | 3 | bundle fetch + sed + PS 5.1 BOM |
+| DB 修复 | 3 | schema @map + enum + max_tokens |
+| 自更新 | 2 | PRD/BRD/skill 双写 |
 
 **Phase 1 commit 历史**：
 | Commit | 内容 |
@@ -1261,19 +1288,8 @@ npx prisma migrate deploy --schema=packages/db/prisma/schema.prisma
 | `ae895cf` | fix(db): verification_codes.code 列改 nullable |
 | `713cb06` | fix(security): 5 次错码锁定逻辑 - attempts>=MAX 直接锁 |
 
-**Phase 2 启动条件**（已满足）：
-- ✅ 用户在另一窗口做脚手架（T10-T14 部署）— 完成
-- ✅ 用户明确"现在我们可以亲手去开始做了" — 已开始
-- ✅ 2026-06-20 用户对齐 13 项决策（含 v0.1 4 项 + v0.4 错题集 9 项）已完整写入 PRD + BRD
-
-**下一步**（用户决定 Phase 2 哪个功能先做）：
-- T16-T25 错题集（**MVP 推荐**：T16 + T17 + T18 + T21' + T22 ≈ 10.5h）
-- T26-T35 课堂小结 + 反馈（接 DeepSeek API + T-Coin 扣费）
-- T36-T40 T-Coin 充值 + 管理员后台（需用户管理 UI）
-- 🛑 默认停下，让用户选 Phase 2 方向
-
 **执行分工**：
-- 用户：选 Phase 2 方向 + 必要时审批（review 效果/重大决策）
+- 用户：选 Phase 3 方向 + 必要时审批（review 效果/重大决策）
 - Claude：按 stage spec 走 + 跑命令 + 批量改文件
 
 ### 8.5 安全加固清单（v0.5.1 · 2026-06-20 · 已完成 3/4）
@@ -1292,14 +1308,80 @@ npx prisma migrate deploy --schema=packages/db/prisma/schema.prisma
 - `ae895cf` fix: code 列改 nullable（之前 NOT NULL 导致 INSERT codeHash 不写 code 失败）
 - `713cb06` fix: 锁定逻辑改为 attempts>=MAX 直接锁（之前 expiresAt-LOCKOUT 算错时间锁不住）
 
-**推迟（1 项 · 等 Phase 2 公开模板功能再做）**：
+**推迟（1 项 · 当前自动失效 · 等用户自定义模板公开分享功能上线再做）**：
 
-| # | 风险 | 内容 | 触发条件 |
-|---|------|------|---------|
-| 4 | MEDIUM lekao_templates 公开查询无 RLS | 缺 partial index `WHERE isPublic = true` + RLS policy | Phase 2 模板功能上线前 |
+| # | 风险 | 内容 | 触发条件 | 当前状态 |
+|---|------|------|---------|---------|
+| 4 | MEDIUM lekao_templates 公开查询无 RLS | 缺 partial index `WHERE isPublic = true` + RLS policy | **用户自定义模板公开分享功能上线时**（§9.2 P1 #5） | ✅ **当前自动失效** — schema 有 `isPublic` 字段但代码 0 处引用，没有"公开模板查询"路径就不需要 RLS。v0.6 验证：`grep -rn "isPublic" src/` 无命中。 |
 
 **验证结果**（端到端实测）：
 - ✅ DB 中 code 字段 = NULL，codeHash = `$2b$10$` bcrypt 格式
 - ✅ bcrypt.compare 验码正确（错码 attempts++ → 第 6 次起返回 "已被锁定"）
 - ✅ CHECK 约束生效（INSERT tCoinUsed=0 被 `lekao_class_summaries_tcoin_check` 拒绝）
 - ✅ 唯一 partial index 防并发发码竞态（`email+purpose WHERE used=false`）
+
+---
+
+## 9. 后续待办规划（v0.6+ · 2026-06-22 · Phase 2 完成后）
+
+> Phase 1 + Phase 2 全部交付（v0.6）。下一步按 ROI 优先级分 4 档 + 持续运营。
+
+### 9.1 P0 · 阻塞商业化（等公司主体 · 不可自主启动）
+
+| # | 任务 | 估时 | 来源 | 阻塞 |
+|---|------|------|------|------|
+| 1 | T41 微信 OAuth 登录（扫码登录 + 绑定邮箱） | ≈4h | PRD §4.1.4 + BRD §1.3 | 🟡 **公司主体**（个体工商户注册完成） |
+| 2 | T39 微信支付自动充值（取代管理员手动调 T-Coin） | ≈6h | PRD §4.1.3 + BRD §5.3 | 🟡 **公司主体** + 微信商户号 |
+
+### 9.2 P1 · 用户体验优先（可自主启动 · 等用户拍板）
+
+| # | 任务 | 估时 | 来源 | 备注 |
+|---|------|------|------|------|
+| 3 | **移动端适配 sprint**（PC/Mobile 完全分离组件，参考 [[feedback-mobile-separate-components]]） | ≈8h | PRD §6.1.2 + BRD §1.3 | Phase 1 明确推迟；可借 [[avant-garde-design]] 9 条禁忌约束 |
+| 4 | **T42 批量并行生成**（30 人班一键批量生成小结/反馈） | ≈4h | BRD §6.1 | 杀手级功能 · T-Coin 成倍消耗 |
+| 5 | **用户自定义模板 UI**（平台预设 + 用户私有 + 公开分享） | ≈6h | PRD §3.5.6 + §8.5 finding #4 触发 | 上线时**必须**补 RLS policy（finding #4 自动激活） |
+
+### 9.3 P2 · 高价值 V2
+
+| # | 任务 | 估时 | 来源 |
+|---|------|------|------|
+| 6 | **T43 班级管理 / 学生管理 / 多助教协作** | ≈16h | BRD §1.3 + §6.3 |
+| 7 | **家长群推送**（微信生态打通） | ≈8h | BRD §6.2 V3 |
+| 8 | **AI 多轮对话修改小结/反馈**（"再短一点"/"加个鼓励语"） | ≈4h | BRD §3.2 / §3.3 V2 |
+| 9 | **错题集历史落盘**（`lekao_mistake_collections` 表，反悔 BRD §7.6 既定结论） | ≈3h | BRD §7.6（V2 评估） |
+
+### 9.4 P3 · 长期储备（V3+）
+
+| # | 任务 | 估时 | 来源 |
+|---|------|------|------|
+| 10 | Word 模板自定义样式（双栏 / 主题色 / 表格化） | ≈8h | BRD §3.1.9 V2 |
+| 11 | 跨 Sheet 同名学生合并（每个学生一份总错题集） | ≈4h | BRD §3.1.11 反向需求 |
+| 12 | 移动端 App（iOS / Android · Capacitor/Tauri 包装） | 待定 | BRD §1.3 V2 |
+| 13 | 多渠道引流 / SEO / 内容营销（小红书/知乎） | 待定 | 自定义 |
+
+### 9.5 持续运营 / 监控（不占 sprint · 自动化）
+
+| 任务 | 频率 | 工具 / 命令 |
+|------|------|------------|
+| Sentry 错误监控 | 实时 | Sentry（`reference_sentry_setup.md`） |
+| Lighthouse mobile 4-run avg 巡检 | 每次动效 commit 后 | `lighthouse ... --form-factor=mobile` |
+| Prisma 连接池巡检（≤ 4 连接） | 每周 | `pg_stat_activity` |
+| systemd service 健康检查 | 每周 | `systemctl is-active lekao-web` |
+| Certbot 证书过期检查（89 天） | 每 60 天 | `certbot certificates` |
+| 磁盘 / 内存巡检 | 每周 | `df -h / free -h` |
+| 用户反馈 / 客诉跟进 | 每周 | admin 后台 + 微信群 |
+| Prisma schema 与 ResumeAIX 同步（`lekao_gift_coin` 等字段） | 每次 ResumeAIX migration 后 | `migrate deploy` + 校验 `@map` |
+
+### 9.6 Phase 3 启动条件
+
+- ✅ Phase 1 + 2 全部完成（v0.6）
+- 🟡 **等公司主体**：微信 OAuth + 微信支付（P0 阻塞）
+- 🟡 **等用户拍板**：P1 三项的优先级（移动端 vs 批量 vs 自定义模板）
+- 🟡 **首批真实用户反馈**：移动端 + 批量生成的优先级需根据用户反馈调整
+
+### 9.7 文档维护规则
+
+- PRD §8.4 + §9 章节**每次大阶段完成后**必更新（v0.5 → v0.6 实战已验证）
+- BRD 阶段性更新（v0.3 → v0.4 错题集重构实战已验证）
+- STAGE spec 在 sprint 启动前写完（`STAGE-mistake-collection.md` + `STAGE-summary-feedback.md` 范本）
+- `~/.claude/skills/lekao.md` 顶部承载已知状态快照，每次会话结束更新（被动模式铁律）
