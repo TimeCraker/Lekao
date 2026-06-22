@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import imageCompression from "browser-image-compression";
 import { cn } from "@/lib/utils";
+import { compressImages } from "@/lib/image-compress";
 import {
   UploadIcon,
   ResetIcon,
@@ -11,8 +11,6 @@ import {
 
 const ACCEPT = "image/png,image/jpeg,image/webp";
 const MAX_IMAGES = 5;
-// 安全裕度：服务端 4MB 上限（含 base64 编码后），压缩到 1.5MB 留余量
-const COMPRESS_MAX_MB = 1.5;
 
 export type ImageItem = {
   id: string;
@@ -37,6 +35,7 @@ export function Uploader({
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [progress, setProgress] = useState<{ current: number; total: number } | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
   const addFiles = useCallback(
@@ -48,28 +47,41 @@ export function Uploader({
         return;
       }
 
+      // 过滤非图片
+      const imageFiles = arr.filter((f) => f.type.startsWith("image/"));
+      const nonImageCount = arr.length - imageFiles.length;
+      if (imageFiles.length === 0) {
+        setErr(`不支持的文件类型（共 ${arr.length} 个文件）`);
+        return;
+      }
+      if (nonImageCount > 0) {
+        console.warn(`[Uploader] 跳过 ${nonImageCount} 个非图片文件`);
+      }
+      // 上限校验（压缩前）
+      if (images.length + imageFiles.length > maxImages) {
+        setErr(
+          `最多 ${maxImages} 张图片，当前已选 ${images.length} 张，本次最多再加 ${maxImages - images.length} 张`,
+        );
+        return;
+      }
+
       setIsProcessing(true);
+      setProgress({ current: 0, total: imageFiles.length });
       try {
+        // ⭐ 2026-06-22：改用共享压缩工具（并发 2 + 移动端降级 + 进度回调 + iOS fallback）
+        const compressedBlobs = await compressImages(imageFiles, {
+          onProgress: (current, total) => setProgress({ current, total }),
+        });
+
+        // 转 dataUrl
         const processed: ImageItem[] = [];
-        for (const file of arr) {
-          if (!file.type.startsWith("image/")) {
-            throw new Error(`不支持的文件类型: ${file.type}`);
-          }
-
-          // 压缩到 ≤ 1.5MB（给 base64 编码留 ~33% 余量 → 2MB，远低于服务端 4MB 上限）
-          const compressed = await imageCompression(file, {
-            maxSizeMB: COMPRESS_MAX_MB,
-            maxWidthOrHeight: 2048,
-            useWebWorker: true,
-            fileType: file.type.includes("png") ? "image/png" : "image/jpeg",
-          });
-
-          const dataUrl = await fileToDataUrl(compressed);
+        for (let i = 0; i < compressedBlobs.length; i++) {
+          const dataUrl = await fileToDataUrl(compressedBlobs[i]);
           processed.push({
-            id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            id: `${Date.now()}-${i}-${Math.random().toString(36).slice(2, 8)}`,
             dataUrl,
-            fileName: file.name,
-            sizeBytes: compressed.size,
+            fileName: imageFiles[i].name,
+            sizeBytes: compressedBlobs[i].size,
           });
         }
         onChange([...images, ...processed]);
@@ -77,6 +89,7 @@ export function Uploader({
         setErr(e instanceof Error ? e.message : "图片处理失败");
       } finally {
         setIsProcessing(false);
+        setProgress(null);
       }
     },
     [images, maxImages, onChange],
@@ -135,17 +148,32 @@ export function Uploader({
         </div>
         <div className="text-base font-semibold text-ink mb-1">
           {isProcessing
-            ? "正在压缩图片..."
+            ? progress
+              ? `正在压缩 ${progress.current} / ${progress.total}…`
+              : "正在压缩图片…"
             : isDragging
               ? "松开鼠标即可上传"
               : "拖拽讲义图片到这里"}
         </div>
         <div className="text-sm text-ink-muted">
-          或点击选择 · 支持 PNG / JPG / JPEG / WebP · 单张自动压缩到 1.5MB
+          {isProcessing
+            ? "大图自动降级，低配手机也不会卡"
+            : "或点击选择 · 支持 PNG / JPG / JPEG / WebP · 单张自动压缩"}
         </div>
         <div className="text-xs text-ink-subtle mt-2">
           最多 {maxImages} 张 · 当前已选 {images.length} 张
         </div>
+        {/* ⭐ 压缩进度条 */}
+        {isProcessing && progress && progress.total > 0 && (
+          <div className="mt-3 mx-auto max-w-xs h-1.5 rounded-full bg-hairline overflow-hidden">
+            <div
+              className="h-full bg-accent transition-all duration-300"
+              style={{
+                width: `${Math.round((progress.current / progress.total) * 100)}%`,
+              }}
+            />
+          </div>
+        )}
       </div>
 
       {err && (

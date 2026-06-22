@@ -2,39 +2,35 @@
  * 图片压缩 + IndexedDB 存储 (T19 + T20)
  * 来源：STAGE spec §3 T19 + T20
  *
+ * v2 升级（2026-06-22）：compressImage 内部改用共享工具 lib/image-compress.ts
+ *   - 移动端自动降级（长边 1280 + 质量 0.8）
+ *   - iOS Safari createImageBitmap 失败 → fallback
+ *   - 内部自动跳过 ≤ 目标大小且是 jpeg 的图
+ *
  * - browser-image-compression: 上传/粘贴图片自动压到 ≤500KB
  * - idb: IndexedDB Promise 封装，存图片 Blob
  * - LocalStorage: 存轻量数据（题号 + 文字 + 学生选择）
  */
 
-import imageCompression from "browser-image-compression";
 import { openDB, type IDBPDatabase } from "idb";
 import type { ImageRecord, QNumberSlot } from "./types";
+import { compressOneImage as compressWithShared } from "@/lib/image-compress";
 
-// ============== 图片压缩（T19）==============
-
-const COMPRESSION_OPTIONS = {
-  maxSizeMB: 0.5, // 500KB
-  maxWidthOrHeight: 1920, // 长边限制 1920px
-  useWebWorker: true,
-  fileType: "image/jpeg" as const, // 输出 JPEG（压缩率高于 PNG）
-  initialQuality: 0.85,
-};
+// ============== 图片压缩（T19 · 复用共享工具 v2）==============
 
 /**
- * 压缩图片到 ≤500KB
+ * 压缩图片到 ≤500KB（桌面）或 ≤400KB（移动端）
  *
  * 支持格式：PNG / JPG / JPEG / WebP
  * 输出：JPEG Blob
+ *
+ * 🆕 v2 行为：
+ * - 移动端（UA 含 Mobile/iPhone/iPad/Android）→ 自动降级到 1280px + 质量 0.8
+ * - 桌面端 → 1920px + 质量 0.85
+ * - iOS Safari 偶发 createImageBitmap 失败 → 自动降级到 50% 目标
  */
 export async function compressImage(file: File | Blob): Promise<Blob> {
-  // 已经是 ≤500KB 且是 JPEG：跳过压缩
-  if (file.size <= 500 * 1024 && file.type === "image/jpeg") {
-    return file;
-  }
-
-  const compressed = await imageCompression(file as File, COMPRESSION_OPTIONS);
-  return compressed;
+  return compressWithShared(file);
 }
 
 /**
