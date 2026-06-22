@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { motion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import { useSession } from "next-auth/react";
 import {
   MistakeIcon,
@@ -31,6 +31,7 @@ export function Sidebar() {
   const { data: session } = useSession();
   const pathname = usePathname();
   const isAdmin = session?.user?.role === "ADMIN";
+  const reduced = useReducedMotion();
 
   // 收起状态（localStorage 持久化 + 初始 false 防 hydration mismatch）
   const [collapsed, setCollapsed] = useState(false);
@@ -148,11 +149,13 @@ export function Sidebar() {
 
       {/* Toggle 按钮（底部） */}
       <div className="border-t border-hairline p-2">
-        <button
+        <motion.button
           type="button"
           onClick={toggle}
           aria-label={collapsed ? "展开侧边栏" : "收起侧边栏"}
-          className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-ink-mute hover:bg-canvas-alt hover:text-ink rounded-lg transition"
+          whileTap={reduced ? undefined : { scale: 0.97 }}
+          transition={{ type: "spring", stiffness: 400, damping: 17 }}
+          className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-ink-mute hover:bg-canvas-alt hover:text-ink rounded-lg transition-colors"
         >
           {collapsed ? (
             <ExpandIcon className="w-[18px] h-[18px] shrink-0" />
@@ -160,7 +163,7 @@ export function Sidebar() {
             <CollapseIcon className="w-[18px] h-[18px] shrink-0" />
           )}
           {(!mounted || !collapsed) && <span>收起侧边栏</span>}
-        </button>
+        </motion.button>
       </div>
     </aside>
   );

@@ -4,6 +4,9 @@ import { useState, useTransition, useEffect } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { motion } from "motion/react";
+import { PressableButton } from "@/components/ui/pressable-button";
+import { useShake } from "@/lib/hooks/motion";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -17,6 +20,7 @@ export default function RegisterPage() {
   const [message, setMessage] = useState("");
   const [cooldown, setCooldown] = useState(0);
   const [isPending, startTransition] = useTransition();
+  const { shakeKey, triggerShake } = useShake();
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -41,6 +45,7 @@ export default function RegisterPage() {
     const data = await res.json();
     if (!res.ok) {
       setError(data.error ?? "发送失败");
+      triggerShake();
       return;
     }
     setMessage("验证码已发送，请查收邮件");
@@ -55,14 +60,17 @@ export default function RegisterPage() {
     // 1. 前端校验
     if (password !== confirmPassword) {
       setError("两次密码不一致");
+      triggerShake();
       return;
     }
     if (password.length < 8) {
       setError("密码至少 8 位");
+      triggerShake();
       return;
     }
     if (!agree) {
       setError("请勾选同意服务条款");
+      triggerShake();
       return;
     }
 
@@ -76,6 +84,7 @@ export default function RegisterPage() {
       const data = await res.json();
       if (!res.ok) {
         setError(data.error ?? "注册失败");
+        triggerShake();
         return;
       }
 
@@ -118,7 +127,11 @@ export default function RegisterPage() {
             ，开启 AI 助教之旅
           </p>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <motion.form
+            key={shakeKey}
+            onSubmit={handleSubmit}
+            className={`space-y-4 ${error ? "anim-shake" : ""}`}
+          >
             <div>
               <label className="block text-sm font-medium text-ink mb-2">
                 邮箱
@@ -233,14 +246,14 @@ export default function RegisterPage() {
               </div>
             )}
 
-            <button
+            <PressableButton
               type="submit"
-              disabled={isPending}
-              className="w-full py-2.5 bg-accent-text text-white rounded-lg font-medium hover:bg-accent-hover transition disabled:opacity-50 disabled:cursor-not-allowed"
+              loading={isPending}
+              className="w-full"
             >
               {isPending ? "注册中..." : "创建账号"}
-            </button>
-          </form>
+            </PressableButton>
+          </motion.form>
 
           <div className="mt-6 text-center text-sm text-ink-muted">
             已有账号？

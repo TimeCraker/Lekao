@@ -121,11 +121,11 @@ function QuickCard({
       className="group block bg-white border border-hairline rounded-2xl p-6 transition-all duration-300 hover:border-accent hover:shadow-card-hover hover:-translate-y-1"
     >
       {/* Icon · 64×64 圆角彩色容器 */}
-      <div className="w-14 h-14 rounded-xl bg-accent-soft flex items-center justify-center mb-5 group-hover:bg-accent-text group-hover:scale-105 transition-all duration-300">
+      <div className="w-14 h-14 rounded-xl bg-accent-soft flex items-center justify-center mb-5 group-hover:bg-accent-text group-hover:scale-110 group-hover:rotate-[8deg] transition-all duration-300">
         <Icon className="w-7 h-7 text-accent-text group-hover:text-white transition-colors duration-300" />
       </div>
 
-      <h3 className="text-lg font-semibold text-ink mb-2 group-hover:text-accent-ink transition">
+      <h3 className="text-lg font-semibold text-ink mb-2 group-hover:text-accent-ink transition-colors duration-300">
         {title}
       </h3>
       <p className="text-sm text-ink-muted leading-relaxed mb-5 min-h-[2.5rem]">

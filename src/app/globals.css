@@ -131,3 +131,62 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/* ============================================
+ * 2026-06-22 细节动效 · 6 个 keyframes + 工具类
+ * - shakeX:    错误左右震（form 验证失败 / 复制失败）
+ * - popIn:     成功粒子（按钮完成 burst）
+ * - cursorBlink: 流式光标脉冲（AI 文本末尾）
+ * - numFlip:   数字翻牌（计数变化）
+ * - slotRise:  卡片入场（错题 slot / 列表项）
+ * - heroCharRise: Hero 字符级入场
+ * ============================================ */
+@keyframes shakeX {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+
+@keyframes popIn {
+  0%   { transform: scale(0);   opacity: 0; }
+  60%  { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(0);   opacity: 0; }
+}
+
+@keyframes cursorBlink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.2; }
+}
+
+@keyframes numFlip {
+  0%   { transform: translateY(0);     opacity: 1; }
+  50%  { transform: translateY(-100%); opacity: 0; }
+  51%  { transform: translateY(100%);  opacity: 0; }
+  100% { transform: translateY(0);     opacity: 1; }
+}
+
+@keyframes slotRise {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+
+@keyframes heroCharRise {
+  from { opacity: 0; transform: translateY(24px) rotateX(-30deg); }
+  to   { opacity: 1; transform: translateY(0)    rotateX(0deg);   }
+}
+
+@keyframes rowHighlight {
+  from { background: var(--accent-soft); }
+  to   { background: transparent;        }
+}
+
+/* 工具类（直接挂 className） */
+.anim-shake        { animation: shakeX 0.4s ease-in-out; }
+.anim-pop          { animation: popIn 0.6s ease-out forwards; }
+.anim-cursor       { animation: cursorBlink 0.9s ease-in-out infinite; }
+.anim-flip         { animation: numFlip 0.4s ease-in-out; }
+.anim-rise         { animation: slotRise 0.4s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.anim-hero-rise    { animation: heroCharRise 0.6s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.anim-row-flash    { animation: rowHighlight 1.2s ease-out; }

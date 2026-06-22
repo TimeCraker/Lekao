@@ -4,6 +4,9 @@ import { useState, useTransition, useEffect } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { motion } from "motion/react";
+import { PressableButton } from "@/components/ui/pressable-button";
+import { useShake } from "@/lib/hooks/motion";
 
 type Mode = "password" | "code";
 
@@ -18,6 +21,7 @@ export default function LoginPage() {
   const [message, setMessage] = useState("");
   const [cooldown, setCooldown] = useState(0);
   const [isPending, startTransition] = useTransition();
+  const { shakeKey, triggerShake } = useShake();
 
   // 倒计时 effect
   useEffect(() => {
@@ -43,6 +47,7 @@ export default function LoginPage() {
     const data = await res.json();
     if (!res.ok) {
       setError(data.error ?? "发送失败");
+      triggerShake();
       return;
     }
     setMessage("验证码已发送，请查收邮件");
@@ -63,6 +68,7 @@ export default function LoginPage() {
         });
         if (res?.error || !res?.ok) {
           setError("邮箱或密码错误");
+          triggerShake();
           return;
         }
         localStorage.setItem("lekao-account-exists", "true");
@@ -77,6 +83,7 @@ export default function LoginPage() {
         const data = await res.json();
         if (!res.ok) {
           setError(data.error ?? "登录失败");
+          triggerShake();
           return;
         }
         localStorage.setItem("lekao-account-exists", "true");
@@ -104,8 +111,8 @@ export default function LoginPage() {
           <h1 className="text-2xl font-semibold text-ink mb-2">欢迎回来</h1>
           <p className="text-sm text-ink-muted mb-6">登录后继续你的工作</p>
 
-          {/* Tab 切换 */}
-          <div className="flex gap-1 p-1 bg-canvas-alt rounded-xl mb-6">
+          {/* Tab 切换 · 用 layoutId 实现滑动指示器 */}
+          <div className="relative flex gap-1 p-1 bg-canvas-alt rounded-xl mb-6">
             <button
               type="button"
               onClick={() => {
@@ -113,12 +120,19 @@ export default function LoginPage() {
                 setError("");
                 setMessage("");
               }}
-              className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition ${
+              className={`relative flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
                 mode === "password"
-                  ? "bg-white text-ink shadow-sm"
+                  ? "text-ink"
                   : "text-ink-muted hover:text-ink"
               }`}
             >
+              {mode === "password" && (
+                <motion.span
+                  layoutId="login-tab-indicator"
+                  className="absolute inset-0 bg-white rounded-lg shadow-sm -z-10"
+                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                />
+              )}
               邮箱密码
             </button>
             <button
@@ -128,17 +142,28 @@ export default function LoginPage() {
                 setError("");
                 setMessage("");
               }}
-              className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition ${
+              className={`relative flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
                 mode === "code"
-                  ? "bg-white text-ink shadow-sm"
+                  ? "text-ink"
                   : "text-ink-muted hover:text-ink"
               }`}
             >
+              {mode === "code" && (
+                <motion.span
+                  layoutId="login-tab-indicator"
+                  className="absolute inset-0 bg-white rounded-lg shadow-sm -z-10"
+                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                />
+              )}
               邮箱验证码
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <motion.form
+            key={shakeKey}
+            onSubmit={handleSubmit}
+            className={`space-y-4 ${error ? "anim-shake" : ""}`}
+          >
             <div>
               <label className="block text-sm font-medium text-ink mb-2">
                 邮箱
@@ -227,14 +252,14 @@ export default function LoginPage() {
               </div>
             )}
 
-            <button
+            <PressableButton
               type="submit"
-              disabled={isPending}
-              className="w-full py-2.5 bg-accent-text text-white rounded-lg font-medium hover:bg-accent-hover transition disabled:opacity-50 disabled:cursor-not-allowed"
+              loading={isPending}
+              className="w-full"
             >
               {isPending ? "登录中..." : "登录"}
-            </button>
-          </form>
+            </PressableButton>
+          </motion.form>
 
           <div className="mt-6 text-center text-sm text-ink-muted">
             还没有账号？

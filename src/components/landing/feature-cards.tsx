@@ -81,16 +81,18 @@ function FeatureCard({
       whileHover={{ scale: 1.02 }}
       transition={{ type: "spring", stiffness: 300, damping: 20 }}
     >
-      <div className="w-14 h-14 mb-5 rounded-xl bg-accent-soft text-accent-text flex items-center justify-center group-hover:scale-105 transition-transform">
+      <div className="w-14 h-14 mb-5 rounded-xl bg-accent-soft text-accent-text flex items-center justify-center group-hover:scale-110 group-hover:rotate-[8deg] transition-all duration-300">
         <Icon className="w-7 h-7" />
       </div>
-      <h3 className="text-xl font-semibold text-ink mb-2">{title}</h3>
+      <h3 className="text-xl font-semibold text-ink mb-2 group-hover:text-accent-ink transition-colors duration-300">
+        {title}
+      </h3>
       <p className="text-sm text-ink-muted leading-relaxed mb-6 min-h-[3rem]">
         {description}
       </p>
       <div className="flex items-center justify-between">
         <PriceTag type={priceTag.type} label={priceTag.label} />
-        <span className="text-accent text-sm font-medium opacity-0 group-hover:opacity-100 transition">
+        <span className="text-accent text-sm font-medium opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300">
           了解 →
         </span>
       </div>
