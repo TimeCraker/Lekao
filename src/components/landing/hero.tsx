@@ -112,6 +112,43 @@ export function Hero() {
         >
           注册即送 5 枚 T-Coin · 永久免费基础功能
         </motion.p>
+
+        {/* 作者联系入口 — 2026-06-22 v2.1.0+ 新增（用户原话：主页最好有联系方式） */}
+        <motion.div
+          variants={fadeUp}
+          initial="hidden"
+          animate="show"
+          custom={5}
+          className="mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-ink-subtle"
+        >
+          <span>联系作者：</span>
+          <a
+            href="https://asterforge.top"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 hover:text-accent-text transition-colors"
+          >
+            个人主页 asterforge.top
+            <ArrowRightIcon className="w-3 h-3" />
+          </a>
+          <span className="text-ink-muted/40">·</span>
+          <a
+            href="https://github.com/TimeCraker"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 hover:text-accent-text transition-colors"
+          >
+            GitHub @TimeCraker
+            <ArrowRightIcon className="w-3 h-3" />
+          </a>
+          <span className="text-ink-muted/40">·</span>
+          <a
+            href="mailto:hi@asterforge.top"
+            className="inline-flex items-center gap-1 hover:text-accent-text transition-colors"
+          >
+            hi@asterforge.top
+          </a>
+        </motion.div>
       </div>
     </section>
   );

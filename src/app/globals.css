@@ -80,6 +80,7 @@
   --color-surface-dark-2: var(--surface-dark-2);
   --color-ink-on-dark:   var(--ink-on-dark);
   --color-ink-on-dark-muted: var(--ink-on-dark-muted);
+  --color-hairline-dark: var(--hairline-dark);
 
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
     "PingFang SC", "Helvetica Neue", system-ui, sans-serif;

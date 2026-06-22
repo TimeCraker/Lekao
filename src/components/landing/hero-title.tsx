@@ -61,8 +61,9 @@ export function HeroTitle({ children }: HeroTitleProps) {
       ref={ref}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
-      // 移动端字号下限 40px（小屏字号过大挤）
-      className="text-[clamp(40px,9vw,144px)] font-bold leading-[1.05] tracking-tight text-ink select-none"
+      // 桌面端强制单行（避免"AI 智能助教助手"最后"手"字单独换行）；移动端允许自动换行
+      // 2026-06-22 修复：用户反馈 H1 拆两排很丑
+      className="text-[clamp(40px,9vw,128px)] font-bold leading-[1.05] tracking-tight text-ink select-none md:whitespace-nowrap"
       style={{ perspective: "1000px", opacity: opacityOut, y: yOut }}
     >
       {chars.map((char, i) => (
