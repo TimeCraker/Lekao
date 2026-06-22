@@ -6,7 +6,7 @@ import { motion, type Variants } from "motion/react";
 import { MeshGradientBg } from "./mesh-gradient";
 import { HeroTitle } from "./hero-title";
 import { MouseTrail } from "./mouse-trail";
-import { ArrowRightIcon, FreeIcon } from "@/components/icons";
+import { ArrowRightIcon, FreeIcon, GithubIcon, MailIcon } from "@/components/icons";
 
 const ACCOUNT_KEY = "lekao-account-exists";
 
@@ -133,12 +133,13 @@ export function Hero() {
           </a>
           <span className="text-ink-muted/40">·</span>
           <a
-            href="https://github.com/TimeCraker/Lekao"
+            href="https://github.com/TimeCraker"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 hover:text-accent-text transition-colors"
           >
-            GitHub 项目源码
+            <GithubIcon className="w-3.5 h-3.5" />
+            GitHub
             <ArrowRightIcon className="w-3 h-3" />
           </a>
           <span className="text-ink-muted/40">·</span>
@@ -146,6 +147,7 @@ export function Hero() {
             href="mailto:timecraker@foxmail.com"
             className="inline-flex items-center gap-1 hover:text-accent-text transition-colors"
           >
+            <MailIcon className="w-3.5 h-3.5" />
             timecraker@foxmail.com
           </a>
         </motion.div>

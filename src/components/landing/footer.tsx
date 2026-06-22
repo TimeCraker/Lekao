@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { GithubIcon, MailIcon } from "@/components/icons";
 
 const FOOTER_LINKS = [
   { href: "/about", label: "关于", external: false },
@@ -12,16 +13,19 @@ const CONTACT_LINKS = [
     href: "https://asterforge.top",
     label: "个人主页",
     detail: "asterforge.top",
+    Icon: null,
+  },
+  {
+    href: "https://github.com/TimeCraker",
+    label: "GitHub",
+    detail: "@TimeCraker",
+    Icon: GithubIcon,
   },
   {
     href: "mailto:timecraker@foxmail.com",
     label: "邮箱",
     detail: "timecraker@foxmail.com",
-  },
-  {
-    href: "https://github.com/TimeCraker/Lekao",
-    label: "GitHub",
-    detail: "TimeCraker/Lekao",
+    Icon: MailIcon,
   },
 ];
 
@@ -58,20 +62,21 @@ export function Footer() {
             </div>
           </div>
 
-          {/* 想联系作者 — 2026-06-22 v2.1.0+ 升级展开 */}
+          {/* 想联系作者 — 2026-06-22 v2.1.0+ 升级展开 + SVG 图标 */}
           <div className="flex flex-col gap-3">
             <span className="text-xs uppercase tracking-wider text-ink-on-dark-muted/70">
               想联系作者
             </span>
-            <div className="flex flex-col gap-2 text-sm text-ink-on-dark-muted">
-              {CONTACT_LINKS.map(({ href, label, detail }) => (
+            <div className="flex flex-col gap-2.5 text-sm text-ink-on-dark-muted">
+              {CONTACT_LINKS.map(({ href, label, detail, Icon }) => (
                 <a
                   key={href}
                   href={href}
                   target={href.startsWith("http") ? "_blank" : undefined}
                   rel={href.startsWith("http") ? "noopener noreferrer" : undefined}
-                  className="group inline-flex items-center gap-1.5 hover:text-ink-on-dark transition-colors"
+                  className="group inline-flex items-center gap-2 hover:text-ink-on-dark transition-colors"
                 >
+                  {Icon && <Icon className="w-4 h-4 shrink-0 opacity-70 group-hover:opacity-100 transition-opacity" />}
                   <span className="font-medium">{label}：</span>
                   <span className="font-mono text-xs text-ink-on-dark-muted group-hover:text-accent-soft transition-colors">
                     {detail}
