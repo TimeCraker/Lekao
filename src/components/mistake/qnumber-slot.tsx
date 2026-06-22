@@ -63,6 +63,14 @@ export function QNumberSlot({
       isMarkedAllCorrect: false,
     },
   );
+  // ⭐ 防御性修复：当父组件更新 slots[key] 引用时（外部状态恢复 / 草稿重载 / layout 意外 remount），
+  // 同步到内部 state，避免"前面图片被挤掉"。仅在 initialSlot 引用变化时触发。
+  useEffect(() => {
+    if (initialSlot) {
+      setSlot(initialSlot);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialSlot]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [pasteHint, setPasteHint] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -407,11 +415,10 @@ export function QNumberSlot({
       {/* 图片预览区（grid · 最多 3 张） */}
       {hasImages(slot) && (
         <div className="grid grid-cols-3 gap-2 mb-2">
-          <AnimatePresence mode="popLayout" initial={false}>
+          <AnimatePresence initial={false}>
             {previewUrls.map((url, idx) => (
               <motion.div
                 key={url}
-                layout
                 initial={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.7 }}
                 animate={reduced ? { opacity: 1 } : { opacity: 1, scale: 1 }}
                 exit={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.6 }}

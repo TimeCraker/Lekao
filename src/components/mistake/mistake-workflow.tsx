@@ -659,14 +659,13 @@ function SlotColumn({
             没有错题（全班全对）
           </div>
         ) : (
-          <AnimatePresence mode="popLayout" initial={false}>
+          <AnimatePresence initial={false}>
             {items.map((item, idx) => {
               const key = slotKey(qType, item.qNumber);
               const initial = slots[key];
               return (
                 <motion.div
                   key={key}
-                  layout
                   initial={{ opacity: 0, y: 12, scale: 0.98 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, x: -30, scale: 0.96 }}
