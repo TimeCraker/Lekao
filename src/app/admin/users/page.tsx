@@ -10,6 +10,7 @@ interface User {
   role: string;
   lekao_gift_coin: number;
   t_coin: number;
+  banned: boolean;
   createdAt: string;
 }
 
@@ -19,7 +20,7 @@ export default function AdminUsersPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [editUser, setEditUser] = useState<User | null>(null);
-  const [editForm, setEditForm] = useState({ role: "", name: "" });
+  const [editForm, setEditForm] = useState({ role: "", name: "", banned: false });
   const [coinAmount, setCoinAmount] = useState(0);
   const [coinReason, setCoinReason] = useState("");
   const [resultMsg, setResultMsg] = useState("");
@@ -41,7 +42,7 @@ export default function AdminUsersPage() {
 
   function openEdit(u: User) {
     setEditUser(u);
-    setEditForm({ role: u.role, name: u.name ?? "" });
+    setEditForm({ role: u.role, name: u.name ?? "", banned: u.banned });
     setCoinAmount(0);
     setCoinReason("");
     setResultMsg("");
@@ -126,6 +127,11 @@ export default function AdminUsersPage() {
                 <td className="px-4 py-2.5 text-ink">{u.email}</td>
                 <td className="px-4 py-2.5 text-ink-muted">{u.name || "—"}</td>
                 <td className="px-4 py-2.5">
+                  {u.banned ? (
+                    <span className="mr-1 rounded bg-red-50 px-1.5 py-0.5 text-xs text-red-700 font-medium">
+                      封禁
+                    </span>
+                  ) : null}
                   {u.role === "ADMIN" ? (
                     <span className="rounded bg-amber-50 px-1.5 py-0.5 text-xs text-amber-700 font-medium">
                       Admin
@@ -210,9 +216,32 @@ export default function AdminUsersPage() {
                   onChange={(e) => setEditForm((f) => ({ ...f, role: e.target.value }))}
                   className="w-full rounded border border-hairline bg-canvas px-3 py-1.5 text-sm text-ink"
                 >
-                  <option value="user">User</option>
-                  <option value="admin">Admin</option>
+                  <option value="USER">User</option>
+                  <option value="ADMIN">Admin</option>
                 </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-ink-muted">封禁状态</label>
+                <div className="flex items-center gap-3">
+                  <label className="flex cursor-pointer items-center gap-1.5 text-sm text-ink">
+                    <input
+                      type="radio"
+                      checked={!editForm.banned}
+                      onChange={() => setEditForm((f) => ({ ...f, banned: false }))}
+                      className="accent-accent-text"
+                    />
+                    正常
+                  </label>
+                  <label className="flex cursor-pointer items-center gap-1.5 text-sm text-red-700">
+                    <input
+                      type="radio"
+                      checked={editForm.banned}
+                      onChange={() => setEditForm((f) => ({ ...f, banned: true }))}
+                      className="accent-red-600"
+                    />
+                    封禁（无法登录）
+                  </label>
+                </div>
               </div>
               <button
                 onClick={saveEdit}

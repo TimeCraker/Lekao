@@ -8,12 +8,16 @@ import {
   DocumentIcon,
   CoinIcon,
   AdminIcon,
+  HistoryIcon,
+  ShieldIcon,
 } from "@/components/icons";
 
 const NAV_ITEMS = [
   { href: "/admin", label: "数据概览", Icon: DashboardIcon },
   { href: "/admin/users", label: "用户管理", Icon: ProfileIcon },
-  { href: "/admin/invite-codes", label: "邀请码管理", Icon: CoinIcon },
+  { href: "/admin/coin-log", label: "调币流水", Icon: CoinIcon },
+  { href: "/admin/audit-log", label: "审计日志", Icon: ShieldIcon },
+  { href: "/admin/invite-codes", label: "邀请码管理", Icon: HistoryIcon },
   { href: "/admin/history", label: "内容历史", Icon: DocumentIcon },
   { href: "/admin/settings", label: "系统设置", Icon: AdminIcon },
 ];

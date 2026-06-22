@@ -35,6 +35,7 @@ export async function GET(req: NextRequest) {
           role: true,
           lekao_gift_coin: true,
           t_coin: true,
+          banned: true,
           createdAt: true,
         },
       }),

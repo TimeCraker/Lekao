@@ -66,6 +66,17 @@ export async function POST(req: NextRequest) {
       codes.push(code);
     }
 
+    // ⭐ P0#2 写审计日志
+    await prisma.auditLog.create({
+      data: {
+        adminId: session.user.id,
+        targetUserId: null,
+        action: "invite_create",
+        details: JSON.stringify({ count: codes.length, prefix: prefix ?? null, codes }),
+        ip: req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? null,
+      },
+    });
+
     return NextResponse.json({ codes, count: codes.length });
   } catch (e) {
     console.error("[admin/invite-codes] generate error:", e);

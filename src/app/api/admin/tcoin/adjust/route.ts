@@ -46,8 +46,38 @@ export async function POST(req: NextRequest) {
       data: { lekao_gift_coin: newGift, t_coin: newPaid },
     });
 
+    // ⭐ P0#1 写调币流水（客诉可查）
+    await prisma.lekaoCoinLog.create({
+      data: {
+        userId,
+        adminId: session.user.id,
+        amount,
+        beforeGift: user.lekao_gift_coin,
+        beforePaid: user.t_coin,
+        afterGift: newGift,
+        afterPaid: newPaid,
+        reason: reason ?? null,
+      },
+    });
+
+    // ⭐ P0#2 写审计日志
+    await prisma.auditLog.create({
+      data: {
+        adminId: session.user.id,
+        targetUserId: userId,
+        action: "tcoin_adjust",
+        details: JSON.stringify({
+          amount,
+          reason: reason ?? null,
+          before: { gift: user.lekao_gift_coin, paid: user.t_coin },
+          after: { gift: newGift, paid: newPaid },
+        }),
+        ip: req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? null,
+      },
+    });
+
     console.log(
-      `[admin/tcoin] adjust: user=${userId} amount=${amount} reason=${reason ?? ""}`,
+      `[admin/tcoin] adjust: admin=${session.user.id} user=${userId} amount=${amount} reason=${reason ?? ""}`,
     );
 
     return NextResponse.json({
