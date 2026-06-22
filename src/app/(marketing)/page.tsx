@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { Hero } from "@/components/landing/hero";
 import { FeatureCards } from "@/components/landing/feature-cards";
 import { Stats } from "@/components/landing/stats";
-import { FAQ, faqJsonLd } from "@/components/landing/faq";
+import { FAQ } from "@/components/landing/faq";
+import { faqJsonLd } from "@/components/landing/faq-jsonld";
 
 // ⭐ 2026-06-22 收尾：landing 页专属 metadata
 // 比 layout 更具体（追加行动召唤关键词）
@@ -13,7 +14,7 @@ export const metadata: Metadata = {
 };
 
 // JSON-LD FAQ（让 Google 在搜索结果展示 FAQ 折叠块）
-// ⚠️ 安全前提：保持纯字面量，禁拼入任何用户输入
+// ⚠️ 安全前提：faqJsonLd 来自 server-only 模块 faq-jsonld.ts（纯字面量，禁拼入任何用户输入）
 const faqJsonLdString = JSON.stringify(faqJsonLd);
 
 export default function HomePage() {

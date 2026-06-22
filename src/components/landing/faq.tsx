@@ -96,17 +96,5 @@ export function FAQ() {
   );
 }
 
-// ⭐ JSON-LD FAQ schema（Google Rich Result "FAQ" 块）
+// ⭐ JSON-LD FAQ schema 已移到 ./faq-jsonld.ts（避免 client component export 限制）
 // 同样必须是纯字面量，禁拼入用户输入
-export const faqJsonLd = {
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  mainEntity: FAQS.map((faq) => ({
-    "@type": "Question",
-    name: faq.q,
-    acceptedAnswer: {
-      "@type": "Answer",
-      text: faq.a,
-    },
-  })),
-};
