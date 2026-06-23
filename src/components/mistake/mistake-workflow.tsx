@@ -55,6 +55,7 @@ import { ConfirmCover, type ConfirmCoverValue } from "./confirm-cover";
 import { QNumberSlot as QNumberSlotUI } from "./qnumber-slot";
 import { ExportBar } from "./export-bar";
 import { HtmlPreview } from "./html-preview";
+import { HistoryDatePanel } from "./history-date-panel";
 
 export function MistakeWorkflow() {
   const [step, setStep] = useState<MistakeStep>("upload");
@@ -470,6 +471,16 @@ export function MistakeWorkflow() {
                 />
               </div>
             </Section>
+
+            {/* v2 新增：Step 4 顶部历史日期面板（管理该学科所有日期） */}
+            <div className="mt-6">
+              <HistoryDatePanel
+                sheetName={collection.sheetName}
+                onChange={() => {
+                  // 删除/重做后不需要强制刷新 workflow（panel 内部已 reload）
+                }}
+              />
+            </div>
 
             {/* Step 4：学生选择 + 导出 */}
             <div className="mt-8">

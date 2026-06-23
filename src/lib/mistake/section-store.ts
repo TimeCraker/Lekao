@@ -122,3 +122,54 @@ export async function deleteSection(
   const id = `${sheetName}:${studentName}:${date}`;
   await db.delete(SECTION_STORE, id);
 }
+
+/**
+ * v2 新增：加载所有 sections（用于历史管理/跨设备导入）
+ *
+ * 可选 filter：
+ * - sheetName：按学科过滤
+ * - date：按日期过滤
+ *
+ * 不传 filter 返回全部。返回按 date 升序。
+ */
+export async function loadAllSections(
+  filter?: { sheetName?: string; date?: string },
+): Promise<SavedSection[]> {
+  const db = await getDB();
+  const all = await db.getAll(SECTION_STORE);
+  const filtered = !filter
+    ? all
+    : all.filter(
+        (s) =>
+          (!filter.sheetName || s.sheetName === filter.sheetName) &&
+          (!filter.date || s.date === filter.date),
+      );
+  return filtered.sort((a, b) => a.date.localeCompare(b.date));
+}
+
+/**
+ * v2 新增：删除某学科某日期的所有 section（按日期批量删）
+ * 返回删除的条数。
+ */
+export async function deleteSectionByDate(
+  sheetName: string,
+  date: string,
+): Promise<number> {
+  const all = await loadAllSections({ sheetName, date });
+  if (all.length === 0) return 0;
+  const db = await getDB();
+  const tx = db.transaction(SECTION_STORE, "readwrite");
+  for (const s of all) {
+    await tx.store.delete(s.id);
+  }
+  await tx.done;
+  return all.length;
+}
+
+/**
+ * v3 新增（阶段 3 预备）：清空所有 sections（管理页"清空历史"用）
+ */
+export async function clearAllSections(): Promise<void> {
+  const db = await getDB();
+  await db.clear(SECTION_STORE);
+}

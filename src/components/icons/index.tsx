@@ -350,6 +350,18 @@ export function TrashIcon(props: IconProps) {
   );
 }
 
+/** Refresh — 重做/刷新（错题集历史面板用）*/
+export function RefreshIcon(props: IconProps) {
+  return (
+    <svg {...baseProps} {...props}>
+      <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
+      <polyline points="21 3 21 8 16 8" />
+      <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
+      <polyline points="3 21 3 16 8 16" />
+    </svg>
+  );
+}
+
 /** QuestionMark — 使用说明/帮助 */
 export function HelpIcon(props: IconProps) {
   return (

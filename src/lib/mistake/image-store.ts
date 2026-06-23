@@ -112,6 +112,18 @@ export async function deleteImage(id: string): Promise<void> {
 }
 
 /**
+ * v2 新增：按 id 列表批量删除图片（事务，效率高）
+ * 删除某日期所有 section 时连带清其引用的图片。
+ */
+export async function deleteImages(ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
+  const db = await getDB();
+  const tx = db.transaction(STORE_NAME, "readwrite");
+  await Promise.all(ids.map((id) => tx.store.delete(id)));
+  await tx.done;
+}
+
+/**
  * 清空所有错题集图片（清理按钮）
  */
 export async function clearAllImages(): Promise<void> {
