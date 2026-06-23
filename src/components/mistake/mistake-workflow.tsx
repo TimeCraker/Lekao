@@ -47,6 +47,7 @@ import {
   DownloadIcon,
   LightbulbIcon,
   ArrowLeftIcon,
+  TrashIcon,
 } from "@/components/icons";
 import { ExcelUploader } from "./excel-uploader";
 import { SheetSelector } from "./sheet-selector";
@@ -77,6 +78,9 @@ export function MistakeWorkflow() {
 
   // v3 新增：日期 override（Excel 未识别或需要改时）
   const [dateOverride, setDateOverride] = useState<string>("");
+
+  // v4 新增：日期是否被用户主动确认过（用于显示 ⚠️ 提示）
+  const [dateConfirmed, setDateConfirmed] = useState<boolean>(false);
 
   // 槽位数据：key = `${qType}:${qNumber}`
   const [slots, setSlots] = useState<Record<string, QNumberSlot>>({});
@@ -235,6 +239,7 @@ export function MistakeWorkflow() {
     setCoverOverride(null);
     setHeaderScan(null);
     setDateOverride("");
+    setDateConfirmed(false);
     setStep("upload");
   }, [collection]);
 
@@ -244,12 +249,29 @@ export function MistakeWorkflow() {
     setCoverOverride(null);
     setHeaderScan(null);
     setDateOverride("");
+    setDateConfirmed(false);
     setStep("selectSheet");
   }, []);
 
   const backToConfirmCover = useCallback(() => {
+    setDateConfirmed(false);
     setStep("confirmCover");
   }, []);
+
+  // v4 新增：一键清空所有槽位（保留题号聚合）
+  const clearAllSlots = useCallback(() => {
+    if (!confirm(
+      "确定清空所有已填槽位？\n\n" +
+      "将清空：图片 + 文字 + 全对标记\n" +
+      "保留：题号聚合\n\n" +
+      "此操作不可撤销",
+    )) return;
+    if (collection) clearDraft(collection.sheetName + ":" + collection.date);
+    setSlots({});
+    if (collection) {
+      setStudentSelection(new Set(collection.students.map((s) => s.name)));
+    }
+  }, [collection]);
 
   // ===== v3 新增：fillSlots 页面重新映射列（用户手动改列对应）=====
   const [showMapping, setShowMapping] = useState(false);
@@ -351,14 +373,36 @@ export function MistakeWorkflow() {
               title={
                 <span className="flex items-center gap-2 flex-wrap">
                   <span>Step 3 · {finalCollection?.classroomName ?? collection.classroomName}</span>
-                  <span className="flex items-center gap-1">
+                  <span className="flex items-center gap-1.5">
                     <span className="text-xs text-ink-muted">日期</span>
                     <input
                       type="date"
                       value={dateOverride}
-                      onChange={(e) => setDateOverride(e.target.value)}
-                      className="text-sm px-2 py-0.5 rounded-md border border-hairline bg-white w-36 focus:outline-none focus:ring-1 focus:ring-accent/50"
+                      onChange={(e) => {
+                        const newDate = e.target.value;
+                        if (newDate !== dateOverride && newDate !== "" && collection) {
+                          // 日期变化 → 清空 slots + 草稿 + 重置学生选择
+                          clearDraft(collection.sheetName + ":" + collection.date);
+                          setSlots({});
+                          setStudentSelection(
+                            new Set(collection.students.map((s) => s.name)),
+                          );
+                        }
+                        setDateConfirmed(newDate !== (collection?.date ?? ""));
+                        setDateOverride(newDate);
+                      }}
+                      className="text-sm px-2.5 py-1 rounded-md border-2 border-warning bg-white w-40 focus:outline-none focus:ring-2 focus:ring-warning/50"
                     />
+                    {dateConfirmed ? (
+                      <span className="inline-flex items-center gap-1 text-xs text-success-text">
+                        <CheckIcon className="w-3 h-3" />
+                        已确认
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-warning-soft text-warning-text border border-warning/30">
+                        ⚠️ 请确认日期
+                      </span>
+                    )}
                   </span>
                   <span>· 全班 {summary.totalStudents} 人</span>
                 </span>
@@ -393,6 +437,20 @@ export function MistakeWorkflow() {
                   onApply={reparseMapping}
                 />
               )}
+
+              {/* v4 新增：清空所有槽位按钮（一键重置填图/文字/全对标记，保留题号聚合） */}
+              <div className="flex justify-end -mt-2 mb-2">
+                <button
+                  type="button"
+                  onClick={clearAllSlots}
+                  disabled={Object.keys(slots).length === 0}
+                  className="inline-flex items-center gap-1 text-xs px-3 py-1 rounded-md text-ink-muted hover:text-danger hover:bg-canvas-alt transition disabled:opacity-40 disabled:cursor-not-allowed"
+                  title="清空所有已填的题号图片+文字+全对标记，题号聚合保留"
+                >
+                  <TrashIcon className="w-3.5 h-3.5" />
+                  清空所有槽位
+                </button>
+              </div>
 
               {/* 两列：堂测 + 作业 */}
               <div className="grid lg:grid-cols-2 gap-6">

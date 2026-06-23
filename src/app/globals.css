@@ -29,6 +29,8 @@
   --success-text:  #047857;   /* green-700 · 5.94:1 vs white · Tag 文字 (WCAG AA) */
   --success-soft:  #d1fae5;   /* green-100 · Tag 背景 */
   --warning:       #f59e0b;   /* amber-500 */
+  --warning-text:  #b45309;   /* amber-700 · 5.21:1 vs white · warning chip 文字 (WCAG AA) */
+  --warning-soft:  #fef3c7;   /* amber-100 · warning chip 背景 */
   --danger:        #ef4444;   /* red-500 */
 
   /* ─── 暗色区域 ─── */
@@ -74,6 +76,8 @@
   --color-success-text:  var(--success-text);
   --color-success-soft:  var(--success-soft);
   --color-warning:       var(--warning);
+  --color-warning-text:  var(--warning-text);
+  --color-warning-soft:  var(--warning-soft);
   --color-danger:        var(--danger);
   --color-page-dark:     var(--page-dark);
   --color-surface-dark-1: var(--surface-dark-1);
