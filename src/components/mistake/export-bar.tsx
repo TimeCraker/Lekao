@@ -28,6 +28,7 @@ import {
   CheckIcon,
   DownloadIcon,
 } from "@/components/icons";
+import { writeHistoryJson } from "@/lib/mistake/history-io";
 
 export interface ExportBarProps {
   collection: MistakeCollection;
@@ -55,6 +56,8 @@ export function ExportBar({
     success: number;
     failed: number;
     errors: Array<{ student: string; reason: string }>;
+    /** v3 新增：history.json 是否同步成功（method + size）*/
+    historyWritten?: { method: "fs-access" | "download"; size: number };
   } | null>(null);
 
   // 启动时尝试恢复已授权目录
@@ -137,7 +140,19 @@ export function ExportBar({
         setProgress({ done: i + 1, total: docs.length });
       }
 
-      setResult({ success, failed, errors });
+      // v3 新增：整批导出完成后写 history.json（仅当至少 1 份成功）
+      let historyWritten: { method: "fs-access" | "download"; size: number } | undefined;
+      if (success > 0) {
+        try {
+          historyWritten = await writeHistoryJson(dirHandle);
+        } catch (e) {
+          console.warn(
+            "[history.json] 写入失败，不影响 docx 导出",
+            e instanceof Error ? e.message : e,
+          );
+        }
+      }
+      setResult({ success, failed, errors, historyWritten });
     } catch (e) {
       alert(`导出失败：${e instanceof Error ? e.message : "未知错误"}`);
     } finally {
@@ -199,7 +214,19 @@ export function ExportBar({
         setProgress({ done: i + 1, total: docs.length });
       }
 
-      setResult({ success, failed, errors });
+      // v3 新增：下载模式同样写 history.json（不传 dirHandle → 自动 file-saver 下载）
+      let historyWritten: { method: "fs-access" | "download"; size: number } | undefined;
+      if (success > 0) {
+        try {
+          historyWritten = await writeHistoryJson();
+        } catch (e) {
+          console.warn(
+            "[history.json] 写入失败，不影响 docx 下载",
+            e instanceof Error ? e.message : e,
+          );
+        }
+      }
+      setResult({ success, failed, errors, historyWritten });
     } catch (e) {
       alert(`下载失败：${e instanceof Error ? e.message : "未知错误"}`);
     } finally {
@@ -312,6 +339,14 @@ export function ExportBar({
           {result.failed === 0
             ? `成功导出 ${result.success} 份 docx`
             : `${result.success} 成功 · ${result.failed} 失败`}
+          {/* v3 新增：history.json 同步状态 */}
+          {result.historyWritten && (
+            <div className="mt-2 text-xs text-success-text flex items-center gap-1">
+              <CheckIcon className="w-3 h-3" />
+              history.json 已同步（{(result.historyWritten.size / 1024).toFixed(1)} KB
+              · {result.historyWritten.method === "fs-access" ? "本地文件夹" : "浏览器下载"}）
+            </div>
+          )}
           {result.errors.length > 0 && (
             <details className="mt-2">
               <summary className="cursor-pointer text-xs">
