@@ -77,8 +77,10 @@ export interface GenerateArgs {
  *
  * 累积逻辑：
  * 1. 先读 IndexedDB 历史 sections（同 sheetName + studentName）
- * 2. 检查今日日期是否已存在 → 跳过（覆盖会丢用户手工编辑）
- * 3. 把今日 section 加入历史
+ * 2. 检查今日日期是否已存在 → 自动覆盖（v4.3 改：旧版 throw 阻止，
+ *    但用户可能已在本地删了 docx 想重导 → 强制阻止是糟糕 UX。
+ *    docx 文件是否还在本地由用户自己负责）
+ * 3. 把今日 section 加入/替换历史（同日期只保留一份）
  * 4. 用 docx 库按时间顺序拼所有 sections → 一个完整 docx
  *
  * 文档结构：
@@ -101,10 +103,16 @@ export async function generateStudentDocx(args: GenerateArgs): Promise<Blob> {
     ? await loadSections(sheetName, studentName)
     : [];
 
-  // 2. 检查今日是否已存在
-  if (cumulative && historySections.some((s) => s.date === date)) {
-    throw new Error(
-      `${date} 的 section 已存在。如需覆盖，请删除后重新导出。`,
+  // 2. 检查今日是否已存在 → 改为「自动覆盖」（不 throw）
+  // 旧版强制 throw 阻止导出，但用户可能已经在本地删了 docx 文件想重新生成，
+  // 此时强制阻止是糟糕的 UX。docx 文件是否在本地由用户自己负责。
+  // 累积 docx 里同日期只保留一份（见下方 historySections 更新逻辑）。
+  const existingIndex = cumulative
+    ? historySections.findIndex((s) => s.date === date)
+    : -1;
+  if (existingIndex >= 0) {
+    console.info(
+      `[docx] ${sheetName} · ${studentName} · ${date} section 已存在，自动覆盖`,
     );
   }
 
@@ -126,9 +134,17 @@ export async function generateStudentDocx(args: GenerateArgs): Promise<Blob> {
     createdAt: Date.now(),
   };
   await saveSection(newSection);
-  historySections = [...historySections, newSection].sort((a, b) =>
-    a.date.localeCompare(b.date),
-  );
+  // 同日期 section 替换（不重复 push），然后按日期排序
+  if (existingIndex >= 0) {
+    historySections = [
+      ...historySections.slice(0, existingIndex),
+      newSection,
+      ...historySections.slice(existingIndex + 1),
+    ];
+  } else {
+    historySections = [...historySections, newSection];
+  }
+  historySections.sort((a, b) => a.date.localeCompare(b.date));
 
   // 4. 加载所有图片到内存 + 测真实宽高（docx ImageRun 不能 height:0）
   // 支持多图：每张图独立 record，遍历 getImageIds() 加载所有
