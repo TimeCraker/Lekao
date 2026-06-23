@@ -140,11 +140,11 @@ export function ExportBar({
         setProgress({ done: i + 1, total: docs.length });
       }
 
-      // v3 新增：整批导出完成后写 history.json（仅当至少 1 份成功）
+      // v4.4 改：写 history.json 到学科子目录（跟 docx 同级）而不是用户最外层目录
       let historyWritten: { method: "fs-access" | "download"; size: number } | undefined;
       if (success > 0) {
         try {
-          historyWritten = await writeHistoryJson(dirHandle);
+          historyWritten = await writeHistoryJson(dirHandle, subjectDir);
         } catch (e) {
           console.warn(
             "[history.json] 写入失败，不影响 docx 导出",
@@ -283,6 +283,8 @@ export function ExportBar({
       {/* 输出路径预览 */}
       <div className="text-xs text-ink-subtle font-mono">
         输出路径：{dirHandle ? `${dirHandle.name}/${collection.sheetName}/{学生姓名}.docx` : "授权后显示"}
+        <br />
+        <span className="text-ink-mute">history.json → 同目录（跟 docx 并列）</span>
       </div>
 
       {/* 导出按钮 */}

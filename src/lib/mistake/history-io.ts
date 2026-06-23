@@ -104,20 +104,29 @@ export async function importHistoryFromJson(
 /**
  * 写入 history.json 到指定目录或触发下载
  *
- * @param dirHandle FS Access API 目录句柄（不传则走 file-saver 下载）
+ * v4.4 改：默认写到学科子目录（跟 docx 平级），而不是用户最外层文件夹
+ * - 用户反馈："应该放到对应生成word文档的文件夹里面和word文档并列"
+ * - 调用方传 subjectDir（学科子目录句柄）即可
+ * - 不传 subjectDir 走 fallback：写最外层 dirHandle（兼容旧调用路径）
+ *
+ * @param dirHandle FS Access API 根目录句柄（不传则走 file-saver 下载）
+ * @param subjectDir 学科子目录句柄（跟 docx 同级，**优先**写到这）
  * @returns { method: "fs-access" | "download", size } 写入方式 + 字节数
  */
 export async function writeHistoryJson(
   dirHandle?: FileSystemDirectoryHandle,
+  subjectDir?: FileSystemDirectoryHandle,
 ): Promise<{ method: "fs-access" | "download"; size: number }> {
   const history = await exportHistoryToJson();
   const json = JSON.stringify(history, null, 2);
   const blob = new Blob([json], { type: "application/json" });
   const size = blob.size;
 
-  if (dirHandle) {
+  // 优先：学科子目录（跟 docx 同级），fallback：用户最外层目录
+  const targetDir = subjectDir ?? dirHandle;
+  if (targetDir) {
     try {
-      await writeFile(dirHandle, HISTORY_JSON_FILENAME, blob);
+      await writeFile(targetDir, HISTORY_JSON_FILENAME, blob);
       return { method: "fs-access", size };
     } catch (e) {
       console.warn(
