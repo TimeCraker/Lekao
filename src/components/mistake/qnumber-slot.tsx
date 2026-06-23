@@ -64,13 +64,20 @@ export function QNumberSlot({
     },
   );
   // ⭐ 防御性修复：当父组件更新 slots[key] 引用时（外部状态恢复 / 草稿重载 / layout 意外 remount），
-  // 同步到内部 state，避免"前面图片被挤掉"。仅在 initialSlot 引用变化时触发。
+  // 同步到内部 state，避免"前面图片被挤掉"。
+  // 同时：当 initialSlot 变 undefined（如父组件 clearAllSlots 把整个 slots 清空），
+  // 必须重置为 empty，否则 textarea 文本 + 图片会残留。
   useEffect(() => {
-    if (initialSlot) {
-      setSlot(initialSlot);
-    }
+    setSlot(
+      initialSlot ?? {
+        qNumber,
+        qType,
+        textContent: "",
+        isMarkedAllCorrect: false,
+      },
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialSlot]);
+  }, [initialSlot, qNumber, qType]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [pasteHint, setPasteHint] = useState(false);
   const [uploading, setUploading] = useState(false);

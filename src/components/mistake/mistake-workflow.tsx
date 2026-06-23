@@ -32,6 +32,7 @@ import {
   loadDraft,
   saveDraft,
   slotKey,
+  deleteImages,
 } from "@/lib/mistake/image-store";
 import { isFileSystemAccessSupported } from "@/lib/mistake/fs-access";
 import type {
@@ -39,6 +40,7 @@ import type {
   MistakeStep,
   QNumberSlot,
 } from "@/lib/mistake/types";
+import { getImageIds } from "@/lib/mistake/types";
 import {
   CheckIcon,
   EyeIcon,
@@ -260,6 +262,7 @@ export function MistakeWorkflow() {
   }, []);
 
   // v4 新增：一键清空所有槽位（保留题号聚合）
+  // 修复（v4.1）：同步清理 IndexedDB 里的孤儿图片 + 触发 QNumberSlot 子组件重置
   const clearAllSlots = useCallback(() => {
     if (!confirm(
       "确定清空所有已填槽位？\n\n" +
@@ -267,12 +270,26 @@ export function MistakeWorkflow() {
       "保留：题号聚合\n\n" +
       "此操作不可撤销",
     )) return;
-    if (collection) clearDraft(collection.sheetName + ":" + collection.date);
-    setSlots({});
-    if (collection) {
-      setStudentSelection(new Set(collection.students.map((s) => s.name)));
+    if (!collection) return;
+
+    // 1) 收集所有图片 id 一次性从 IndexedDB 删掉（避免累积孤儿 Blob）
+    const allImageIds: string[] = [];
+    for (const slot of Object.values(slots)) {
+      allImageIds.push(...getImageIds(slot));
     }
-  }, [collection]);
+    if (allImageIds.length) {
+      void deleteImages(allImageIds);
+    }
+
+    // 2) 清掉草稿
+    clearDraft(collection.sheetName + ":" + collection.date);
+
+    // 3) 清空 slots 状态（子组件 QNumberSlot 收到 initialSlot=undefined 会自动重置）
+    setSlots({});
+
+    // 4) 重置学生全选
+    setStudentSelection(new Set(collection.students.map((s) => s.name)));
+  }, [collection, slots]);
 
   // ===== v3 新增：fillSlots 页面重新映射列（用户手动改列对应）=====
   const [showMapping, setShowMapping] = useState(false);
