@@ -262,7 +262,9 @@ export function MistakeWorkflow() {
   }, []);
 
   // v4 新增：一键清空所有槽位（保留题号聚合）
-  // 修复（v4.1）：同步清理 IndexedDB 里的孤儿图片 + 触发 QNumberSlot 子组件重置
+  // 修复（v4.2）：遍历所有 key 显式置空字段（不删 key！），让 QNumberSlot 子组件
+  // 通过 initialSlot 引用变化触发 useEffect 同步清空 textarea + 图片。
+  // 旧版用 setSlots({}) 删 key → 子组件 initialSlot=undefined 不一定触发同步。
   const clearAllSlots = useCallback(() => {
     if (!confirm(
       "确定清空所有已填槽位？\n\n" +
@@ -284,8 +286,20 @@ export function MistakeWorkflow() {
     // 2) 清掉草稿
     clearDraft(collection.sheetName + ":" + collection.date);
 
-    // 3) 清空 slots 状态（子组件 QNumberSlot 收到 initialSlot=undefined 会自动重置）
-    setSlots({});
+    // 3) 关键：遍历所有 key 显式置空字段（保留 key，让子组件 useEffect 同步）
+    const emptied: Record<string, QNumberSlot> = {};
+    for (const [key, slot] of Object.entries(slots)) {
+      emptied[key] = {
+        qType: slot.qType,
+        qNumber: slot.qNumber,
+        textContent: "",
+        isMarkedAllCorrect: false,
+        imageBlobId: "",
+        imageBlobIds: [],
+        imagePreviewUrls: [],
+      };
+    }
+    setSlots(emptied);
 
     // 4) 重置学生全选
     setStudentSelection(new Set(collection.students.map((s) => s.name)));
@@ -461,8 +475,7 @@ export function MistakeWorkflow() {
                 <button
                   type="button"
                   onClick={clearAllSlots}
-                  disabled={Object.keys(slots).length === 0}
-                  className="inline-flex items-center gap-1 text-xs px-3 py-1 rounded-md text-ink-muted hover:text-danger hover:bg-canvas-alt transition disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="inline-flex items-center gap-1 text-xs px-3 py-1 rounded-md text-ink-muted hover:text-danger hover:bg-canvas-alt transition"
                   title="清空所有已填的题号图片+文字+全对标记，题号聚合保留"
                 >
                   <TrashIcon className="w-3.5 h-3.5" />
