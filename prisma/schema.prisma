@@ -180,3 +180,59 @@ model AuditLog {
   @@index([action, createdAt])
   @@map("audit_log")
 }
+
+// ============================================
+// v2.2.0 · 灵感墙（用户共建功能）
+// ============================================
+
+// 灵感墙主表 — 用户提的功能想法
+model LekaoIdea {
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String    @map("user_id")
+  userEmail   String    @map("user_email")        // 冗余存，避免每次 join users
+  title       String    @db.VarChar(50)
+  description String    @db.VarChar(500)
+  status      String    @default("open") @db.VarChar(20)  // 'open' | 'planned' | 'done'
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  likes    LekaoIdeaLike[]
+  comments LekaoIdeaComment[]
+
+  @@index([userId])
+  @@index([createdAt(sort: Desc)])
+  @@index([status])
+  @@map("lekao_ideas")
+}
+
+// 灵感点赞表 — 联合主键天然防重复
+model LekaoIdeaLike {
+  ideaId    String   @map("idea_id") @db.Uuid
+  userId    String   @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  idea LekaoIdea @relation(fields: [ideaId], references: [id], onDelete: Cascade)
+
+  @@id([ideaId, userId])           // 联合主键天然防重复点赞
+  @@index([userId])
+  @@map("lekao_idea_likes")
+}
+
+// 灵感评论表 — 每用户对每个灵感最多 1 条活跃评论（决策 #10）
+// 用 partial unique index (migration 手写) 配合 status='visible' 实现"删了 = 永久禁"
+model LekaoIdeaComment {
+  id        String   @id @default(uuid()) @db.Uuid
+  ideaId    String   @map("idea_id") @db.Uuid
+  userId    String   @map("user_id")
+  userEmail String   @map("user_email")
+  content   String   @db.VarChar(200)
+  status    String   @default("visible") @db.VarChar(20)  // 'visible' | 'hidden' | 'banned'
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  idea LekaoIdea @relation(fields: [ideaId], references: [id], onDelete: Cascade)
+
+  @@index([ideaId, userId])        // API 查询用
+  @@index([ideaId, createdAt])
+  @@index([status])
+  @@map("lekao_idea_comments")
+}

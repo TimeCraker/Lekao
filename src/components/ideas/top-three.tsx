@@ -1,0 +1,74 @@
+// ============================================
+// Lekao · 灵感墙 · TOP 3 排行榜组件 (v2.2.0)
+// ============================================
+// 横排 3 卡（移动端竖排）+ 🥇🥈🥉 emoji + 点赞数 + 评论数 + 邮箱
+// 只展示 status='open' 中的 top 3（排除 planned/done）
+
+"use client";
+
+import { motion } from "motion/react";
+
+export interface TopThreeItem {
+  id: string;
+  title: string;
+  description: string;
+  userEmail: string;
+  likeCount: number;
+  commentCount: number;
+}
+
+interface TopThreeProps {
+  items: TopThreeItem[];
+}
+
+const MEDAL = ["🥇", "🥈", "🥉"];
+const CARD_BG = [
+  "bg-gradient-to-br from-warning-soft/60 to-warning-soft/20 border-warning/30",
+  "bg-gradient-to-br from-canvas-alt to-white border-hairline",
+  "bg-gradient-to-br from-warning-soft/30 to-canvas-alt border-warning/20",
+];
+
+export function TopThree({ items }: TopThreeProps) {
+  if (items.length === 0) return null;
+
+  return (
+    <section className="mb-8">
+      <h2 className="text-sm font-medium text-ink-subtle uppercase tracking-wider mb-4 px-1">
+        🏆 大家最想要的 TOP 3
+      </h2>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {items.map((item, i) => (
+          <motion.article
+            key={item.id}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{
+              delay: 0.05 + i * 0.08,
+              type: "spring",
+              stiffness: 280,
+              damping: 24,
+            }}
+            className={`relative rounded-2xl border-2 p-5 transition-all hover:shadow-md ${CARD_BG[i]}`}
+          >
+            <div className="text-3xl mb-2">{MEDAL[i]}</div>
+            <h3 className="text-base font-semibold text-ink mb-2 line-clamp-2 leading-snug">
+              {item.title}
+            </h3>
+            <p className="text-sm text-ink-muted line-clamp-3 mb-3 leading-relaxed">
+              {item.description}
+            </p>
+            <div className="flex items-center justify-between pt-3 border-t border-hairline/60 text-xs text-ink-muted">
+              <span className="truncate max-w-[60%]" title={item.userEmail}>
+                {item.userEmail}
+              </span>
+              <span className="inline-flex items-center gap-2 shrink-0">
+                <span>👍 {item.likeCount}</span>
+                <span>💬 {item.commentCount}</span>
+              </span>
+            </div>
+          </motion.article>
+        ))}
+      </div>
+    </section>
+  );
+}

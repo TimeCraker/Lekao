@@ -481,3 +481,42 @@ export function ShieldIcon(props: IconProps) {
     </svg>
   );
 }
+
+/** Thumbs up — 点赞 */
+export function ThumbsUpIcon(props: IconProps) {
+  return (
+    <svg {...baseProps} {...props}>
+      <path d="M7 10v11" />
+      <path d="M3 10h4v11H3z" />
+      <path d="M7 10l4-7c1.5 0 2.5 1 2.5 2.5V10h5.5a2 2 0 0 1 2 2.3l-1.5 7a2 2 0 0 1-2 1.7H7" />
+    </svg>
+  );
+}
+
+/** Message circle — 评论 */
+export function CommentIcon(props: IconProps) {
+  return (
+    <svg {...baseProps} {...props}>
+      <path d="M21 12a9 9 0 0 1-12 8.4L3 21l1-5A9 9 0 1 1 21 12z" />
+    </svg>
+  );
+}
+
+/** X — 关闭 */
+export function XIcon(props: IconProps) {
+  return (
+    <svg {...baseProps} {...props}>
+      <path d="M6 6l12 12" />
+      <path d="M18 6L6 18" />
+    </svg>
+  );
+}
+
+/** ChevronDown — 展开 */
+export function ChevronDownIcon(props: IconProps) {
+  return (
+    <svg {...baseProps} {...props}>
+      <path d="M6 9l6 6 6-6" />
+    </svg>
+  );
+}

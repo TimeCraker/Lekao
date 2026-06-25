@@ -16,6 +16,7 @@ import {
   ProfileIcon,
   ChevronRightIcon,
   ClockIcon,
+  LightbulbIcon,
 } from "@/components/icons";
 
 const NAV_ITEMS = [
@@ -24,6 +25,7 @@ const NAV_ITEMS = [
   { href: "/dashboard/summary", label: "课堂小结", Icon: SummaryIcon },
   { href: "/dashboard/feedback", label: "作业/堂测反馈", Icon: FeedbackIcon },
   { href: "/dashboard/history", label: "生成历史", Icon: ClockIcon },
+  { href: "/dashboard/ideas", label: "灵感墙", Icon: LightbulbIcon },
 ];
 
 const STORAGE_KEY = "lekao-sidebar-collapsed";
