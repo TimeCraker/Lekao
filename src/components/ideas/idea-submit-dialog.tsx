@@ -10,7 +10,7 @@ import { useState, useEffect, useEffectEvent } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { PressableButton } from "@/components/ui/pressable-button";
 import { SuccessBurst } from "@/components/ui/success-burst";
-import { XIcon, LightbulbIcon, SparklesIcon } from "@/components/icons";
+import { XIcon, LightbulbIcon, SparklesIcon, EditIcon } from "@/components/icons";
 import { findSensitiveWords } from "@/lib/sensitive-words";
 
 interface SubmitDialogProps {
@@ -188,9 +188,15 @@ export function IdeaSubmitDialog({ open, onClose, onSuccess }: SubmitDialogProps
               </div>
 
               {/* 提示 + 错误 */}
-              <div className="text-xs text-ink-subtle bg-canvas-alt/50 rounded-lg px-3 py-2 space-y-0.5">
-                <div>💡 每人每天只能提 1 条</div>
-                <div>📝 标题当天不能重复</div>
+              <div className="text-xs text-ink-subtle bg-canvas-alt/50 rounded-lg px-3 py-2 space-y-1">
+                <div className="flex items-center gap-1.5">
+                  <LightbulbIcon className="w-3.5 h-3.5 text-accent-text/70" />
+                  <span>每人每天只能提 1 条</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <EditIcon className="w-3.5 h-3.5 text-accent-text/70" />
+                  <span>标题当天不能重复</span>
+                </div>
               </div>
               {error && (
                 <div className="text-sm text-danger bg-danger/5 border border-danger/20 rounded-lg px-3 py-2">
