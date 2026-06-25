@@ -4,6 +4,52 @@
 
 ---
 
+## [2.2.0] - 2026-06-25 · 灵感墙
+
+**用户共建功能上线：助教们可以提新功能建议、点赞、评论，参与产品方向。**
+
+### ✨ 灵感墙前台 (`/dashboard/ideas`)
+
+- 提交灵感：标题 50 字 + 描述 500 字，每人每天 1 条，敏感词实时提示
+- 点赞 + 评论：每用户对每灵感最多 1 可见评论（删 = 永久禁，DB partial unique index 强制）
+- 排行榜：TOP 3 横排（移动端竖排），按点赞数 + 时间排序
+- 3 段筛选：全部 / 我提的 / 我赞过的 + 排序（热度 / 最新）+ 搜索
+- 状态机：open → planned → done（admin 推进）
+
+### 🔒 Admin 后台 (`/admin/ideas` + `/admin/ideas/comments`)
+
+- 灵感列表：状态过滤 + 搜索 + 一键状态切换 + 删除（带审计）
+- 评论管理：按灵感 + 状态过滤 + 软删（保留 banned 状态）
+- admin sidebar 灵感墙管理可展开子菜单（chevron 旋转动画）
+- 所有 admin 操作写 `audit_log`（action: idea_status_change / idea_delete / idea_comment_delete）
+
+### 🛠 技术细节
+
+- 3 张新表：`lekao_ideas` / `lekao_idea_likes` / `lekao_idea_comments`
+- PostgreSQL partial unique index：`WHERE status='visible'` 强制决策 #10（DB 层兜底）
+- 30+ 敏感词分类：政治 / 色情 / 暴力 / 严重侮辱 / 广告引流
+- UTC+8 时区感知的「每天 1 条」限频
+- 乐观更新 like（先改 UI 再同步服务端）
+- 评论懒加载 + 失败保留表单值
+
+### 📱 移动端响应式
+
+- 容器 `px-4 md:px-12`
+- TOP 3 移动端竖排
+- 提交弹窗移动端全屏
+- 评论输入区 `fixed bottom` + `env(safe-area-inset-bottom)` 兼容 iPhone safe area
+- admin 卡片移动端操作栏下沉 + 元信息 flex-wrap
+
+### 📦 Commits
+
+```
+4ff16cf  feat(ideas): v2.2.0 #1 · 3 表 + 5 API + 页面 + TOP 3 + 评论 + 敏感词
+5c52055  feat(ideas): v2.2.0 #2 · admin 后台管理
+55d9403  feat(ideas): v2.2.0 #3 · 移动端响应式
+```
+
+---
+
 ## [2.0.0] - 2026-06-22 · 收尾稳定版
 
 **Lekao 第一个功能完整 + 安全加固 + 监控到位 + 品牌专业 + SEO 就绪 + 移动端可用 的稳定版本。**
