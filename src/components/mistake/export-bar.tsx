@@ -91,6 +91,19 @@ export function ExportBar({
   const exportToFolder = useCallback(async () => {
     if (!dirHandle || studentNames.length === 0) return;
 
+    // ⭐ 关键修复（Round 2026-06-25 · FSA user gesture bug）：
+    //   File System Access API 规定：getDirectoryHandle 必须在用户点击的
+    //   同步调用栈第一个 await 执行，否则 user gesture 失效 → NotAllowedError。
+    //   这里必须把 getOrCreateSubdir 放在任何 setState 之前，紧贴 user gesture。
+    //   报错文案参考：https://developer.mozilla.org/en-US/docs/Web/API/Window/showDirectoryPicker
+    let subjectDir: FileSystemDirectoryHandle;
+    try {
+      subjectDir = await getOrCreateSubdir(dirHandle, collection.sheetName);
+    } catch (e) {
+      alert(`导出失败：${e instanceof Error ? e.message : "未知错误"}`);
+      return;
+    }
+
     setExporting(true);
     setResult(null);
     setProgress({ done: 0, total: studentNames.length });
@@ -100,12 +113,6 @@ export function ExportBar({
     const errors: Array<{ student: string; reason: string }> = [];
 
     try {
-      // 创建学科子目录
-      const subjectDir = await getOrCreateSubdir(
-        dirHandle,
-        collection.sheetName,
-      );
-
       // 批量生成
       const docs = await generateBatchDocx(studentNames, {
         sheetName: collection.sheetName,
