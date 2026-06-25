@@ -520,3 +520,103 @@ export function ChevronDownIcon(props: IconProps) {
     </svg>
   );
 }
+
+/* ============================================
+ * v2.2.0 灵感墙专用图标（emoji 替换 · 高级 SVG）
+ * ============================================ */
+
+/** 火焰（热度） — 外焰 + 内焰 + 底座 */
+export function FlameIcon(props: IconProps) {
+  return (
+    <svg {...baseProps} {...props}>
+      <path d="M8.5 14a4 4 0 0 0 7 0c0-2-1.5-3-1.5-5 0-1.5 1-2.5 1-2.5s-4 0-5.5-4c0 0-1 4-3 6-1.4 1.4-2 2.6-2 4a4 4 0 0 0 4 1.5z" />
+      <path d="M12 19a3 3 0 0 1-3-3" opacity={0.5} />
+      <path d="M10.5 16.5c.5.5 1 1 1.5 1" opacity={0.6} />
+    </svg>
+  );
+}
+
+/** 奖杯（TOP 3 标题）— 杯身 + 把手 + 底座 */
+export function TrophyIcon(props: IconProps) {
+  return (
+    <svg {...baseProps} {...props}>
+      <path d="M7 4h10v4a5 5 0 0 1-10 0V4z" />
+      <path d="M7 5H4v2a3 3 0 0 0 3 3" />
+      <path d="M17 5h3v2a3 3 0 0 1-3 3" />
+      <path d="M9 21h6" />
+      <path d="M12 17v4" />
+      <path d="M8 14h8" />
+    </svg>
+  );
+}
+
+/** 奖牌（金银铜）— 圆形牌 + 飘带 + 数字 1/2/3 + color prop 控色 */
+export function MedalIcon({
+  rank,
+  ...props
+}: IconProps & { rank: 1 | 2 | 3 }) {
+  // 金/银/铜：fill 用更暖的"高级"色调
+  const palette = {
+    1: { ribbon: "#f59e0b", medal: "#fbbf24", shine: "#fef3c7" }, // 金
+    2: { ribbon: "#94a3b8", medal: "#cbd5e1", shine: "#f1f5f9" }, // 银
+    3: { ribbon: "#b45309", medal: "#d97706", shine: "#fed7aa" }, // 铜
+  }[rank];
+
+  return (
+    <svg viewBox="0 0 24 24" fill="none" {...props}>
+      {/* 飘带 */}
+      <path
+        d="M9 4h6l-1 4-2 2-2-2-1-4z"
+        fill={palette.ribbon}
+        stroke="currentColor"
+        strokeWidth={1}
+        strokeLinejoin="round"
+        opacity={0.9}
+      />
+      {/* 牌身 */}
+      <circle
+        cx="12"
+        cy="15"
+        r="6"
+        fill={palette.medal}
+        stroke="currentColor"
+        strokeWidth={1.2}
+      />
+      {/* 高光 */}
+      <circle cx="10" cy="13" r="1.5" fill={palette.shine} opacity={0.7} />
+      {/* 数字 */}
+      <text
+        x="12"
+        y="17.5"
+        textAnchor="middle"
+        fontSize="7"
+        fontWeight="700"
+        fill="white"
+        fontFamily="system-ui, sans-serif"
+      >
+        {rank}
+      </text>
+    </svg>
+  );
+}
+
+/** 闪光（提交按钮）— 4 角 + 中心 + 主光芒 */
+export function SparklesIcon(props: IconProps) {
+  return (
+    <svg {...baseProps} {...props}>
+      <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5z" />
+      <path d="M19 14l.7 2.3L22 17l-2.3.7L19 20l-.7-2.3L16 17l2.3-.7z" />
+      <path d="M5 16l.5 1.5L7 18l-1.5.5L5 20l-.5-1.5L3 18l1.5-.5z" />
+    </svg>
+  );
+}
+
+/** 纸飞机（发送）— 三角翼 + 路径 */
+export function SendIcon(props: IconProps) {
+  return (
+    <svg {...baseProps} {...props}>
+      <path d="M21 3L11 14" />
+      <path d="M21 3l-6.5 18-3.5-8-8-3.5z" />
+    </svg>
+  );
+}

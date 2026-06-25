@@ -5,7 +5,7 @@
 
 "use client";
 
-import { SearchIcon } from "@/components/icons";
+import { SearchIcon, FlameIcon, ClockIcon, ChevronDownIcon } from "@/components/icons";
 
 export type IdeaTab = "all" | "mine" | "loved";
 export type IdeaSort = "likes" | "latest";
@@ -67,15 +67,27 @@ export function IdeaSearchBar({
         />
       </div>
 
-      {/* 排序 */}
-      <select
-        value={sort}
-        onChange={(e) => onSortChange(e.target.value as IdeaSort)}
-        className="px-3 py-2 text-sm bg-white border border-hairline rounded-lg focus:outline-none focus:border-accent transition cursor-pointer"
-      >
-        <option value="likes">🔥 热度优先</option>
-        <option value="latest">🕒 最新发布</option>
-      </select>
+      {/* 排序（左侧 SVG 跟随 sort 状态切换） */}
+      <div className="relative shrink-0">
+        <div className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-accent-text">
+          {sort === "likes" ? (
+            <FlameIcon className="w-4 h-4" />
+          ) : (
+            <ClockIcon className="w-4 h-4" />
+          )}
+        </div>
+        <select
+          value={sort}
+          onChange={(e) => onSortChange(e.target.value as IdeaSort)}
+          className="pl-8 pr-8 py-2 text-sm bg-white border border-hairline rounded-lg focus:outline-none focus:border-accent transition cursor-pointer appearance-none"
+        >
+          <option value="likes">热度优先</option>
+          <option value="latest">最新发布</option>
+        </select>
+        <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-ink-subtle">
+          <ChevronDownIcon className="w-3.5 h-3.5" />
+        </div>
+      </div>
 
       {/* 计数 */}
       <span className="hidden sm:inline text-xs text-ink-subtle whitespace-nowrap">

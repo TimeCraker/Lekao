@@ -10,7 +10,7 @@ import { useState, useEffect, useEffectEvent } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { PressableButton } from "@/components/ui/pressable-button";
 import { SuccessBurst } from "@/components/ui/success-burst";
-import { XIcon, LightbulbIcon } from "@/components/icons";
+import { XIcon, LightbulbIcon, SparklesIcon } from "@/components/icons";
 import { findSensitiveWords } from "@/lib/sensitive-words";
 
 interface SubmitDialogProps {
@@ -214,7 +214,8 @@ export function IdeaSubmitDialog({ open, onClose, onSuccess }: SubmitDialogProps
                   disabled={!canSubmit}
                   onClick={handleSubmit}
                 >
-                  ✨ 提交
+                  <SparklesIcon className="w-4 h-4" />
+                  提交
                 </PressableButton>
               </div>
             </div>

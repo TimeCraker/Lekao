@@ -11,7 +11,7 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { PressableButton } from "@/components/ui/pressable-button";
 import { SuccessBurst } from "@/components/ui/success-burst";
-import { TrashIcon, XIcon, ChevronDownIcon } from "@/components/icons";
+import { TrashIcon, XIcon, CommentIcon, SendIcon } from "@/components/icons";
 import { findSensitiveWords } from "@/lib/sensitive-words";
 
 export interface IdeaComment {
@@ -138,8 +138,9 @@ export function IdeaComments({
   return (
     <div className="border-t border-hairline pt-3 mt-3">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-sm font-medium text-ink-muted">
-          💬 {comments.length} 条评论
+        <span className="text-sm font-medium text-ink-muted inline-flex items-center gap-1.5">
+          <CommentIcon className="w-4 h-4" />
+          {comments.length} 条评论
         </span>
         {onClose && (
           <button
@@ -245,7 +246,8 @@ export function IdeaComments({
               loading={submitting}
               disabled={!content.trim() || sensitiveHits.length > 0}
             >
-              📤 发送
+              <SendIcon className="w-3.5 h-3.5" />
+              发送
             </PressableButton>
           </div>
         </form>
