@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
+import { motion, AnimatePresence } from "motion/react";
 import {
   DashboardIcon,
   ProfileIcon,
@@ -10,6 +12,8 @@ import {
   AdminIcon,
   HistoryIcon,
   ShieldIcon,
+  LightbulbIcon,
+  ChevronDownIcon,
 } from "@/components/icons";
 
 const NAV_ITEMS = [
@@ -22,12 +26,27 @@ const NAV_ITEMS = [
   { href: "/admin/settings", label: "系统设置", Icon: AdminIcon },
 ];
 
+const IDEAS_SUB_ITEMS = [
+  { href: "/admin/ideas", label: "灵感列表" },
+  { href: "/admin/ideas/comments", label: "评论管理" },
+];
+
 export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const [ideasOpen, setIdeasOpen] = useState(false);
+
+  // 当前在灵感墙任一子项时，自动展开
+  useEffect(() => {
+    if (pathname.startsWith("/admin/ideas")) {
+      setIdeasOpen(true);
+    }
+  }, [pathname]);
+
+  const isIdeasActive = pathname.startsWith("/admin/ideas");
 
   return (
     <div className="min-h-screen bg-canvas-alt flex">
@@ -42,7 +61,7 @@ export default function AdminLayout({
           </Link>
         </div>
 
-        <nav className="flex-1 p-3 space-y-1">
+        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
           {NAV_ITEMS.map(({ href, label, Icon }) => {
             const isActive = pathname === href;
             return (
@@ -60,6 +79,59 @@ export default function AdminLayout({
               </Link>
             );
           })}
+
+          {/* 灵感墙管理（可展开） */}
+          <div className="pt-1">
+            <button
+              type="button"
+              onClick={() => setIdeasOpen((v) => !v)}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
+                isIdeasActive
+                  ? "bg-accent-soft text-accent-text"
+                  : "text-ink-muted hover:text-ink hover:bg-canvas-alt"
+              }`}
+            >
+              <LightbulbIcon className="w-5 h-5" />
+              <span className="flex-1 text-left">灵感墙管理</span>
+              <motion.span
+                animate={{ rotate: ideasOpen ? 180 : 0 }}
+                transition={{ duration: 0.18 }}
+                className="shrink-0"
+              >
+                <ChevronDownIcon className="w-3.5 h-3.5" />
+              </motion.span>
+            </button>
+            <AnimatePresence initial={false}>
+              {ideasOpen && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.18 }}
+                  className="overflow-hidden"
+                >
+                  <div className="mt-1 ml-3 pl-3 border-l border-hairline space-y-0.5">
+                    {IDEAS_SUB_ITEMS.map(({ href, label }) => {
+                      const isActive = pathname === href;
+                      return (
+                        <Link
+                          key={href}
+                          href={href}
+                          className={`block px-3 py-1.5 rounded-md text-xs transition ${
+                            isActive
+                              ? "bg-accent-soft text-accent-text font-medium"
+                              : "text-ink-muted hover:text-ink hover:bg-canvas-alt"
+                          }`}
+                        >
+                          {label}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </nav>
 
         <div className="p-3 border-t border-hairline">
@@ -91,6 +163,28 @@ export default function AdminLayout({
             </Link>
           );
         })}
+        {/* Mobile: 灵感墙两项平铺 */}
+        <Link
+          href="/admin/ideas"
+          className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+            pathname === "/admin/ideas"
+              ? "bg-accent-soft text-accent-text"
+              : "text-ink-muted hover:text-ink"
+          }`}
+        >
+          <LightbulbIcon className="w-4 h-4" />
+          灵感列表
+        </Link>
+        <Link
+          href="/admin/ideas/comments"
+          className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+            pathname === "/admin/ideas/comments"
+              ? "bg-accent-soft text-accent-text"
+              : "text-ink-muted hover:text-ink"
+          }`}
+        >
+          评论管理
+        </Link>
       </div>
 
       {/* Content */}
