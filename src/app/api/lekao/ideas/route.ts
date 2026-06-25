@@ -1,7 +1,7 @@
 // ============================================
 // Lekao · 灵感墙 API · GET 列表 + POST 提交 (v2.2.0)
 // ============================================
-// 安全：banned 拦截 + 敏感词 + 每日 1 次 + 重复标题 + 长度校验
+// 安全：banned 拦截 + IP 限频 + 敏感词 + 每日 1 次 + 重复标题 + 长度校验
 // GET 支持：tab (all/mine/liked) + q (搜索) + sort (likes/latest) + limit
 
 import { NextRequest, NextResponse } from "next/server";
@@ -18,6 +18,83 @@ const TITLE_MAX = 50;
 const DESCRIPTION_MAX = 500;
 const LIMIT_MAX = 100;
 const LIMIT_DEFAULT = 50;
+
+// ============================================
+// ⭐ IP 限频（2026-06-25 · 防刷提交灵感）
+// stage spec T2: 沿用 send-code 模式（60s 1 次 + 1 分钟 5 次）
+// 安全：x-real-ip 唯一源 + LRU 10k + anon hash
+// 单实例 in-memory 够用（lekao 单进程），多实例时再换 Redis
+// ============================================
+const IP_COOLDOWN_MS = 60 * 1000;
+const IP_WINDOW_MS = 60 * 1000;
+const IP_WINDOW_MAX = 5;
+const IP_STORE_MAX_KEYS = 10_000;
+const ipRateStore = new Map<string, number[]>();
+const ipAccessOrder = new Map<string, number>();
+
+function getClientIp(req: Request): string {
+  // ⭐ 安全：只信 nginx 设的 X-Real-IP（= $remote_addr, 攻击者改不动）
+  // 不要读 X-Forwarded-For：攻击者可注入首段伪造 IP 绕过限频
+  const realIp = req.headers.get("x-real-ip")?.trim();
+  if (realIp) return realIp;
+  // 缺失 header 视为配置错误（不应该发生, nginx 一定会设）
+  // 用 anon + IP 子网 hash 避免所有无头客户端共享一个 key
+  const xff = req.headers.get("x-forwarded-for");
+  const fallback = xff?.split(",").pop()?.trim();
+  if (fallback) return `xff_${fallback}`;
+  return `_anon_${Date.now() % 1000}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function checkIpRateLimit(
+  ip: string,
+): { ok: true } | { ok: false; retryAfter: number } {
+  const now = Date.now();
+
+  // ⭐ LRU 淘汰：超 10k keys 时清空最老 20%
+  if (ipRateStore.size > IP_STORE_MAX_KEYS) {
+    const entries = Array.from(ipAccessOrder.entries()).sort(
+      (a, b) => a[1] - b[1],
+    );
+    const evictCount = Math.floor(IP_STORE_MAX_KEYS * 0.2);
+    for (let i = 0; i < evictCount; i++) {
+      const k = entries[i]?.[0];
+      if (k) {
+        ipRateStore.delete(k);
+        ipAccessOrder.delete(k);
+      }
+    }
+  }
+
+  const timestamps = (ipRateStore.get(ip) || []).filter(
+    (t) => now - t < IP_WINDOW_MS,
+  );
+  ipAccessOrder.set(ip, now);
+
+  // 60s 内已发过 → 拒绝
+  if (timestamps.length > 0) {
+    const latest = Math.max(...timestamps);
+    const since = now - latest;
+    if (since < IP_COOLDOWN_MS) {
+      return {
+        ok: false,
+        retryAfter: Math.ceil((IP_COOLDOWN_MS - since) / 1000),
+      };
+    }
+  }
+
+  // 窗口内超 5 次 → 拒绝
+  if (timestamps.length >= IP_WINDOW_MAX) {
+    const oldest = Math.min(...timestamps);
+    return {
+      ok: false,
+      retryAfter: Math.ceil((oldest + IP_WINDOW_MS - now) / 1000),
+    };
+  }
+
+  timestamps.push(now);
+  ipRateStore.set(ip, timestamps);
+  return { ok: true };
+}
 
 /**
  * 判定 UTC+8 当日起始（北京时间当天 00:00:00 的 UTC 时间）
@@ -144,6 +221,22 @@ export async function GET(req: NextRequest) {
 // ============================================
 export async function POST(req: NextRequest) {
   try {
+    // 0. ⭐ IP 限频（最先做, 越早 reject 越省 DB）
+    const ip = getClientIp(req);
+    const ipCheck = checkIpRateLimit(ip);
+    if (!ipCheck.ok) {
+      console.warn(
+        `[lekao/ideas POST] IP 限频: ${ip} retryAfter=${ipCheck.retryAfter}s`,
+      );
+      return NextResponse.json(
+        { error: `请求过于频繁，请 ${ipCheck.retryAfter} 秒后再试` },
+        {
+          status: 429,
+          headers: { "Retry-After": String(ipCheck.retryAfter) },
+        },
+      );
+    }
+
     const session = await getServerSession(authOptions);
     if (!session?.user?.id || !session.user.email) {
       return NextResponse.json({ error: "未登录" }, { status: 401 });

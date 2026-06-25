@@ -420,15 +420,13 @@ model LekaoClassSummary {
   userId          String
   subject         String    // 学科：数学 / 物理 / 化学
   topic           String    // 精准提炼的专题名称
-  templateId      String?   // 使用的模板 ID
-  inputImages     String[]  // 输入图片 URL（COS）
   feedbackText    String    @db.Text  // 10 条建议
   summaryText     String    @db.Text  // 总体小结
   tCoinUsed       Int       @default(1)
   createdAt       DateTime  @default(now())
-  
+
   user            User      @relation(fields: [userId], references: [id])
-  
+
   @@index([userId, createdAt])
   @@map("lekao_class_summaries")
 }
@@ -439,13 +437,11 @@ model LekaoClassFeedback {
   userId          String
   subject         String
   topic           String
-  templateId      String?
-  inputImages     String[]
   description     String?   @db.Text  // 助教简单描述
   feedbackText    String    @db.Text  // AI 生成的反馈
   tCoinUsed       Int       @default(1)
   createdAt       DateTime  @default(now())
-  
+
   user            User      @relation(fields: [userId], references: [id])
   
   @@index([userId, createdAt])

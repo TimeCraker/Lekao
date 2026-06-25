@@ -134,8 +134,9 @@ if (user.lekao_gift_coin > 0) {
 ```
 
 **落盘字段**：
-- summary 模板 → `lekao_class_summaries`（subject, topic, feedbackText=feedback, summaryText=summary, tCoinUsed=1, inputImages=url[]）
+- summary 模板 → `lekao_class_summaries`（subject, topic, feedbackText=feedback, summaryText=summary, tCoinUsed=1）
 - feedback 模板 → `lekao_class_feedbacks`（同上 + description）
+- （v2.2.1 起移除 inputImages/templateId 死字段：图片用前端 File System Access API 不落盘 COS；模板系统未上线故不存 ID）
 
 **验收**：
 - 余额 5（lekao_gift_coin）→ 生成 5 次 → 第 6 次报余额不足

@@ -22,6 +22,10 @@ const ACTION_LABELS: Record<string, { label: string; color: string }> = {
   user_ban: { label: "封禁", color: "bg-red-50 text-red-700" },
   user_unban: { label: "解封", color: "bg-emerald-50 text-emerald-700" },
   invite_create: { label: "生成邀请码", color: "bg-violet-50 text-violet-700" },
+  // v2.2.0 灵感墙新增 3 个
+  idea_status_change: { label: "改灵感状态", color: "bg-blue-50 text-blue-700" },
+  idea_delete: { label: "删除灵感", color: "bg-red-50 text-red-700" },
+  idea_comment_delete: { label: "删除评论", color: "bg-red-50 text-red-700" },
 };
 
 function actionMeta(a: string) {
@@ -92,6 +96,9 @@ export default function AdminAuditLogPage() {
           { v: "user_ban", l: "封禁" },
           { v: "user_unban", l: "解封" },
           { v: "invite_create", l: "邀请码" },
+          { v: "idea_status_change", l: "改灵感状态" },
+          { v: "idea_delete", l: "删除灵感" },
+          { v: "idea_comment_delete", l: "删除评论" },
         ].map((opt) => (
           <button
             key={opt.v}
