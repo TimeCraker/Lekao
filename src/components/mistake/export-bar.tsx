@@ -91,17 +91,55 @@ export function ExportBar({
   const exportToFolder = useCallback(async () => {
     if (!dirHandle || studentNames.length === 0) return;
 
-    // ⭐ 关键修复（Round 2026-06-25 · FSA user gesture bug）：
-    //   File System Access API 规定：getDirectoryHandle 必须在用户点击的
-    //   同步调用栈第一个 await 执行，否则 user gesture 失效 → NotAllowedError。
-    //   这里必须把 getOrCreateSubdir 放在任何 setState 之前，紧贴 user gesture。
+    // ⭐ 关键修复（Round 2026-06-25 · FSA user gesture + 权限过期 bug）：
+    //   两个根因都会触发 NotAllowedError：
+    //   1) user gesture 断了（getDirectoryHandle 不在 click 同步栈第一个 await）
+    //   2) Chrome 24h 后自动撤销 FSA 权限（IndexedDB 里 handle 还在但实际不可用）
+    //
+    //   修法：
+    //   - 第一个根因：把 getOrCreateSubdir 提到任何 setState 之前，紧贴 user gesture
+    //   - 第二个根因：catch 里检测 NotAllowedError → 调 requestPermission 重新授权
+    //     （仍在 click 同步栈里，requestPermission 能真正弹窗）→ 重试
     //   报错文案参考：https://developer.mozilla.org/en-US/docs/Web/API/Window/showDirectoryPicker
     let subjectDir: FileSystemDirectoryHandle;
     try {
       subjectDir = await getOrCreateSubdir(dirHandle, collection.sheetName);
     } catch (e) {
-      alert(`导出失败：${e instanceof Error ? e.message : "未知错误"}`);
-      return;
+      const errorName = e instanceof Error ? e.name : "";
+      const errorMsg = e instanceof Error ? e.message : String(e);
+
+      // 权限过期场景：try 重新授权（此时仍在 user gesture 栈）
+      if (errorName === "NotAllowedError") {
+        try {
+          // requestPermission 不在标准 FileSystemDirectoryHandle 类型里（DOM lib 缺），
+          // 但 Chrome/Edge 实测支持。沿用 fs-access.ts 的 unknown-cast 模式保持一致。
+          const permission = await (
+            dirHandle as unknown as {
+              requestPermission: (options: { mode: "readwrite" }) => Promise<PermissionState>;
+            }
+          ).requestPermission({ mode: "readwrite" });
+          if (permission === "granted") {
+            // 重新授权成功 → 重试
+            subjectDir = await getOrCreateSubdir(
+              dirHandle,
+              collection.sheetName,
+            );
+          } else {
+            alert(
+              `权限被拒绝，无法导出。\n请重新点击"授权文件夹"按钮选择目录。`,
+            );
+            return;
+          }
+        } catch (reauthErr) {
+          alert(
+            `重新授权失败：${reauthErr instanceof Error ? reauthErr.message : "未知错误"}\n请重新点击"授权文件夹"按钮。`,
+          );
+          return;
+        }
+      } else {
+        alert(`导出失败：${errorMsg}`);
+        return;
+      }
     }
 
     setExporting(true);
