@@ -95,15 +95,15 @@ export default function AdminCommentsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* 标题栏 */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-ink flex items-center gap-2">
-            <CommentIcon className="w-6 h-6 text-accent-text" />
+          <h1 className="text-xl sm:text-2xl font-semibold text-ink flex items-center gap-2">
+            <CommentIcon className="w-5 h-5 sm:w-6 sm:h-6 text-accent-text" />
             评论管理
           </h1>
-          <p className="text-sm text-ink-muted mt-1">
+          <p className="text-xs sm:text-sm text-ink-muted mt-1">
             共 <span className="font-semibold text-ink">{total}</span> 条评论
           </p>
         </div>
@@ -117,13 +117,13 @@ export default function AdminCommentsPage() {
       </div>
 
       {/* 状态过滤 + 搜索 */}
-      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-        <div className="inline-flex rounded-lg border border-hairline bg-white p-0.5">
+      <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+        <div className="inline-flex rounded-lg border border-hairline bg-white p-0.5 overflow-x-auto shrink-0">
           {STATUS_OPTIONS.map((opt) => (
             <button
               key={opt.value}
               onClick={() => setStatus(opt.value)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition ${
+              className={`shrink-0 px-3 py-1.5 text-xs font-medium rounded-md transition ${
                 status === opt.value
                   ? "bg-accent-soft text-accent-text"
                   : "text-ink-muted hover:text-ink"
@@ -134,7 +134,7 @@ export default function AdminCommentsPage() {
           ))}
         </div>
 
-        <div className="relative flex-1 max-w-sm">
+        <div className="relative flex-1 sm:max-w-sm">
           <SearchIcon className="absolute left-3 top-1/2 w-4 h-4 -translate-y-1/2 text-ink-subtle pointer-events-none" />
           <input
             type="text"
@@ -170,11 +170,11 @@ export default function AdminCommentsPage() {
                   delay: Math.min(i * 0.025, 0.2),
                   duration: 0.18,
                 }}
-                className={`bg-white border rounded-xl p-4 hover:shadow-md transition ${
+                className={`bg-white border rounded-xl p-3 sm:p-4 hover:shadow-md transition ${
                   c.status === "banned" ? "border-hairline/50 opacity-60" : "border-hairline"
                 }`}
               >
-                <div className="flex items-start gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-3">
                   <div className="flex-1 min-w-0">
                     {/* 灵感标题（点击跳前台） */}
                     <button
@@ -182,11 +182,11 @@ export default function AdminCommentsPage() {
                       onClick={() =>
                         (window.location.href = `/dashboard/ideas?focus=${c.ideaId}`)
                       }
-                      className="inline-flex items-center gap-1 text-xs text-accent-text hover:text-accent-hover mb-1.5 transition"
+                      className="inline-flex items-center gap-1 text-xs text-accent-text hover:text-accent-hover mb-1.5 transition max-w-full"
                       title="查看灵感"
                     >
-                      <LightbulbIcon className="w-3 h-3" />
-                      {c.ideaTitle}
+                      <LightbulbIcon className="w-3 h-3 shrink-0" />
+                      <span className="truncate">{c.ideaTitle}</span>
                     </button>
 
                     {/* 评论内容 */}
@@ -201,28 +201,25 @@ export default function AdminCommentsPage() {
                     </p>
 
                     {/* 元信息 */}
-                    <div className="flex items-center gap-3 text-xs text-ink-subtle">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-subtle">
                       <span className="truncate max-w-[200px]" title={c.userEmail}>
                         {c.userEmail}
                       </span>
-                      <span>·</span>
+                      <span className="hidden sm:inline">·</span>
                       <span>{new Date(c.createdAt).toLocaleString("zh-CN")}</span>
                       {c.status === "banned" && (
-                        <>
-                          <span>·</span>
-                          <span className="text-danger font-medium">已撤回</span>
-                        </>
+                        <span className="text-danger font-medium">· 已撤回</span>
                       )}
                     </div>
                   </div>
 
-                  {/* 撤回按钮 */}
-                  <div className="shrink-0">
+                  {/* 撤回按钮（移动端：右下角） */}
+                  <div className="shrink-0 sm:pt-0 self-end sm:self-auto">
                     <button
                       type="button"
                       disabled={busyId === c.id || c.status === "banned"}
                       onClick={() => handleDelete(c)}
-                      className="inline-flex items-center justify-center p-1.5 text-ink-subtle hover:text-danger hover:bg-danger/5 rounded-md transition disabled:opacity-30 disabled:hover:text-ink-subtle disabled:hover:bg-transparent"
+                      className="inline-flex items-center justify-center p-2 sm:p-1.5 text-ink-subtle hover:text-danger hover:bg-danger/5 rounded-md transition disabled:opacity-30 disabled:hover:text-ink-subtle disabled:hover:bg-transparent"
                       title={c.status === "banned" ? "已撤回" : "撤回评论"}
                     >
                       <TrashIcon className="w-4 h-4" />

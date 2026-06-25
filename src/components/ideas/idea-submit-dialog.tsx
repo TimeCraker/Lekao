@@ -101,7 +101,7 @@ export function IdeaSubmitDialog({ open, onClose, onSuccess }: SubmitDialogProps
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.15 }}
-          className="fixed inset-0 z-50 bg-ink/40 backdrop-blur-sm flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 bg-ink/40 backdrop-blur-sm flex items-center justify-center md:p-4"
           onClick={onClose}
         >
           <motion.div
@@ -109,11 +109,11 @@ export function IdeaSubmitDialog({ open, onClose, onSuccess }: SubmitDialogProps
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ type: "spring", stiffness: 300, damping: 28 }}
-            className="relative w-full max-w-lg md:max-w-lg bg-white rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden"
+            className="relative w-full max-w-lg md:max-w-lg bg-white md:rounded-2xl shadow-2xl flex flex-col h-full md:h-auto md:max-h-[90vh] overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             {/* 标题栏 */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-hairline">
+            <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-hairline shrink-0">
               <div className="flex items-center gap-2">
                 <LightbulbIcon className="w-5 h-5 text-accent-text" />
                 <h2 className="text-lg font-semibold text-ink">提个建议</h2>
@@ -128,7 +128,7 @@ export function IdeaSubmitDialog({ open, onClose, onSuccess }: SubmitDialogProps
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4">
+            <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
               {/* 标题 */}
               <div>
                 <label className="block text-sm font-medium text-ink mb-1.5">
@@ -200,7 +200,7 @@ export function IdeaSubmitDialog({ open, onClose, onSuccess }: SubmitDialogProps
             </form>
 
             {/* 操作栏 */}
-            <div className="flex items-center justify-end gap-2 px-6 py-3 border-t border-hairline bg-canvas-alt/30">
+            <div className="flex items-center justify-end gap-2 px-5 sm:px-6 py-3 border-t border-hairline bg-canvas-alt/30 shrink-0">
               <PressableButton type="button" variant="ghost" size="md" onClick={onClose}>
                 取消
               </PressableButton>

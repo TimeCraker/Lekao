@@ -136,15 +136,15 @@ export default function AdminIdeasPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* 标题栏 */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-ink flex items-center gap-2">
-            <LightbulbIcon className="w-6 h-6 text-accent-text" />
+          <h1 className="text-xl sm:text-2xl font-semibold text-ink flex items-center gap-2">
+            <LightbulbIcon className="w-5 h-5 sm:w-6 sm:h-6 text-accent-text" />
             灵感墙管理
           </h1>
-          <p className="text-sm text-ink-muted mt-1">
+          <p className="text-xs sm:text-sm text-ink-muted mt-1">
             共 <span className="font-semibold text-ink">{total}</span> 条灵感
           </p>
         </div>
@@ -153,19 +153,20 @@ export default function AdminIdeasPage() {
           size="sm"
           onClick={() => (window.location.href = "/dashboard/ideas")}
         >
-          查看前台页面 →
+          <span className="hidden sm:inline">查看前台页面 →</span>
+          <span className="sm:hidden">前台 →</span>
         </PressableButton>
       </div>
 
       {/* 状态过滤 + 搜索 */}
-      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-        {/* Tab 过滤 */}
-        <div className="inline-flex rounded-lg border border-hairline bg-white p-0.5">
+      <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+        {/* Tab 过滤（移动端横滑） */}
+        <div className="inline-flex rounded-lg border border-hairline bg-white p-0.5 overflow-x-auto shrink-0">
           {STATUS_OPTIONS.map((opt) => (
             <button
               key={opt.value}
               onClick={() => setStatus(opt.value)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition ${
+              className={`shrink-0 px-3 py-1.5 text-xs font-medium rounded-md transition ${
                 status === opt.value
                   ? "bg-accent-soft text-accent-text"
                   : "text-ink-muted hover:text-ink"
@@ -177,7 +178,7 @@ export default function AdminIdeasPage() {
         </div>
 
         {/* 搜索 */}
-        <div className="relative flex-1 max-w-sm">
+        <div className="relative flex-1 sm:max-w-sm">
           <SearchIcon className="absolute left-3 top-1/2 w-4 h-4 -translate-y-1/2 text-ink-subtle pointer-events-none" />
           <input
             type="text"
@@ -213,9 +214,9 @@ export default function AdminIdeasPage() {
                   delay: Math.min(i * 0.025, 0.2),
                   duration: 0.18,
                 }}
-                className="bg-white border border-hairline rounded-xl p-4 hover:shadow-md transition"
+                className="bg-white border border-hairline rounded-xl p-3 sm:p-4 hover:shadow-md transition"
               >
-                <div className="flex items-start gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-3">
                   {/* 左侧信息 */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start gap-2 mb-1.5">
@@ -237,11 +238,11 @@ export default function AdminIdeasPage() {
                     <p className="text-xs text-ink-muted leading-relaxed line-clamp-2 mb-2">
                       {idea.description}
                     </p>
-                    <div className="flex items-center gap-3 text-xs text-ink-subtle">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-subtle">
                       <span className="truncate max-w-[200px]" title={idea.userEmail}>
                         {idea.userEmail}
                       </span>
-                      <span>·</span>
+                      <span className="hidden sm:inline">·</span>
                       <span>{new Date(idea.createdAt).toLocaleString("zh-CN")}</span>
                       <span>·</span>
                       <span className="inline-flex items-center gap-1">
@@ -255,8 +256,8 @@ export default function AdminIdeasPage() {
                     </div>
                   </div>
 
-                  {/* 右侧操作 */}
-                  <div className="shrink-0 flex items-center gap-1 relative">
+                  {/* 右侧操作（移动端：底部 border-top 分隔） */}
+                  <div className="shrink-0 flex items-center gap-1 sm:gap-2 relative sm:pt-0 pt-2 border-t sm:border-t-0 border-hairline/60">
                     <SuccessBurst show={burstId === idea.id} distance={20} count={5} />
                     <PressableButton
                       variant="ghost"
@@ -265,13 +266,14 @@ export default function AdminIdeasPage() {
                       onClick={() => handleStatusChange(idea)}
                       title={`切换到 ${STATUS_LABEL[STATUS_NEXT[idea.status]]}`}
                     >
-                      → {STATUS_LABEL[STATUS_NEXT[idea.status]]}
+                      <span className="hidden sm:inline">→ {STATUS_LABEL[STATUS_NEXT[idea.status]]}</span>
+                      <span className="sm:hidden">→ {STATUS_NEXT[idea.status]}</span>
                     </PressableButton>
                     <button
                       type="button"
                       disabled={busyId === idea.id}
                       onClick={() => handleDelete(idea)}
-                      className="inline-flex items-center justify-center p-1.5 text-ink-subtle hover:text-danger hover:bg-danger/5 rounded-md transition disabled:opacity-50"
+                      className="inline-flex items-center justify-center p-2 sm:p-1.5 text-ink-subtle hover:text-danger hover:bg-danger/5 rounded-md transition disabled:opacity-50"
                       title="删除灵感"
                     >
                       <TrashIcon className="w-4 h-4" />

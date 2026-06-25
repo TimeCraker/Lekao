@@ -32,8 +32,8 @@ export function IdeaEmptyState({ variant, message }: EmptyStateProps) {
   }[variant];
 
   return (
-    <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
-      <div className="text-5xl mb-4 opacity-60">{config.icon}</div>
+    <div className="flex flex-col items-center justify-center py-10 sm:py-12 px-4 sm:px-6 text-center">
+      <div className="text-5xl mb-3 sm:mb-4 opacity-60">{config.icon}</div>
       <div className="text-base font-medium text-ink mb-1">
         {message ?? config.title}
       </div>

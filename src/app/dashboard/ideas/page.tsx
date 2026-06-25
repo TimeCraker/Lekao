@@ -96,14 +96,16 @@ export default function IdeasPage() {
             variant="primary"
             size="md"
             onClick={() => setDialogOpen(true)}
+            className="shrink-0"
           >
             <LightbulbIcon className="w-4 h-4" />
-            提个建议
+            <span className="hidden sm:inline">提个建议</span>
+            <span className="sm:hidden">提议</span>
           </PressableButton>
         }
       />
 
-      <div className="px-8 md:px-12 py-8 max-w-5xl">
+      <div className="px-4 md:px-12 py-4 md:py-8 max-w-5xl">
         {/* TOP 3（仅全部 Tab + 无搜索时显示） */}
         {!loading && top3.length > 0 && <TopThree items={top3} />}
 

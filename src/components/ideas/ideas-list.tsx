@@ -191,12 +191,12 @@ function IdeaCard({ idea, index, onLike, onDelete, onUpdateCount, formatTime }: 
         stiffness: 260,
         damping: 24,
       }}
-      className={`group bg-white border rounded-2xl p-5 transition-all hover:shadow-md ${
+      className={`group bg-white border rounded-2xl p-4 sm:p-5 transition-all hover:shadow-md ${
         idea.myOwn ? "border-accent/30 bg-accent-soft/10" : "border-hairline"
       }`}
     >
       {/* 顶部：标题 + 状态 */}
-      <div className="flex items-start gap-3 mb-2">
+      <div className="flex items-start gap-2 sm:gap-3 mb-2">
         <h3 className="flex-1 text-base font-semibold text-ink leading-snug">
           {idea.title}
         </h3>
@@ -213,12 +213,12 @@ function IdeaCard({ idea, index, onLike, onDelete, onUpdateCount, formatTime }: 
       </p>
 
       {/* 元信息栏 */}
-      <div className="flex items-center justify-between pt-3 border-t border-hairline/60">
-        <span className="text-xs text-ink-subtle truncate" title={idea.userEmail}>
+      <div className="flex items-center justify-between gap-2 pt-3 border-t border-hairline/60">
+        <span className="text-xs text-ink-subtle truncate min-w-0" title={idea.userEmail}>
           {idea.userEmail} · {formatTime(idea.createdAt)}
         </span>
 
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
           {/* 点赞按钮 */}
           <div className="relative">
             <SuccessBurst show={likeBurst} distance={16} count={4} />
@@ -231,7 +231,7 @@ function IdeaCard({ idea, index, onLike, onDelete, onUpdateCount, formatTime }: 
                   setTimeout(() => setLikeBurst(false), 600);
                 }
               }}
-              className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md transition ${
+              className={`inline-flex items-center gap-1 px-2 sm:px-2.5 py-1.5 sm:py-1 text-xs font-medium rounded-md transition ${
                 idea.myLiked
                   ? "bg-accent-soft text-accent-ink"
                   : "text-ink-muted hover:bg-canvas-alt hover:text-ink"
@@ -248,7 +248,7 @@ function IdeaCard({ idea, index, onLike, onDelete, onUpdateCount, formatTime }: 
           <button
             type="button"
             onClick={toggleComments}
-            className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md transition ${
+            className={`inline-flex items-center gap-1 px-2 sm:px-2.5 py-1.5 sm:py-1 text-xs font-medium rounded-md transition ${
               expanded
                 ? "bg-canvas-alt text-ink"
                 : "text-ink-muted hover:bg-canvas-alt hover:text-ink"

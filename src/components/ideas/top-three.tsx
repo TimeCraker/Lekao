@@ -32,11 +32,11 @@ export function TopThree({ items }: TopThreeProps) {
   if (items.length === 0) return null;
 
   return (
-    <section className="mb-8">
-      <h2 className="text-sm font-medium text-ink-subtle uppercase tracking-wider mb-4 px-1">
+    <section className="mb-6 sm:mb-8">
+      <h2 className="text-sm font-medium text-ink-subtle uppercase tracking-wider mb-3 sm:mb-4 px-1">
         🏆 大家最想要的 TOP 3
       </h2>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
         {items.map((item, i) => (
           <motion.article
             key={item.id}
@@ -48,7 +48,7 @@ export function TopThree({ items }: TopThreeProps) {
               stiffness: 280,
               damping: 24,
             }}
-            className={`relative rounded-2xl border-2 p-5 transition-all hover:shadow-md ${CARD_BG[i]}`}
+            className={`relative rounded-2xl border-2 p-4 sm:p-5 transition-all hover:shadow-md ${CARD_BG[i]}`}
           >
             <div className="text-3xl mb-2">{MEDAL[i]}</div>
             <h3 className="text-base font-semibold text-ink mb-2 line-clamp-2 leading-snug">

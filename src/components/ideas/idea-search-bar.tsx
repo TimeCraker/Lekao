@@ -36,15 +36,15 @@ export function IdeaSearchBar({
   onQueryChange,
 }: SearchBarProps) {
   return (
-    <div className="flex flex-col md:flex-row md:items-center gap-3 mb-5">
+    <div className="flex flex-col md:flex-row md:items-center gap-3 mb-4 sm:mb-5">
       {/* Tab */}
-      <div className="flex items-center gap-1 p-1 bg-canvas-alt rounded-lg">
+      <div className="flex items-center gap-1 p-1 bg-canvas-alt rounded-lg overflow-x-auto">
         {TABS.map((t) => (
           <button
             key={t.key}
             type="button"
             onClick={() => onTabChange(t.key)}
-            className={`px-3 py-1.5 text-sm font-medium rounded-md transition ${
+            className={`shrink-0 px-3 py-1.5 text-sm font-medium rounded-md transition ${
               tab === t.key
                 ? "bg-white text-accent-ink shadow-sm"
                 : "text-ink-muted hover:text-ink"
@@ -56,7 +56,7 @@ export function IdeaSearchBar({
       </div>
 
       {/* 搜索框 */}
-      <div className="relative flex-1 max-w-md">
+      <div className="relative flex-1 md:max-w-md">
         <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-subtle pointer-events-none" />
         <input
           type="text"
@@ -78,7 +78,7 @@ export function IdeaSearchBar({
       </select>
 
       {/* 计数 */}
-      <span className="text-xs text-ink-subtle whitespace-nowrap">
+      <span className="hidden sm:inline text-xs text-ink-subtle whitespace-nowrap">
         共 {total} 条
       </span>
     </div>
