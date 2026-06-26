@@ -206,3 +206,75 @@ export const TEXT_PROMPT = ({
     ? buildSummaryPrompt({ subject, topic, keyPoints, className, date, contentSections, requirementCount, showFeedback })
     : buildFeedbackPrompt({ subject, topic, keyPoints, className, date, feedbackCount, summaryLength });
 };
+// ============================================
+// 周末错题反馈表 · 批量 AI 反馈 prompt（Stage 3）
+// ============================================
+
+/**
+ * 全对学生的模板话术（随机选取，不用 AI 生成）
+ */
+export const ALL_CORRECT_TEMPLATES = [
+  "作业完成的非常好，继续保持！",
+  "全部正确，再接再厉！",
+  "这节课内容掌握得很好，继续保持！",
+  "作业质量很高，非常棒！",
+  "全对！作业完成认真，值得表扬！",
+  "思路清晰，解题规范，表现优秀！",
+  "本次作业零失误，课堂效率高！",
+];
+
+/**
+ * 生成批量学生反馈的 prompt（DeepSeek 非流式）
+ *
+ * 输入：讲义关键知识点 + 所有需要 AI 生成反馈的学生列表（含姓名 + 错题号）
+ * 输出：JSON {feedbacks: [{studentName, feedback}], summary}
+ */
+export function buildBatchFeedbackPrompt({
+  subject,
+  topic,
+  keyPoints,
+  students,
+  sheetName,
+  date,
+}: {
+  subject: string;
+  topic: string;
+  keyPoints: string[];
+  students: { name: string; qNumbers: string }[];
+  sheetName: string;
+  date: string;
+}): string {
+  const kp = keyPoints.length > 0 ? keyPoints.join("\n- ") : "本节课内容";
+
+  const studentList = students
+    .map((s) => `  ${s.name}：${s.qNumbers}`)
+    .join("\n");
+
+  return `你是一位经验丰富的助教。请根据以下讲义知识点和每个学生的错题，生成个性化的课后反馈。
+
+【班级-学科】${sheetName}
+【日期】${date}
+【讲义知识点】
+- ${kp}
+
+【学生错题列表（仅含需要生成反馈的学生）】
+${studentList}
+
+要求：
+1. 对每个学生，根据其错题号生成对应的课后反馈。
+   - 如果错题只写了一个题号（如"3"），详细写改题涉及的知识点 + 改进建议
+   - 如果错题写了多个题号（如"3，6，9"），选前 2-3 个重点题详细说明，其余简略带过
+   - 每条反馈 25-55 字，语气像老师批改后的真实评语
+2. 每条反馈以"巩固/加强/掌握/熟练/注意/理解/强化"开头
+3. 不同学生之间开头不要重复
+4. 另外生成一段「本次${ subject }作业总体小结」（3-5 句，包含整体表现 + 典型问题 + 鼓励）
+
+输出格式（严格 JSON，不要 Markdown 代码块标记）：
+{
+  "feedbacks": [
+    { "studentName": "学生姓名", "feedback": "巩固xxx的理解，注意xxx" },
+    { "studentName": "姓名", "feedback": "加强xxx的运用，xxx" }
+  ],
+  "summary": "本次数学作业总体小结：xxx"
+}`;
+}

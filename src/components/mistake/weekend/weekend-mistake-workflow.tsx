@@ -54,6 +54,8 @@ import {
 } from "@/components/icons";
 import { WeekendSheetTabs } from "./weekend-sheet-tabs";
 import { WeekendStudentTable } from "./weekend-student-table";
+import { WeekendAiFeedbackPanel } from "./weekend-ai-feedback-panel";
+import type { BatchStudentResult } from "./weekend-ai-feedback-panel";
 
 export function WeekendMistakeWorkflow() {
   const [step, setStep] = useState<WeekendStep>("upload");
@@ -152,6 +154,35 @@ export function WeekendMistakeWorkflow() {
               students: s.students.map((st) =>
                 st.rowIndex === rowIndex ? { ...st, ...patch } : st,
               ),
+            };
+          }),
+        };
+      });
+    },
+    [],
+  );
+
+  // ===== AI 反馈回填（Stage 3） =====
+  const applyAiFeedback = useCallback(
+    (sheetName: string, results: BatchStudentResult[]) => {
+      setWorkbook((prev) => {
+        if (!prev) return prev;
+        // 构建 name → feedback 映射
+        const feedbackMap = new Map<string, string>();
+        for (const r of results) {
+          feedbackMap.set(r.name, r.feedback);
+        }
+        return {
+          ...prev,
+          sheets: prev.sheets.map((s) => {
+            if (s.sheetName !== sheetName) return s;
+            return {
+              ...s,
+              students: s.students.map((st) => {
+                const fb = feedbackMap.get(st.name);
+                if (fb === undefined || fb === "") return st;
+                return { ...st, feedback: fb };
+              }),
             };
           }),
         };
@@ -310,6 +341,7 @@ export function WeekendMistakeWorkflow() {
           onAutoSort={(sheetName) => autoSortSheet(sheetName)}
           onBack={backToEditDate}
           uploadedFile={uploadedFile}
+          onApplyAiFeedback={applyAiFeedback}
         />
       )}
     </div>
@@ -546,6 +578,7 @@ function WeekendEditStudentsStep({
   onAutoSort,
   onBack,
   uploadedFile,
+  onApplyAiFeedback,
 }: {
   workbook: WeekendWorkbook;
   activeSheetIdx: number;
@@ -558,8 +591,10 @@ function WeekendEditStudentsStep({
   onAutoSort: (sheetName: string) => { moved: number; total: number };
   onBack: () => void;
   uploadedFile: File | null;
+  onApplyAiFeedback: (sheetName: string, results: BatchStudentResult[]) => void;
 }) {
   const activeSheet = workbook.sheets[activeSheetIdx];
+  const today = getThisWeekendDate();
 
   return (
     <div className="rounded-2xl border border-hairline bg-white p-6 space-y-5">
@@ -616,7 +651,22 @@ function WeekendEditStudentsStep({
           <SortIcon className="w-3.5 h-3.5" />
           排序规则：有题号(数字升序) → 全对 → 网课 → 作业未交 → 留空
         </span>
-        <span>AI 反馈 (Stage 3) 待实现</span>
+        <span className="text-ink-subtle">AI 反馈 (Stage 3)</span>
+      </div>
+
+      {/* Stage 3 · AI 反馈生成 */}
+      <div className="border-t border-hairline pt-2">
+        <WeekendAiFeedbackPanel
+          sheetName={activeSheet.sheetName}
+          students={activeSheet.students.map((s) => ({
+            name: s.name,
+            qNumbersInput: s.qNumbersInput,
+          }))}
+          date={today}
+          onFeedbackReady={(results) =>
+            onApplyAiFeedback(activeSheet.sheetName, results)
+          }
+        />
       </div>
 
       {/* Stage 2 · 导出 Excel 工具栏 */}
