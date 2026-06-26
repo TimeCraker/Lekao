@@ -36,13 +36,22 @@
 
     <!-- ============ Dashboard F03 ============ -->
     <string name="dashboard_title">工作台</string>
+    <string name="dashboard_guest">访客</string>
     <string name="dashboard_coin_balance">T-Coin 余额</string>
+    <string name="dashboard_tcoin_total">T-Coin 总余额</string>
+    <string name="dashboard_tcoin_breakdown">赠送 %1$d · 付费 %2$d</string>
     <string name="dashboard_entry_summary">课堂小结</string>
+    <string name="dashboard_entry_summary_sub">拍照讲义一键生成</string>
     <string name="dashboard_entry_feedback">课堂反馈</string>
+    <string name="dashboard_entry_feedback_sub">写给家长的反馈</string>
     <string name="dashboard_entry_mistake">错题集</string>
+    <string name="dashboard_entry_mistake_sub">拍照自动归档</string>
     <string name="dashboard_entry_ideas">灵感墙</string>
-    <string name="dashboard_entry_history">历史记录</string>
+    <string name="dashboard_entry_ideas_sub">提交需求 · 看 TOP 3</string>
     <string name="dashboard_entry_settings">个人中心</string>
+    <string name="dashboard_entry_settings_sub">主题 · 语言 · 通知</string>
+    <string name="dashboard_entry_admin">管理后台</string>
+    <string name="dashboard_entry_admin_sub">审计 · 调币 · 封禁</string>
 
     <!-- ============ 课堂小结 F04 ============ -->
     <string name="summary_title">课堂小结</string>

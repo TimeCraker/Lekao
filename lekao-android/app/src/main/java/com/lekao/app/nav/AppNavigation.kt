@@ -108,7 +108,8 @@ fun AppNavigation(
                 onNavigateToFeedback = { navController.navigate(Routes.Feedback.path) },
                 onNavigateToMistake = { navController.navigate(Routes.Mistake.path) },
                 onNavigateToIdeas = { navController.navigate(Routes.Ideas.path) },
-                onNavigateToSettings = { navController.navigate(Routes.Settings.path) }
+                onNavigateToSettings = { navController.navigate(Routes.Settings.path) },
+                onNavigateToAdmin = { navController.navigate(Routes.AdminDashboard.path) }
             )
         }
 

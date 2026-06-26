@@ -89,7 +89,8 @@ class LekaoApp : Application(), Configuration.Provider {
         private const val TAG = "LekaoApp"
 
         @Volatile
-        private var instance: LekaoApp? = null
+        var instance: LekaoApp? = null
+            private set
 
         fun get(): LekaoApp = instance ?: throw IllegalStateException("LekaoApp 未初始化")
     }
