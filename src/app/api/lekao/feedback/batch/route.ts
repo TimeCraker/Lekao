@@ -178,5 +178,6 @@ function classifyAIError(err: unknown, _correlationId: string): { code: string; 
   if (apiMessage?.toLowerCase().includes("timeout") || apiMessage?.toLowerCase().includes("timed out")) {
     return { code: "AI_TIMEOUT", message: "AI 生成超时，请重试" };
   }
-  return { code: "AI_GENERATION_FAILED", message: `AI 生成失败（${apiMessage?.slice(0, 100) || "未知原因"}）` };
+  // console.error 已在上层记录完整错误，不把上游原始消息泄漏到客户端
+  return { code: "AI_GENERATION_FAILED", message: "AI 生成失败，请稍后重试" };
 }

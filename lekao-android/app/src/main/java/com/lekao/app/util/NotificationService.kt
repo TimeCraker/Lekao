@@ -130,13 +130,13 @@ class NotificationService : FirebaseMessagingService() {
             notificationManager.notify(NOTIFICATION_BASE + 999, summary)
         }
 
-        // 简单 toast 日志（debug 调试用，release 不打印）
-        android.util.Log.d(TAG, "推送收到: type=$type title=$title body=$body deepLink=$deepLink")
+        // 安全日志：仅记录 type + title 前缀（不记录 body/deepLink 含 PII 的内容）
+        android.util.Log.d(TAG, "推送收到: type=$type title=${title.take(30)}")
     }
 
     override fun onNewToken(token: String) {
         super.onNewToken(token)
-        android.util.Log.d(TAG, "FCM 新 token 已生成 (前 20 字符): ${token.take(20)}...")
+        android.util.Log.d(TAG, "FCM 新 token 已生成 (hash: ${token.hashCode()})")
 
         // 异步注册到后端
         CoroutineScope(Dispatchers.IO).launch {
