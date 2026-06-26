@@ -49,17 +49,36 @@ class LekaoCookieJar(
 
     /**
      * 清空所有 cookie（退出登录用）
+     *
+     * 安全要点：
+     * 1. CountDownLatch 等 removeAllCookies 异步回调完成再返回
+     *    （fire-and-forget 模式：退出登录后下一请求可能还在用旧 cookie）
+     * 2. flush() 强制把内存 cookie 写盘
+     * 3. 如果 app 用过 WebView（PWA / OAuth 登录），调用方需要另外调 evictWebViewState()
      */
     fun clearAll() {
         store.clear()
         try {
             val webCookieManager = WebCookieManager.getInstance()
-            webCookieManager.removeAllCookies(null)
-            webCookieManager.removeSessionCookies(null)
+            val latch = java.util.concurrent.CountDownLatch(2)
+            webCookieManager.removeAllCookies { latch.countDown() }
+            webCookieManager.removeSessionCookies { latch.countDown() }
+            // 最多等 1 秒防卡死（WebView 不可用时回调可能永不触发）
+            latch.await(1, java.util.concurrent.TimeUnit.SECONDS)
             webCookieManager.flush()
         } catch (_: Throwable) {
-            // ignore
+            // WebView 不可用时跳过
         }
+    }
+
+    /**
+     * 退出登录时调用方如果有 WebView 引用, 调一下清掉 in-memory 认证状态
+     * (清缓存 + 清历史, 防止 WebView 仍持有已登录页的渲染结果)
+     */
+    @Suppress("unused")
+    fun evictWebViewState(webView: android.webkit.WebView) {
+        webView.clearCache(true)
+        webView.clearHistory()
     }
 
     /**

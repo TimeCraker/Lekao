@@ -30,12 +30,25 @@ object RetrofitClient {
         }
     }
 
+    /**
+     * 自定义 logger: 屏蔽敏感 header（Authorization / Cookie / Set-Cookie）
+     * 即使是 HEADERS 级别也不能直打 cookie 值, 否则 logcat 会泄漏 token
+     */
+    private val safeLogger = HttpLoggingInterceptor.Logger { msg ->
+        val sanitized = msg.replace(
+            Regex("(?i)(authorization|cookie|set-cookie): .*"),
+            "$1: ***REDACTED***"
+        )
+        android.util.Log.d("LekaoAPI-HTTP", sanitized)
+    }
+
     private fun build(context: Context): Retrofit {
         val cookieJar = LekaoCookieJar(context.applicationContext)
 
-        val loggingInterceptor = HttpLoggingInterceptor().apply {
+        // DEBUG 也只用 HEADERS, BODY 级别会把 password/code/token 都打 logcat, 不可接受
+        val loggingInterceptor = HttpLoggingInterceptor(safeLogger).apply {
             level = if (BuildConfig.DEBUG) {
-                HttpLoggingInterceptor.Level.BODY
+                HttpLoggingInterceptor.Level.HEADERS
             } else {
                 HttpLoggingInterceptor.Level.NONE
             }
@@ -55,10 +68,11 @@ object RetrofitClient {
             val response: Response = chain.proceed(chain.request())
             // 错误码统一打 log（实际错误处理在 Repository 层 catch HttpException）
             if (!response.isSuccessful) {
+                // 只打 method + path, 不打 query（query 可能含 email, code, token）
+                // 不打 localPrincipal（SSL 会话信息 + 客户端证书主体, 泄漏面大）
                 android.util.Log.w(
                     "LekaoAPI",
-                    "[${response.code}] ${chain.request().method} ${chain.request().url} " +
-                            "(${(response.networkResponse?.handshake?.localPrincipal?.toString() ?: "unknown")})"
+                    "[${response.code}] ${chain.request().method} ${chain.request().url.encodedPath}"
                 )
             }
             response
