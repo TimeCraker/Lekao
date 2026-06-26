@@ -7,6 +7,8 @@ import android.webkit.WebView
 import okhttp3.Cookie
 import okhttp3.CookieJar
 import okhttp3.HttpUrl
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Cookie 管理器 · 复用 Lekao next-auth JWT cookie
@@ -52,24 +54,27 @@ class LekaoCookieJar(
      * 清空所有 cookie（退出登录用）
      *
      * 安全模型（default-deny for stale auth state）：
-     * 1. OkHttp cookie jar 同步清（立刻生效, 主线程零阻塞）
+     * 1. OkHttp cookie jar 同步清（立刻生效）
      *    → 下一 OkHttp API 请求不会带旧 session, 攻击面已闭合
-     * 2. WebView cookie 异步 fire-and-forget 清理
-     *    → 不阻塞主线程（避免 1s+ 阻塞触发 ANR）
-     *    → 残留 cookie 只在用户主动打开 WebView 加载 lekao 域时才有意义
-     *    → 此时服务端 Set-Cookie 会立即覆盖旧值（无 session = 未登录）
-     * 3. 若 caller 持有 WebView 引用（如 WebView 用于 PWA / OAuth），必须传 webView 参数
-     *    → 内部完成 8 步完整清理（stopLoading → about:blank → clearHistory
-     *       → clearCache → clearFormData → clearMatches → clearSslPreferences → removeAllCookies）
+     * 2. WebView 8 步清理（如果有引用）同步执行
+     * 3. WebView cookie store 异步清理 + **暴露 CompletableFuture 给调用方 await**
+     *    → 调用方（未来 logout flow / 下一个 screen）在做 WebView 导航前可 .get() 等清理完成
+     *    → 避免 "fire-and-forget 留下 multi-tick race window" 的漏洞
+     *    → 1s 超时保护（WebView 不可用时回调永不触发 → 强制 complete(false)）
+     *    → 超时守护线程是 daemon（不阻塞 app shutdown）
      *
-     * ⚠️ 不要在调用方用 latch.await 等 WebView 异步回调 — 主线程阻塞会触发 ANR
+     * 关键：调用方必须 await 这个 future 再做任何 WebView 导航，否则旧 cookie 可能在 future
+     *       complete 之前被 WebView 读到
      *
      * @param webView 可选 WebView 引用。若 app 没用 WebView 传 null 即可。
-     * @return true 表示 WebView cookie 清理已发起; false 表示 WebView 不可用
+     * @return CompletableFuture<Boolean>:
+     *   - true = WebView cookie 清理回调全部触发
+     *   - false = WebView 不可用 或 1s 超时
      */
-    fun clearAll(webView: WebView? = null): Boolean {
+    fun clearAll(webView: WebView? = null): CompletableFuture<Boolean> {
+        // 1) OkHttp 权威 cookie jar 同步清（立即生效）
         store.clear()
-        // 1) WebView 完整 in-memory 清理 (如果有引用)
+        // 2) WebView in-memory 状态同步清（如果有引用）
         if (webView != null) {
             webView.stopLoading()
             webView.loadUrl("about:blank")
@@ -79,17 +84,30 @@ class LekaoCookieJar(
             webView.clearMatches()
             webView.clearSslPreferences()
         }
-        // 2) WebView cookie store 异步清理 (fire-and-forget, 不阻塞主线程)
-        return try {
+        // 3) WebView cookie store 异步清理 + future 暴露
+        val future = CompletableFuture<Boolean>()
+        val remaining = AtomicInteger(2)
+        val tryComplete: () -> Unit = {
+            if (remaining.decrementAndGet() == 0) future.complete(true)
+        }
+        try {
             val wcm = WebCookieManager.getInstance()
-            wcm.removeAllCookies(null)
-            wcm.removeSessionCookies(null)
-            wcm.flush()
-            true
+            wcm.removeAllCookies { tryComplete() }
+            wcm.removeSessionCookies { tryComplete() }
         } catch (t: Throwable) {
             android.util.Log.w("LekaoCookie", "WebView cookie clear failed: ${t.message}")
-            false
+            future.complete(false)
+            return future
         }
+        // 4) 超时守护线程（daemon, 不阻塞主线程也不阻塞 app shutdown）
+        Thread({
+            Thread.sleep(1_000)
+            if (!future.isDone) {
+                remaining.set(0)  // 后续回调不再重复 complete
+                future.complete(false)
+            }
+        }, "LekaoCookie-Clear-Timeout").apply { isDaemon = true }.start()
+        return future
     }
 
     /**

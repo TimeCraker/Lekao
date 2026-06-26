@@ -76,6 +76,8 @@ object RetrofitClient {
     }
 
     fun clearCookies(context: Context) {
+        // fire-and-forget: future 由 logout flow (SettingsScreen D1-B) await,
+        // 这里只在调用方不关心 WebView 时使用 (例如 app 完全退出时的最终清理)
         val cookieJar = LekaoCookieJar(context.applicationContext)
         cookieJar.clearAll()
     }
