@@ -68,17 +68,22 @@ function getClient(): OpenAI {
 // ============================================
 
 export async function generateBatchFeedbacks(
-  lectureImage: string,
+  lectureImages: string[],
   students: BatchStudentInput[],
   sheetName: string,
   date: string,
 ): Promise<BatchFeedbackResult> {
-  if (!lectureImage.startsWith("data:image/")) {
-    throw new Error("讲义图片必须是 data URL 格式");
+  if (lectureImages.length === 0) {
+    throw new Error("至少需要 1 张讲义图");
+  }
+  for (const img of lectureImages) {
+    if (!img.startsWith("data:image/")) {
+      throw new Error("讲义图片必须是 data URL 格式");
+    }
   }
 
-  // 1. 视觉识别：读讲义图 → 学科/章节/知识点
-  const visionResult = await recognizeHandout([lectureImage]);
+  // 1. 视觉识别：读讲义图（支持多张） → 学科/章节/知识点
+  const visionResult = await recognizeHandout(lectureImages);
 
   // 2. 预处理学生：分类 + 判定处理策略
   const categorized = students.map((s) => {

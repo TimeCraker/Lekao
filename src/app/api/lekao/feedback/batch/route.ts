@@ -27,6 +27,7 @@ export const maxDuration = 120;
 // ============================================
 const MAX_BODY_BYTES = 25 * 1024 * 1024;
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
+const MAX_IMAGES_PER_REQUEST = 5;
 const MAX_STUDENTS_PER_REQUEST = 60;
 
 // ============================================
@@ -34,7 +35,8 @@ const MAX_STUDENTS_PER_REQUEST = 60;
 // ============================================
 
 type RequestBody = {
-  lectureImage: string;
+  lectureImages?: string[];
+  lectureImage?: string;
   sheetName: string;
   date: string;
   students: { name: string; qNumbersInput: string }[];
@@ -65,15 +67,23 @@ export async function POST(req: NextRequest) {
   }
 
   // 3. 参数校验
-  if (!body.lectureImage || typeof body.lectureImage !== "string") {
-    return jsonError(400, "缺少 lectureImage（讲义图片 data URL）", correlationId);
+  // ⭐ Stage 3.4：支持 lectureImages 数组（1-5 张），兼容旧 lectureImage 单数字段
+  const lectureImages = normalizeLectureImages(body);
+  if (lectureImages.length === 0) {
+    return jsonError(400, "缺少讲义图片（lectureImages 数组或 lectureImage 单数）", correlationId);
   }
-  if (!body.lectureImage.startsWith("data:image/")) {
-    return jsonError(400, "lectureImage 必须是 data:image/ 开头的 data URL", correlationId);
+  if (lectureImages.length > MAX_IMAGES_PER_REQUEST) {
+    return jsonError(400, `最多 ${MAX_IMAGES_PER_REQUEST} 张讲义图`, correlationId);
   }
-  const imgBytes = estimateBase64Bytes(body.lectureImage);
-  if (imgBytes > MAX_IMAGE_BYTES) {
-    return jsonError(413, `讲义图片超过 ${MAX_IMAGE_BYTES / 1024 / 1024} MB`, correlationId);
+  for (let i = 0; i < lectureImages.length; i++) {
+    const img = lectureImages[i];
+    if (!img.startsWith("data:image/")) {
+      return jsonError(400, `第 ${i + 1} 张讲义图必须是 data:image/ 开头的 data URL`, correlationId);
+    }
+    const imgBytes = estimateBase64Bytes(img);
+    if (imgBytes > MAX_IMAGE_BYTES) {
+      return jsonError(413, `第 ${i + 1} 张讲义图超过 ${MAX_IMAGE_BYTES / 1024 / 1024} MB`, correlationId);
+    }
   }
 
   if (!body.sheetName || typeof body.sheetName !== "string") {
@@ -114,7 +124,7 @@ export async function POST(req: NextRequest) {
   // 5. AI 生成
   try {
     const result = await generateBatchFeedbacks(
-      body.lectureImage,
+      lectureImages,
       body.students,
       body.sheetName,
       body.date,
@@ -156,6 +166,20 @@ function estimateBase64Bytes(dataUrl: string): number {
   const commaIdx = dataUrl.indexOf(",");
   const data = commaIdx >= 0 ? dataUrl.slice(commaIdx + 1) : dataUrl;
   return Math.floor((data.length * 3) / 4);
+}
+
+/**
+ * ⭐ Stage 3.4：兼容 lectureImages 数组 + lectureImage 单数字段
+ * 优先用 lectureImages，没有就用 lectureImage 包成数组
+ */
+function normalizeLectureImages(body: RequestBody): string[] {
+  if (Array.isArray(body.lectureImages) && body.lectureImages.length > 0) {
+    return body.lectureImages.filter((s): s is string => typeof s === "string");
+  }
+  if (typeof body.lectureImage === "string" && body.lectureImage.length > 0) {
+    return [body.lectureImage];
+  }
+  return [];
 }
 
 function classifyAIError(err: unknown, _correlationId: string): { code: string; message: string } {
