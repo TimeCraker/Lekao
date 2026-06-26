@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- M08 桌面快捷方式 · 长按图标出 3 个快捷 -->
+
+    <shortcut
+        android:shortcutId="quick_summary"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_summary"
+        android:shortcutShortLabel="@string/shortcut_summary"
+        android:shortcutLongLabel="@string/shortcut_summary_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.lekao.app"
+            android:targetClass="com.lekao.app.MainActivity"
+            android:data="lekao://summary" />
+    </shortcut>
+
+    <shortcut
+        android:shortcutId="quick_feedback"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_feedback"
+        android:shortcutShortLabel="@string/shortcut_feedback"
+        android:shortcutLongLabel="@string/shortcut_feedback_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.lekao.app"
+            android:targetClass="com.lekao.app.MainActivity"
+            android:data="lekao://feedback" />
+    </shortcut>
+
+    <shortcut
+        android:shortcutId="quick_ideas"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_ideas"
+        android:shortcutShortLabel="@string/shortcut_ideas"
+        android:shortcutLongLabel="@string/shortcut_ideas_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.lekao.app"
+            android:targetClass="com.lekao.app.MainActivity"
+            android:data="lekao://ideas" />
+    </shortcut>
+</shortcuts>

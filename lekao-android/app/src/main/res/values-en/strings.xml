@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- M14 English strings (default fallback is values/strings.xml Chinese) -->
+    <string name="app_name">Lekao AI Assistant</string>
+    <string name="app_tagline">Free teaching assistants from copywork</string>
+
+    <string name="common_loading">Loading…</string>
+    <string name="common_empty">No data</string>
+    <string name="common_error">Something went wrong</string>
+    <string name="common_retry">Retry</string>
+    <string name="common_cancel">Cancel</string>
+    <string name="common_confirm">Confirm</string>
+    <string name="common_save">Save</string>
+    <string name="common_delete">Delete</string>
+    <string name="common_edit">Edit</string>
+    <string name="common_share">Share</string>
+    <string name="common_back">Back</string>
+
+    <string name="login_title">Sign In</string>
+    <string name="login_email">Email</string>
+    <string name="login_password">Password</string>
+    <string name="login_code">6-digit code</string>
+    <string name="login_send_code">Send code</string>
+    <string name="login_submit">Sign In</string>
+    <string name="login_register">Create account</string>
+    <string name="login_forgot_password">Forgot password?</string>
+
+    <string name="dashboard_title">Dashboard</string>
+    <string name="dashboard_coin_balance">T-Coin Balance</string>
+
+    <string name="summary_title">Class Summary</string>
+    <string name="feedback_title">Parent Feedback</string>
+    <string name="mistake_title">Mistake Notebook</string>
+    <string name="ideas_title">Inspiration Wall</string>
+    <string name="settings_title">Settings</string>
+    <string name="admin_title">Admin</string>
+
+    <string name="settings_signout">Sign Out</string>
+    <string name="error_network">Network error</string>
+    <string name="error_server">Server error</string>
+    <string name="error_unauthorized">Please sign in again</string>
+    <string name="error_banned">Account banned</string>
+</resources>
