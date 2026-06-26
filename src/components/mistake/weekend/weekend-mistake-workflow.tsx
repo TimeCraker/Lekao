@@ -398,7 +398,7 @@ function WeekendUploadStep({
           <ExcelIcon className="w-8 h-8 text-accent-text" />
         </div>
         <h3 className="text-base font-medium text-ink mb-2">
-          上传周末反馈表 Excel
+          上传错题反馈表 Excel
         </h3>
         <p className="text-xs text-ink-muted mb-6 max-w-md">
           1 个 Excel 可包含多个 Sheet（数学/物理/化学等）。
@@ -434,6 +434,26 @@ function WeekendUploadStep({
             <li>R2：序号 | 姓名 | 课后作业错题 | 课后作业反馈</li>
             <li>R3+：学生数据（错题/反馈列默认空，你手动填）</li>
           </ul>
+        </div>
+
+        <div className="mt-6 w-full max-w-md border-t border-hairline pt-5">
+          <div className="flex items-center gap-2">
+            <DownloadIcon className="w-4 h-4 text-accent-text" />
+            <span className="text-xs font-medium text-ink">没有模板？点此下载</span>
+          </div>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <a
+              href="/templates/lekao-weekend-mistake-template.xlsx"
+              download
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-accent-text text-white text-xs font-medium rounded-md hover:bg-accent-hover transition"
+            >
+              <ExcelIcon className="w-3.5 h-3.5" />
+              下载反馈表 Excel 模板
+            </a>
+          </div>
+          <p className="mt-2 text-[10px] text-ink-subtle">
+            模板含 3 个 Sheet（数学/物理/化学），R1 日期改今日后可直接用
+          </p>
         </div>
       </div>
     </div>

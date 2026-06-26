@@ -27,7 +27,7 @@ const NAV_ITEMS = [
   { href: "/dashboard/feedback", label: "作业/堂测反馈", Icon: FeedbackIcon },
   { href: "/dashboard/history", label: "生成历史", Icon: ClockIcon },
   { href: "/dashboard/ideas", label: "灵感墙", Icon: LightbulbIcon },
-  { href: "/dashboard/weekend-mistake", label: "周末反馈表", Icon: WeekendIcon },
+  { href: "/dashboard/weekend-mistake", label: "错题反馈表", Icon: WeekendIcon },
 ];
 
 const STORAGE_KEY = "lekao-sidebar-collapsed";

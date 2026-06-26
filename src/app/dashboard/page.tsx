@@ -31,7 +31,7 @@ const QUICK_FEATURES: QuickFeature[] = [
   },
   {
     Icon: WeekendIcon,
-    title: "周末反馈表",
+    title: "错题反馈表",
     description: "上传周末 Excel → 手动填错题 → AI 自动生成全班反馈",
     href: "/dashboard/weekend-mistake",
     tag: { type: "free", label: "免费" },

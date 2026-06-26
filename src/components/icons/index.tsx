@@ -57,7 +57,7 @@ export function FeedbackIcon(props: IconProps) {
   );
 }
 
-/** 周末反馈表 — 日历 + 表格（v0.2 周末错题反馈表专用） */
+/** 错题反馈表 — 日历 + 表格 */
 export function WeekendIcon(props: IconProps) {
   return (
     <svg {...baseProps} {...props}>
