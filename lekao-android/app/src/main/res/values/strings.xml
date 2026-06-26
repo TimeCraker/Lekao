@@ -56,11 +56,24 @@
     <!-- ============ 课堂小结 F04 ============ -->
     <string name="summary_title">课堂小结</string>
     <string name="summary_upload_hint">拖拽讲义图片到这里 / 点击选择</string>
-    <string name="summary_upload_formats">支持 PNG / JPG / JPEG（自动压缩）</string>
+    <string name="summary_upload_formats">支持 PNG / JPG / JPEG（自动压缩到 2MB）</string>
+    <string name="summary_pick_gallery">从相册选</string>
+    <string name="summary_take_photo">拍照</string>
+    <string name="summary_template_summary">课堂小结</string>
+    <string name="summary_template_feedback">课堂反馈</string>
+    <string name="summary_description_label">补充描述（可选）</string>
+    <string name="summary_description_hint">今天上课的关键点 / 难点 / 学生表现…</string>
     <string name="summary_generate">一键生成</string>
     <string name="summary_copy_feedback">复制反馈（贴 Excel 用）</string>
     <string name="summary_copy_summary">复制小结（发家长群用）</string>
     <string name="summary_insufficient_coin">T-Coin 余额不足，请充值</string>
+
+    <!-- ============ 课堂反馈 F05 ============ -->
+    <string name="feedback_title">家长反馈</string>
+    <string name="feedback_subject_label">科目</string>
+    <string name="feedback_subject_hint">数学 / 语文 / 英语 / 物理 / 化学</string>
+    <string name="feedback_input_hint">简要描述今天的课堂情况</string>
+    <string name="feedback_generate">生成反馈</string>
 
     <!-- ============ 课堂反馈 F05 ============ -->
     <string name="feedback_title">家长反馈</string>
