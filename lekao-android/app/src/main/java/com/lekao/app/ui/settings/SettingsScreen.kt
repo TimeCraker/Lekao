@@ -2,7 +2,11 @@ package com.lekao.app.ui.settings
 
 import android.app.Activity
 import android.content.Intent
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -23,6 +28,7 @@ import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.Fingerprint
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -57,6 +63,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lekao.app.R
 import com.lekao.app.data.local.TokenStore
+import com.lekao.app.ui.theme.ThemePreset
+import com.lekao.app.ui.theme.ThemePresets
+import com.lekao.app.ui.theme.presetByKey
 
 /**
  * SettingsScreen · T51-T52
@@ -189,6 +198,29 @@ fun SettingsScreen(
             }
             Spacer(Modifier.height(12.dp))
 
+            // ============ 自定义主色 (M13) ============
+            SectionCard(
+                icon = Icons.Outlined.Palette,
+                title = "主题色",
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    ThemePresets.forEach { preset ->
+                        val selected = state.customColor == preset.key
+                        ColorSwatch(
+                            color = preset.swatchColor,
+                            label = preset.displayName,
+                            selected = selected,
+                            onClick = { viewModel.setCustomColor(preset.key) },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+
             // ============ 生物识别 + 通知 ============
             SectionCard(
                 icon = Icons.Outlined.Fingerprint,
@@ -281,5 +313,34 @@ private fun SwitchRow(label: String, checked: Boolean, onCheckedChange: (Boolean
     ) {
         Text(label, modifier = Modifier.weight(1f))
         Switch(checked = checked, onCheckedChange = onCheckedChange)
+    }
+}
+
+@Composable
+private fun ColorSwatch(
+    color: androidx.compose.ui.graphics.Color,
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    androidx.compose.material3.OutlinedCard(
+        onClick = onClick,
+        modifier = modifier.height(64.dp),
+        shape = RoundedCornerShape(8.dp),
+        border = if (selected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(4.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Box(
+                modifier = Modifier.size(24.dp).background(color, CircleShape)
+                    .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f), CircleShape),
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(label, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+        }
     }
 }

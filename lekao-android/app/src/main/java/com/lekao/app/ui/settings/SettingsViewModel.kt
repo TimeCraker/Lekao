@@ -41,6 +41,7 @@ class SettingsViewModel(
         val language: String = TokenStore.LANG_SYSTEM,
         val biometricEnabled: Boolean = false,
         val nickname: String = "",
+        val customColor: String = TokenStore.COLOR_BLUE,
         val savingNickname: Boolean = false,
         val signingOut: Boolean = false,
     )
@@ -57,8 +58,9 @@ class SettingsViewModel(
             val lang = tokenStore.languageFlow.first()
             val biometric = tokenStore.biometricEnabledFlow.first()
             val nick = tokenStore.userFlow.first()?.name.orEmpty()
+            val color = tokenStore.customColorFlow.first()
             _state.update {
-                it.copy(theme = theme, language = lang, biometricEnabled = biometric, nickname = nick)
+                it.copy(theme = theme, language = lang, biometricEnabled = biometric, nickname = nick, customColor = color)
             }
         }
     }
@@ -87,6 +89,11 @@ class SettingsViewModel(
     }
 
     fun setNickname(s: String) = _state.update { it.copy(nickname = s.take(20)) }
+
+    fun setCustomColor(color: String) {
+        _state.update { it.copy(customColor = color) }
+        viewModelScope.launch { tokenStore.setCustomColor(color) }
+    }
 
     fun saveNickname() {
         val s = _state.value

@@ -39,6 +39,7 @@ class TokenStore(private val context: Context) {
         val THEME = stringPreferencesKey("theme")
         val LANGUAGE = stringPreferencesKey("language")
         val BIOMETRIC_ENABLED = booleanPreferencesKey("biometric_enabled")
+        val CUSTOM_COLOR = stringPreferencesKey("custom_color")
     }
 
     // 用户信息
@@ -112,6 +113,15 @@ class TokenStore(private val context: Context) {
         context.dataStore.edit { it[Keys.BIOMETRIC_ENABLED] = enabled }
     }
 
+    // 自定义主题色 (M13)
+    val customColorFlow: Flow<String> = context.dataStore.data.map { prefs ->
+        prefs[Keys.CUSTOM_COLOR] ?: COLOR_BLUE
+    }
+
+    suspend fun setCustomColor(color: String) {
+        context.dataStore.edit { it[Keys.CUSTOM_COLOR] = color }
+    }
+
     suspend fun clear() {
         context.dataStore.edit { it.clear() }
     }
@@ -123,6 +133,13 @@ class TokenStore(private val context: Context) {
         const val LANG_ZH = "zh"
         const val LANG_EN = "en"
         const val LANG_SYSTEM = "system"
+
+        // 预设主题色 (M13)
+        const val COLOR_BLUE = "blue"       // Lekao 默认蓝 (default)
+        const val COLOR_CORAL = "coral"     // 珊瑚红
+        const val COLOR_EMERALD = "emerald" // 翡翠绿
+        const val COLOR_PURPLE = "purple"   // 紫罗兰
+        const val COLOR_AMBER = "amber"     // 琥珀橙
 
         @Volatile
         private var instance: TokenStore? = null
