@@ -32,6 +32,10 @@ import {
   clearWeekendDraft,
 } from "@/lib/mistake/weekend-draft";
 import {
+  exportWeekendWorkbook,
+  suggestExportFileName,
+} from "@/lib/mistake/weekend-exporter";
+import {
   sortStudentsByCellValue,
   type WeekendSheet,
   type WeekendStudent,
@@ -45,6 +49,7 @@ import {
   ArrowLeftIcon,
   ResetIcon,
   SortIcon,
+  DownloadIcon,
 } from "@/components/icons";
 import { WeekendSheetTabs } from "./weekend-sheet-tabs";
 import { WeekendStudentTable } from "./weekend-student-table";
@@ -583,8 +588,119 @@ function WeekendEditStudentsStep({
           <SortIcon className="w-3.5 h-3.5" />
           排序规则：有题号(数字升序) → 全对 → 网课 → 作业未交 → 留空
         </span>
-        <span>Stage 2-3 · 导出 Excel / AI 反馈 下一阶段完成</span>
+        <span>AI 反馈 (Stage 3) 待实现</span>
       </div>
+
+      {/* Stage 2 · 导出 Excel 工具栏 */}
+      <WeekendExportBar workbook={workbook} />
+    </div>
+  );
+}
+
+// ============== Stage 2 · 导出工具栏 ==============
+
+function WeekendExportBar({ workbook }: { workbook: WeekendWorkbook }) {
+  const today = getThisWeekendDate();
+  const firstSheetName = workbook.sheets[0]?.sheetName ?? "反馈表";
+  const defaultName = suggestExportFileName(firstSheetName, today);
+  const [fileName, setFileName] = useState(defaultName);
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportResult, setExportResult] = useState<{
+    success: boolean;
+    msg: string;
+  } | null>(null);
+
+  // 统计全部 Sheet 的已填数（用于显示"导出 X 名学生"）
+  const totalStudents = workbook.sheets.reduce(
+    (acc, s) => acc + s.students.length,
+    0,
+  );
+  const filledStudents = workbook.sheets.reduce(
+    (acc, s) =>
+      acc +
+      s.students.filter(
+        (st) =>
+          st.qNumbersInput.trim() !== "" || st.feedback.trim() !== "",
+      ).length,
+    0,
+  );
+
+  const handleExport = useCallback(async () => {
+    if (!fileName.trim()) {
+      alert("文件名不能为空");
+      return;
+    }
+    setIsExporting(true);
+    setExportResult(null);
+    try {
+      exportWeekendWorkbook(workbook, fileName);
+      setExportResult({
+        success: true,
+        msg: `✓ 已下载 ${fileName}（${workbook.sheets.length} 个 Sheet · ${filledStudents}/${totalStudents} 人已填）`,
+      });
+    } catch (e) {
+      setExportResult({
+        success: false,
+        msg: `导出失败：${e instanceof Error ? e.message : "未知错误"}`,
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  }, [workbook, fileName, filledStudents, totalStudents]);
+
+  return (
+    <div className="rounded-xl border border-accent-line/60 bg-accent-soft/10 p-5 space-y-4">
+      <div className="flex items-center gap-2">
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-accent text-white text-xs font-semibold">
+          Stage 2
+        </span>
+        <h4 className="text-sm font-semibold text-ink">导出 Excel</h4>
+        <span className="text-xs text-ink-muted">
+          · {workbook.sheets.length} 个 Sheet · {filledStudents}/{totalStudents} 人已填
+        </span>
+      </div>
+
+      <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-end">
+        <div className="flex-1">
+          <label className="block text-xs text-ink-muted mb-1">
+            文件名（默认：{defaultName}）
+          </label>
+          <input
+            type="text"
+            value={fileName}
+            onChange={(e) => setFileName(e.target.value)}
+            placeholder="如：2026超火1班数学6.26【反馈表】.xlsx"
+            className="w-full rounded-lg border border-hairline px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-accent/50"
+          />
+        </div>
+        <button
+          type="button"
+          onClick={handleExport}
+          disabled={isExporting || totalStudents === 0}
+          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-accent-text text-white text-sm font-medium hover:bg-accent-hover transition disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+        >
+          <DownloadIcon className="w-4 h-4" />
+          {isExporting ? "导出中..." : `导出 ${workbook.sheets.length} 个 Sheet`}
+        </button>
+      </div>
+
+      <div className="text-xs text-ink-muted">
+        💡 导出会保留原 R1 标题（含替换后的日期）+ R2 列头 + 学生 A 序号 + B 姓名 +
+        C 列你填的错题 + D 列反馈。浏览器默认下载路径。
+      </div>
+
+      {exportResult && (
+        <div
+          role="status"
+          className={`rounded-lg p-3 text-sm ${
+            exportResult.success
+              ? "bg-success-soft/30 text-success-text"
+              : "bg-warning/10 text-warning"
+          }`}
+        >
+          {exportResult.msg}
+        </div>
+      )}
     </div>
   );
 }
