@@ -151,22 +151,30 @@ export function WeekendMistakeWorkflow() {
     [],
   );
 
-  // ===== 自动排序（v0.2 新增）=====
+  // ===== 自动排序（v0.2 新增 · v0.2.1 修订：返回 moved/total 用于 toast 反馈）=====
   const autoSortSheet = useCallback(
-    (sheetName: string) => {
+    (sheetName: string): { moved: number; total: number } => {
+      let movedCount = 0;
+      let totalCount = 0;
       setWorkbook((prev) => {
         if (!prev) return prev;
         return {
           ...prev,
           sheets: prev.sheets.map((s) => {
             if (s.sheetName !== sheetName) return s;
-            return {
-              ...s,
-              students: sortStudentsByCellValue(s.students),
-            };
+            const sorted = sortStudentsByCellValue(s.students);
+            // 计算实际移动人数（位置变了 = 算移动）
+            totalCount = sorted.length;
+            for (let i = 0; i < sorted.length; i++) {
+              if (sorted[i].rowIndex !== s.students[i].rowIndex) {
+                movedCount++;
+              }
+            }
+            return { ...s, students: sorted };
           }),
         };
       });
+      return { moved: movedCount, total: totalCount };
     },
     [],
   );
@@ -515,7 +523,7 @@ function WeekendEditStudentsStep({
     rowIndex: number,
     patch: Partial<WeekendStudent>,
   ) => void;
-  onAutoSort: (sheetName: string) => void;
+  onAutoSort: (sheetName: string) => { moved: number; total: number };
   onBack: () => void;
 }) {
   const activeSheet = workbook.sheets[activeSheetIdx];

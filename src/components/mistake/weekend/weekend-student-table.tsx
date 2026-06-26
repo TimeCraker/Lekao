@@ -1,8 +1,13 @@
 "use client";
 
 /**
- * 周末错题反馈表 · 学生表视图（v0.2 简化版）
+ * 周末错题反馈表 · 学生表视图（v0.2.1 修订版）
  * 来源：docs/stages/weekend-mistake-table-v0.md + 用户 2026-06-26 反馈
+ *
+ * v0.2.1 修订（用户实测）：
+ * - 自动排序按钮现在有真实功能 + 视觉反馈（绿色 toast 2s 自动消失）
+ * - 排序结果按"已排序"状态高亮整个表头边框
+ * - 每次 sort 后计算移动人数 + 反馈
  *
  * v0.2 简化：
  * - 去掉特殊情况 dropdown（用户原话："特殊情况不用单独列，到时候填到题号列里"）
@@ -13,6 +18,7 @@
  * 自动排序逻辑见 weekend-types.ts: sortStudentsByCellValue()
  */
 
+import { useEffect, useState } from "react";
 import {
   QUICK_FILL_OPTIONS,
   classifyCellValue,
@@ -27,8 +33,16 @@ export function WeekendStudentTable({
 }: {
   students: WeekendStudent[];
   onStudentChange: (rowIndex: number, patch: Partial<WeekendStudent>) => void;
-  onAutoSort: () => void;
+  onAutoSort: () => { moved: number; total: number };
 }) {
+  const [sortFeedback, setSortFeedback] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!sortFeedback) return;
+    const t = setTimeout(() => setSortFeedback(null), 2500);
+    return () => clearTimeout(t);
+  }, [sortFeedback]);
+
   if (students.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-hairline bg-canvas-alt/30 p-8 text-center text-sm text-ink-muted">
@@ -42,22 +56,68 @@ export function WeekendStudentTable({
     (s) => s.qNumbersInput.trim() !== "" || s.feedback.trim() !== "",
   ).length;
 
+  // 按 category 统计（用于预览"排序后会变怎样"）
+  const categoryCounts = students.reduce<Record<string, number>>((acc, s) => {
+    const c = classifyCellValue(s.qNumbersInput);
+    acc[c] = (acc[c] ?? 0) + 1;
+    return acc;
+  }, {});
+  const hasAnyFilled = students.some(
+    (s) => classifyCellValue(s.qNumbersInput) !== "blank",
+  );
+
   return (
     <div className="space-y-3">
-      {/* 顶部工具栏：自动排序 + 已填统计 */}
-      <div className="flex items-center justify-between px-1">
-        <div className="text-xs text-ink-muted">
-          共 {students.length} 人 · 已填 {filledCount} 人
+      {/* 顶部工具栏：分类预览 + 已填统计 + 自动排序按钮 */}
+      <div className="flex items-center justify-between gap-3 px-1 flex-wrap">
+        <div className="flex items-center gap-3 text-xs text-ink-muted flex-wrap">
+          <span>共 {students.length} 人 · 已填 {filledCount} 人</span>
+          {hasAnyFilled && (
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-canvas-alt/60">
+              <span className="text-[10px]">📊</span>
+              <span>
+                题号 {categoryCounts.qnumber ?? 0} · 全对{" "}
+                {categoryCounts.allCorrect ?? 0} · 网课{" "}
+                {(categoryCounts.onlineCourse ?? 0) +
+                  (categoryCounts.onlineReview ?? 0) +
+                  (categoryCounts.onlineLast ?? 0)}{" "}
+                · 未交 {categoryCounts.notSubmitted ?? 0} · 留空{" "}
+                {categoryCounts.blank ?? 0}
+              </span>
+            </span>
+          )}
         </div>
         <button
           type="button"
-          onClick={onAutoSort}
-          className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-md bg-accent-soft text-accent-ink hover:bg-accent-text hover:text-white transition"
+          onClick={() => {
+            const { moved, total } = onAutoSort();
+            if (moved === 0) {
+              setSortFeedback(`已是排序顺序（${total} 人）`);
+            } else {
+              setSortFeedback(`✓ 已排序（移动 ${moved} / ${total} 人）`);
+            }
+          }}
+          className={`
+            inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md transition font-medium
+            ${
+              sortFeedback
+                ? "bg-success-soft text-success-text border border-success/40"
+                : "bg-accent-text text-white hover:bg-accent-hover shadow-sm"
+            }
+          `}
           title="按 C 列自动排序：有题号(数字升序) → 全对 → 网课 → 作业未交 → 留空"
         >
-          ↕️ 自动排序
+          <span>↕️</span>
+          <span>{sortFeedback ?? "自动排序"}</span>
         </button>
       </div>
+
+      {/* 排序提示横幅（C 列全空时） */}
+      {!hasAnyFilled && (
+        <div className="rounded-lg bg-warning-soft/40 border border-warning/30 px-3 py-2 text-xs text-ink-muted">
+          💡 先在 C 列填一些错题号（如"3，6"）或选特殊值按钮，点排序才有效果。当前 C 列全留空 → 排序按姓名拼音升序（基本不会改变原顺序）。
+        </div>
+      )}
 
       <div className="rounded-xl border border-hairline overflow-hidden bg-white">
         <div className="overflow-x-auto">
