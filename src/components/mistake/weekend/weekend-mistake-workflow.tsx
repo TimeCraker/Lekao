@@ -1,16 +1,21 @@
 "use client";
 
 /**
- * 周末错题反馈表 · 主容器（Stage 1 · v0.1）
- * 来源：docs/stages/weekend-mistake-table-v0.md Stage 1
+ * 周末错题反馈表 · 主容器（v0.2 简化版）
+ * 来源：docs/stages/weekend-mistake-table-v0.md + 用户 2026-06-26 反馈
  *
- * 5 步骤状态机（v0.1 只实现 upload + editDate + editStudents）：
+ * v0.2 关键改动：
+ * - 删除 status / statusNote 字段（用户原话："特殊情况不用单独列"）
+ * - 删除 WEEKEND_STATUS_OPTIONS + StatusDropdown 引用
+ * - 加 autoSort handler（调 sortStudentsByCellValue）
+ * - 步骤指示器文案调整（v0.2 已完成 3/5）
+ * - 状态机更新文案："C 列填错题（题号/特殊值）"
+ *
+ * 5 步骤状态机：
  *   upload → editDate → editStudents → aiFeedback (Stage 3) → export (Stage 2)
  *
- * 设计原则：
- * - 复用 motion/react + framer-motion 模式（跟 mistake-workflow 一致）
- * - localStorage 草稿（key = weekend:{fileHash}:{sheetName}）
- * - 不耦合现有 mistake 模块（独立子流程）
+ * v0.2 已实现：upload + editDate + editStudents
+ * v0.2 待做：Stage 2（导出 Excel） + Stage 3（AI 反馈 batch API）
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -26,20 +31,20 @@ import {
   saveWeekendDraft,
   clearWeekendDraft,
 } from "@/lib/mistake/weekend-draft";
-import type {
-  WeekendSheet,
-  WeekendStudent,
-  WeekendStep,
-  WeekendWorkbook,
-  WeekendStatus,
+import {
+  sortStudentsByCellValue,
+  type WeekendSheet,
+  type WeekendStudent,
+  type WeekendStep,
+  type WeekendWorkbook,
 } from "@/lib/mistake/weekend-types";
-import { WEEKEND_STATUS_OPTIONS } from "@/lib/mistake/weekend-types";
 import {
   UploadIcon,
   CheckIcon,
   ExcelIcon,
   ArrowLeftIcon,
   ResetIcon,
+  SortIcon,
 } from "@/components/icons";
 import { WeekendSheetTabs } from "./weekend-sheet-tabs";
 import { WeekendStudentTable } from "./weekend-student-table";
@@ -79,7 +84,13 @@ export function WeekendMistakeWorkflow() {
                 ? draft.students
                 : sheet.students.map((s) => {
                     const ds = draft.students.find((d) => d.name === s.name);
-                    return ds ? { ...s, status: ds.status, statusNote: ds.statusNote, qNumbersInput: ds.qNumbersInput, feedback: ds.feedback } : s;
+                    return ds
+                      ? {
+                          ...s,
+                          qNumbersInput: ds.qNumbersInput,
+                          feedback: ds.feedback,
+                        }
+                      : s;
                   }),
             updatedTitle: draft.updatedTitle || sheet.updatedTitle,
             newDate: draft.newDate || sheet.newDate,
@@ -90,10 +101,8 @@ export function WeekendMistakeWorkflow() {
 
       // 初始化用户可编辑的标题 + 日期
       const titles: Record<string, string> = {};
-      const dates: Record<string, string> = {};
       restoredSheets.forEach((s) => {
         titles[s.sheetName] = s.updatedTitle;
-        dates[s.sheetName] = s.newDate;
       });
       setEditingTitles(titles);
       setNewDate(restoredSheets[0]?.newDate ?? getThisWeekendDate());
@@ -134,6 +143,26 @@ export function WeekendMistakeWorkflow() {
               students: s.students.map((st) =>
                 st.rowIndex === rowIndex ? { ...st, ...patch } : st,
               ),
+            };
+          }),
+        };
+      });
+    },
+    [],
+  );
+
+  // ===== 自动排序（v0.2 新增）=====
+  const autoSortSheet = useCallback(
+    (sheetName: string) => {
+      setWorkbook((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          sheets: prev.sheets.map((s) => {
+            if (s.sheetName !== sheetName) return s;
+            return {
+              ...s,
+              students: sortStudentsByCellValue(s.students),
             };
           }),
         };
@@ -212,10 +241,10 @@ export function WeekendMistakeWorkflow() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-semibold text-ink">
-            周末错题反馈表（v0.1）
+            周末错题反馈表（v0.2）
           </h2>
           <p className="text-xs text-ink-muted mt-1">
-            上传周末 Excel → 改日期 → 手动填错题 → 导出/AI 反馈（Stage 3）
+            上传周末 Excel → 改日期 → 填错题 + 自动排序 → AI 反馈 + 导出
           </p>
         </div>
         {workbook && (
@@ -231,9 +260,7 @@ export function WeekendMistakeWorkflow() {
       </div>
 
       {/* 步骤指示器 */}
-      {workbook && (
-        <WeekendStepIndicator step={step} />
-      )}
+      {workbook && <WeekendStepIndicator step={step} />}
 
       {/* Step 1：上传 */}
       {step === "upload" && (
@@ -262,6 +289,7 @@ export function WeekendMistakeWorkflow() {
           activeSheetIdx={activeSheetIdx}
           onSheetChange={setActiveSheetIdx}
           onStudentChange={updateStudent}
+          onAutoSort={(sheetName) => autoSortSheet(sheetName)}
           onBack={backToEditDate}
         />
       )}
@@ -279,18 +307,14 @@ function WeekendStepIndicator({ step }: { step: WeekendStep }) {
     { id: "aiFeedback", label: "AI 反馈" },
     { id: "export", label: "导出" },
   ];
-  const activeIdx = steps.findIndex((s) => s.id === step);
-  const visibleSteps = steps.filter((s) =>
-    step !== "aiFeedback" && step !== "export"
-      ? s.id !== "aiFeedback" && s.id !== "export"
-      : true,
+  // v0.2 已完成 3/5，4-5 在 Stage 2/3
+  const showSteps = steps.filter(
+    (s) => s.id !== "aiFeedback" && s.id !== "export",
   );
-  // v0.1 暂时只显示前 3 步
-  const showSteps = visibleSteps.slice(0, 3);
   const activeIdxVisible = showSteps.findIndex((s) => s.id === step);
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2 flex-wrap">
       {showSteps.map((s, i) => {
         const isActive = i === activeIdxVisible;
         const isDone = i < activeIdxVisible;
@@ -303,8 +327,8 @@ function WeekendStepIndicator({ step }: { step: WeekendStep }) {
                   isActive
                     ? "bg-accent text-white"
                     : isDone
-                    ? "bg-success-soft text-success-text"
-                    : "bg-canvas-alt text-ink-subtle"
+                      ? "bg-success-soft text-success-text"
+                      : "bg-canvas-alt text-ink-subtle"
                 }
               `}
             >
@@ -315,8 +339,8 @@ function WeekendStepIndicator({ step }: { step: WeekendStep }) {
                     isActive
                       ? "bg-white text-accent"
                       : isDone
-                      ? "bg-success text-white"
-                      : "bg-hairline text-ink-subtle"
+                        ? "bg-success text-white"
+                        : "bg-hairline text-ink-subtle"
                   }
                 `}
               >
@@ -333,7 +357,7 @@ function WeekendStepIndicator({ step }: { step: WeekendStep }) {
         );
       })}
       <span className="text-xs text-ink-muted ml-2">
-        （AI 反馈 / 导出 在 v0.3 / v0.2 阶段）
+        （AI 反馈 / 导出 在 Stage 2-3）
       </span>
     </div>
   );
@@ -359,7 +383,7 @@ function WeekendUploadStep({
         </h3>
         <p className="text-xs text-ink-muted mb-6 max-w-md">
           1 个 Excel 可包含多个 Sheet（数学/物理/化学等）。
-          系统会自动识别 R1 表头日期并改成本周日期，姓名自动提取，C 列（错题）你手动填。
+          系统会自动识别 R1 表头日期并改成今日，姓名自动提取，C 列（错题）你手动填。
         </p>
 
         <label className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-accent-text text-white text-sm font-medium hover:bg-accent-hover transition cursor-pointer disabled:opacity-50">
@@ -389,7 +413,7 @@ function WeekendUploadStep({
           <ul className="space-y-0.5 list-disc list-inside">
             <li>R1：标题（如「2026超火1班数学反馈表 6月14日」）</li>
             <li>R2：序号 | 姓名 | 课后作业错题 | 课后作业反馈</li>
-            <li>R3+：学生数据（错题/反馈列可空，你手动填）</li>
+            <li>R3+：学生数据（错题/反馈列默认空，你手动填）</li>
           </ul>
         </div>
       </div>
@@ -410,15 +434,14 @@ function WeekendEditDateStep({
   onConfirm: () => void;
   onBack: () => void;
 }) {
+  const today = getThisWeekendDate();
   return (
     <div className="rounded-2xl border border-hairline bg-white p-6 space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-base font-semibold text-ink">
-            改 R1 表头日期
-          </h3>
+          <h3 className="text-base font-semibold text-ink">改 R1 表头日期</h3>
           <p className="text-xs text-ink-muted mt-1">
-            系统已自动把日期改成本周（{getThisWeekendDate()}）。你也可以手动微调标题。
+            系统已自动把日期改成今日（{today}）。你也可以手动微调标题。
           </p>
         </div>
         <button
@@ -456,7 +479,8 @@ function WeekendEditDateStep({
               className="w-full rounded-lg border border-hairline px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-accent/50"
             />
             <div className="mt-2 text-xs text-ink-muted">
-              原标题：<span className="text-ink-subtle">{sheet.originalTitle}</span>
+              原标题：
+              <span className="text-ink-subtle">{sheet.originalTitle}</span>
             </div>
           </div>
         ))}
@@ -480,6 +504,7 @@ function WeekendEditStudentsStep({
   activeSheetIdx,
   onSheetChange,
   onStudentChange,
+  onAutoSort,
   onBack,
 }: {
   workbook: WeekendWorkbook;
@@ -490,6 +515,7 @@ function WeekendEditStudentsStep({
     rowIndex: number,
     patch: Partial<WeekendStudent>,
   ) => void;
+  onAutoSort: (sheetName: string) => void;
   onBack: () => void;
 }) {
   const activeSheet = workbook.sheets[activeSheetIdx];
@@ -498,11 +524,10 @@ function WeekendEditStudentsStep({
     <div className="rounded-2xl border border-hairline bg-white p-6 space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-base font-semibold text-ink">
-            手动填错题 + 选特殊情况
-          </h3>
+          <h3 className="text-base font-semibold text-ink">填错题（C 列）</h3>
           <p className="text-xs text-ink-muted mt-1">
-            C 列（错题）批改完手动填；特殊情况在下拉选「网课/请假/未交」时 C 列自动锁定。
+            手动填题号（如"3，6"）或选下方特殊值按钮（"全对"/"网课"/"作业未交"等）。
+            点 ↕️ 自动排序按 C 列自动分组。
           </p>
         </div>
         <button
@@ -520,7 +545,7 @@ function WeekendEditStudentsStep({
           sheetName: s.sheetName,
           studentCount: s.students.length,
           filledCount: s.students.filter(
-            (st) => st.qNumbersInput || st.status !== "normal",
+            (st) => st.qNumbersInput.trim() !== "" || st.feedback.trim() !== "",
           ).length,
         }))}
         activeIdx={activeSheetIdx}
@@ -536,19 +561,21 @@ function WeekendEditStudentsStep({
           transition={{ duration: 0.25 }}
         >
           <WeekendStudentTable
-            sheetName={activeSheet.sheetName}
             students={activeSheet.students}
             onStudentChange={(rowIndex, patch) =>
               onStudentChange(activeSheet.sheetName, rowIndex, patch)
             }
+            onAutoSort={() => onAutoSort(activeSheet.sheetName)}
           />
         </motion.div>
       </AnimatePresence>
 
-      <div className="flex justify-end pt-3 border-t border-hairline text-xs text-ink-muted">
-        <span>
-          Stage 2 · 导出 Excel | Stage 3 · AI 反馈 将在下一阶段完成
+      <div className="flex justify-between items-center pt-3 border-t border-hairline text-xs text-ink-muted">
+        <span className="inline-flex items-center gap-1">
+          <SortIcon className="w-3.5 h-3.5" />
+          排序规则：有题号(数字升序) → 全对 → 网课 → 作业未交 → 留空
         </span>
+        <span>Stage 2-3 · 导出 Excel / AI 反馈 下一阶段完成</span>
       </div>
     </div>
   );

@@ -256,3 +256,91 @@ Response: {
 - v1.0 是否要把 `/dashboard/summary` + `/dashboard/feedback` 永久折叠到周末表底部
 - v1.0 是否要把"周末错题表"作为 Dashboard 主页入口（替换默认页）
 - T-Coin 扣费策略（1 币/Sheet vs 1 币/生 vs 包月）需用户决定
+
+---
+
+## 🔄 v0.2 修订（2026-06-26 用户 4 点反馈后）
+
+> **背景**：v0.1 部署后用户实测提出 4 点反馈，方向性调整如下。
+
+### 4 个核心调整
+
+| # | v0.1 原方案 | v0.2 修订 | 用户原话 |
+|---|-----------|----------|---------|
+| **1 · 位置** | 把周末错题表**折叠**到 `/dashboard/mistake` 底部（mistake 为主） | **周末反馈表为主**，独立路由 `/dashboard/weekend-mistake` + sidebar 新导航项 + Dashboard 第 2 个 QuickCard；AI 助手折叠到周末表底部 | "之前计划里面有... 把他放到该放的地方... 把之前的两个 AI 生成的功能给它做主" |
+| **2 · 日期** | "最近周六/周日"（自动算本周六/日）| **今天**（直接用系统日期，用户上传时是什么日期就改成什么日期） | "好像不是很智能... 我想要的是当天" |
+| **3 · 特殊情况** | 单独 dropdown 列（status: normal/网课/请假/未交/其他 + statusNote）| **去掉 dropdown**。C 列改成"单一 input + 5 个特殊值快捷按钮组"。特殊情况直接填到 C 列（如"网课"），跟题号 "3，6" 共享同一列 | "特殊情况不用单独去列一列... 到时候可能就会填到这个题号里面，让题号去选是最好的" |
+| **4 · 自动排序** | 无（保持原 Excel 顺序） | 加"↕️ 自动排序"按钮，按 C 列值自动分组：题号(数字升序) → 全对 → 网课 → 网课回放 → 上次课网课 → 作业未交 → 其他 → 留空 | "有了题号的就自动往上面排... 特殊情况或者作业未交的就把它往下面放" |
+
+### v0.2 文件改动清单
+
+#### 新增
+- `src/lib/mistake/weekend-types-base.ts`（拆出基础类型，避免循环引用）
+- `src/app/dashboard/weekend-mistake/page.tsx`（独立路由页）
+- `WeekendIcon` / `SortIcon` 加到 `src/components/icons/index.tsx`
+
+#### 修改
+- `src/lib/mistake/weekend-types.ts`（删除 status/statusNote 字段 + `WEEKEND_STATUS_OPTIONS` 常量，新增 `classifyCellValue` / `sortStudentsByCellValue` / `shouldSkipAiFeedback`）
+- `src/lib/mistake/weekend-parser.ts`（`getThisWeekendDate()` → `formatISO(new Date())` 返回今日 ISO；students init 去掉 status/statusNote）
+- `src/components/mistake/weekend/weekend-student-table.tsx`（C 列合并 input + 5 个快捷按钮组，去掉 dropdown 列；顶部加自动排序按钮）
+- `src/components/mistake/weekend/weekend-mistake-workflow.tsx`（去掉 WEEKEND_STATUS_OPTIONS 引用；`autoSortSheet` handler 调用 `sortStudentsByCellValue`；步骤指示器文案更新）
+- `src/components/dashboard/sidebar.tsx`（NAV_ITEMS 加 `/dashboard/weekend-mistake`，label="周末反馈表"，Icon=WeekendIcon）
+- `src/app/dashboard/page.tsx`（QUICK_FEATURES 加 weekend-mistake 第 2 项，tag=免费；grid `md:grid-cols-3` → `md:grid-cols-2 lg:grid-cols-4`）
+
+#### 还原
+- `src/app/dashboard/mistake/page.tsx`（**移除** v0.1 加的"周末错题反馈表"折叠 details 区块，恢复原 mistake 页）
+
+### v0.2 排序逻辑（核心代码）
+
+```ts
+const CATEGORY_ORDER: Record<CellCategory, number> = {
+  qnumber: 0,        // 有题号（"3，6"）
+  allCorrect: 1,     // "全对"
+  onlineCourse: 2,   // "网课"
+  onlineReview: 3,   // "网课回放"
+  onlineLast: 4,     // "上次课网课"
+  notSubmitted: 5,   // "作业未交"
+  other: 6,          // 其他文本（"请假/转学..."）
+  blank: 7,          // 留空
+};
+
+// 题号内细分：按第一个数字升序
+function extractFirstNumber(v: string): number {
+  const m = v.match(/\d+/);
+  return m ? parseInt(m[0], 10) : Number.MAX_SAFE_INTEGER;
+}
+
+// 主排序：category asc → 同 category 内细分 → 姓名拼音
+```
+
+### v0.2 验收（待跑）
+
+- [ ] sidebar 第 2 项 = "周末反馈表"，点击进 `/dashboard/weekend-mistake`
+- [ ] Dashboard 4 个 QuickCard，第 2 张 = "周末反馈表"（免费 tag）
+- [ ] `/dashboard/mistake` **不再含**"周末错题反馈表"折叠区
+- [ ] 上传 Excel → R1 标题日期自动改为今日（不再算"最近周六"）
+- [ ] 学生表 C 列：input + 下方 5 个快捷按钮（"全对"/"网课"/"网课回放"/"上次课网课"/"作业未交"）
+- [ ] 点 ↕️ 自动排序 → 学生按 category 顺序重排
+- [ ] 草稿依然 localStorage 保留
+
+### v0.2 → v0.3 仍待办（Stage 2 + Stage 3）
+
+- **Stage 2**：Excel 导出（SheetJS 写回 + 文件名可改 + file-saver 下载）
+- **Stage 3**：AI 反馈集成（`/api/lekao/feedback/batch` + vision 提取 keyPoints + 批量生成 N 段反馈）
+- 暂不实现"AI 助手折叠"（Stage 4 原计划）—— **位置修订后 AI 助手不再折叠到周末表下**，保留为独立 sidebar 入口
+
+### v0.2 决策影响
+
+| 维度 | 影响 |
+|------|------|
+| 路由 | 新增 `/dashboard/weekend-mistake`（**独立页面**，不再依赖 mistake 页） |
+| 数据库 | 不需要新表（依然 localStorage 草稿） |
+| API | 不需要新 API（v0.2 不含 AI） |
+| 权限 | 不需要新角色（所有登录用户可用） |
+| 移动端 | dashboard grid 改 `lg:grid-cols-4`（桌面 4 列，移动端 1 列） |
+| 视觉 | 新增 `WeekendIcon` / `SortIcon` 两个 SVG icon |
+
+### 关联沉淀
+- [[feedback_raw_data_preserve]] — 0/异常值原样保留，C 列原始字符串保留（不存 category 字段）
+- [[feedback_prompt_bait_text]] — Stage 3 AI prompt 设计时要清干净诱饵
+- [[lekao]] skill — 部署流程 / bundle fetch / force-with-lease

@@ -7,6 +7,7 @@ import {
   CoinIcon,
   FreeIcon,
   ArrowRightIcon,
+  WeekendIcon,
 } from "@/components/icons";
 import { CoinCounter } from "./coin-counter";
 
@@ -26,6 +27,13 @@ const QUICK_FEATURES: QuickFeature[] = [
     title: "错题集生成",
     description: "上传 Excel + 错题图片，AI 自动整理为 Word 文档",
     href: "/dashboard/mistake",
+    tag: { type: "free", label: "免费" },
+  },
+  {
+    Icon: WeekendIcon,
+    title: "周末反馈表",
+    description: "上传周末 Excel → 手动填错题 → AI 自动生成全班反馈",
+    href: "/dashboard/weekend-mistake",
     tag: { type: "free", label: "免费" },
   },
   {
@@ -94,8 +102,8 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* 3 功能入口 · stagger entrance */}
-      <div className="grid md:grid-cols-3 gap-6">
+      {/* 4 功能入口 · stagger entrance */}
+      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
         {QUICK_FEATURES.map((f, i) => (
           <QuickCard key={f.href} index={i} {...f} />
         ))}

@@ -57,6 +57,24 @@ export function FeedbackIcon(props: IconProps) {
   );
 }
 
+/** 周末反馈表 — 日历 + 表格（v0.2 周末错题反馈表专用） */
+export function WeekendIcon(props: IconProps) {
+  return (
+    <svg {...baseProps} {...props}>
+      {/* 日历顶部横条 */}
+      <rect x="3" y="5" width="18" height="16" rx="2" />
+      <path d="M3 10h18" />
+      <path d="M8 3v4" />
+      <path d="M16 3v4" />
+      {/* 表格内点（多学生） */}
+      <circle cx="8" cy="14" r="0.8" fill="currentColor" />
+      <circle cx="12" cy="14" r="0.8" fill="currentColor" />
+      <circle cx="16" cy="14" r="0.8" fill="currentColor" />
+      <path d="M7 17h10" />
+    </svg>
+  );
+}
+
 /** 控制台/仪表盘 — 4 格柱状图 */
 export function DashboardIcon(props: IconProps) {
   return (
@@ -358,6 +376,18 @@ export function RefreshIcon(props: IconProps) {
       <polyline points="21 3 21 8 16 8" />
       <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
       <polyline points="3 21 3 16 8 16" />
+    </svg>
+  );
+}
+
+/** Sort — 自动排序（上下箭头 + 横条，v0.2 周末表专用） */
+export function SortIcon(props: IconProps) {
+  return (
+    <svg {...baseProps} {...props}>
+      <path d="M7 4v16" />
+      <polyline points="3 16 7 20 11 16" />
+      <path d="M17 20V4" />
+      <polyline points="13 8 17 4 21 8" />
     </svg>
   );
 }

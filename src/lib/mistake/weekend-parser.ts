@@ -23,14 +23,9 @@ import type {
 
 // ============== 日期工具 ==============
 
-/** 返回最近的周六（含今天如果是周六）的 ISO 日期 (YYYY-MM-DD) */
+/** 返回今天的 ISO 日期 (YYYY-MM-DD) · 用户 2026-06-26 决策 "默认填今天" */
 export function getThisWeekendDate(): string {
-  const now = new Date();
-  const day = now.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
-  const daysToSaturday = (6 - day + 7) % 7;
-  const saturday = new Date(now);
-  saturday.setDate(now.getDate() + daysToSaturday);
-  return formatISO(saturday);
+  return formatISO(new Date());
 }
 
 function formatISO(d: Date): string {
@@ -210,14 +205,12 @@ function parseWeekendSheet(
     // A 列序号（row[0]，可空）
     const serialNumber = String(row[0] ?? "").trim();
 
-    // C 列错题（row[2]）默认空，**不读 Excel 已有内容**
+    // C 列（row[2]）默认空，**不读 Excel 已有内容** — 用户手动填
     // D 列反馈（row[3]）默认空
     students.push({
       rowIndex: i,
       serialNumber,
       name,
-      status: "normal",
-      statusNote: "",
       qNumbersInput: "",
       feedback: "",
     });
