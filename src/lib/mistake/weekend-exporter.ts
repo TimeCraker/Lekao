@@ -143,6 +143,13 @@ export function buildExportWorkbook(
  * 触发浏览器下载（保留原模板样式）
  *
  * 浏览器场景下用 writeBuffer + file-saver 的 Blob 方案
+ *
+ * v0.2.4 修复：exceljs 写 conditionalFormatting 时会生成非法 XML
+ *   → 用户打开时 Excel 报 "文件级验证和修复 · /xl/worksheets/sheetN.xml"
+ *   → 解法：写完后用 JSZip 后处理 zip 包，删除所有 <conditionalFormatting> 块
+ *   → 用户没用到这些规则（"停"/"假"等标记），删掉对视觉无影响
+ *
+ * 参考：https://github.com/exceljs/exceljs/issues/106
  */
 export async function exportWeekendWorkbook(
   wb: ExcelJS.Workbook,
@@ -150,11 +157,58 @@ export async function exportWeekendWorkbook(
   fileName: string,
 ): Promise<void> {
   const finalWb = buildExportWorkbook(wb, sheets);
-  const buffer = await finalWb.xlsx.writeBuffer();
+  let buffer = await finalWb.xlsx.writeBuffer();
+
+  // v0.2.4: 后处理 strip conditional formatting（exceljs 写坏的根源）
+  try {
+    buffer = await stripConditionalFormatting(buffer);
+  } catch (e) {
+    console.warn("[weekend-exporter] 后处理 conditional formatting 失败，继续输出原文件:", e);
+  }
+
   const blob = new Blob([buffer], {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   });
   saveAs(blob, fileName);
+}
+
+/**
+ * 用 JSZip 打开 xlsx buffer，删除所有 sheet xml 中的 <conditionalFormatting> 块，
+ * 然后重新打包回 buffer。
+ *
+ * 使用动态 import 避免 SSR 报错（jszip 不在 server bundle）。
+ */
+async function stripConditionalFormatting(buffer: ArrayBuffer): Promise<ArrayBuffer> {
+  if (typeof window === "undefined") return buffer; // SSR 跳过
+  const JSZip = (await import("jszip")).default;
+  const zip = await JSZip.loadAsync(buffer);
+
+  const sheetFiles = Object.keys(zip.files).filter(
+    (name) => /^xl\/worksheets\/sheet\d+\.xml$/.test(name),
+  );
+
+  for (const sheetName of sheetFiles) {
+    const file = zip.file(sheetName);
+    if (!file) continue;
+    const xml = await file.async("string");
+
+    // 匹配 <conditionalFormatting ...>...</conditionalFormatting>（包括自闭合 <.../>）
+    // 用非贪婪 + 多行匹配；保留 cfRule 不被切碎
+    const cleaned = xml.replace(
+      /<conditionalFormatting\b[^>]*>[\s\S]*?<\/conditionalFormatting>|<conditionalFormatting\b[^>]*\/>/g,
+      "",
+    );
+
+    if (cleaned !== xml) {
+      zip.file(sheetName, cleaned);
+    }
+  }
+
+  return await zip.generateAsync({
+    type: "arraybuffer",
+    compression: "DEFLATE",
+    compressionOptions: { level: 6 },
+  });
 }
 
 /**
