@@ -71,6 +71,14 @@
 -keep class com.lekao.app.LekaoApp { *; }
 -keep class com.lekao.app.MainActivity { *; }
 
+# ============ D1-E/F ViewModel + util (反射构建) ============
+-keep class com.lekao.app.ui.settings.SettingsViewModel { *; }
+-keep class com.lekao.app.ui.admin.** { *; }
+-keep class com.lekao.app.ui.ideas.IdeasViewModel { *; }
+-keep class com.lekao.app.ui.ideas.IdeaDetailViewModel { *; }
+-keep class com.lekao.app.util.SseClient { *; }
+-keep class com.lekao.app.util.ErrorMessages { *; }
+
 # ============ 报错日志（保留行号）============
 -keepattributes SourceFile,LineNumberTable
 -renamesourcefileattribute SourceFile

@@ -147,6 +147,14 @@ private fun DashboardContent(
         item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(2) }) {
             CoinChartCard(refreshTrigger = state.refreshTrigger)
         }
+        // 错题分类统计柱状图 (跨 2 列 · T55 M15)
+        item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(2) }) {
+            MistakeSubjectChart(refreshTrigger = state.refreshTrigger)
+        }
+        // 灵感墙趋势折线图 (跨 2 列 · T55 M15)
+        item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(2) }) {
+            IdeasTrendChart(refreshTrigger = state.refreshTrigger)
+        }
         // 6 个功能入口
         items(DashboardEntry.entries) { entry ->
             if (entry == DashboardEntry.ADMIN && user?.role != "ADMIN") return@items

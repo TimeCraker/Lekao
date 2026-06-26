@@ -45,6 +45,8 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Lekao.Splash"
         android:enableOnBackInvokedCallback="true"
+        android:hardwareAccelerated="true"
+        android:largeHeap="false"
         tools:targetApi="34">
 
         <!-- ============ MainActivity ============ -->
