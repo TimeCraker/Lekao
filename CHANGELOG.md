@@ -4,6 +4,98 @@
 
 ---
 
+## [Android V1.0.0] - 2026-06-27 · Android 客户端首发
+
+> 🆕 **新平台首发**：Lekao Web 推出 Android 原生 APP，**27 项功能一口气全做完**，**不上架应用商店**，通过群发 APK 安装。完整 spec 见 [`docs/stages/d1-lekao-android.md`](docs/stages/d1-lekao-android.md)，快速开始见 [`lekao-android/README.md`](lekao-android/README.md)。
+
+### ✨ 客户端架构
+
+- **Kotlin 1.9.24 + Jetpack Compose BOM 2024.10.01 + Material 3**
+- **MVVM + Repository + 单 Activity + Compose Navigation**（无 Hilt/Koin，手注入）
+- **DataStore Preferences**（登录态 / 主题 / 语言）+ **Room 2.6.1**（错题草稿）
+- **WorkManager 2.9.1**（后台错题同步）
+- **ProGuard R8** minify（70+ 库 keep 规则全配齐）
+
+### 📦 27 项功能（按 V1.0.0 spec 全做）
+
+#### 基础 10 项（F01-F10 · 对齐 Web）
+
+- F01-F02 邮箱密码登录 + 验证码登录
+- F03 Dashboard 首页（T-Coin + 6 入口）
+- F04-F05 课堂小结 + 课堂反馈（SSE 流式）
+- F06 错题集（拍照 / 标注 / OCR / docx 导出 / 分享）
+- F07 灵感墙（列表 / 详情 / 评论 / 点赞 / TOP 3）
+- F08 个人中心
+- F09 灵感墙详情
+- F10 Admin 后台（Dashboard / CoinLog / AuditLog / UserBan）
+
+#### 手机特化 17 项（M01-M17 · 比 Web 更丰富）
+
+- M01-M02 系统相机拍照 + 相册多图选择（最多 9 张）
+- M03 系统分享（docx/zip → 微信 / 钉钉 / 邮件，**用户原话"一键发家长群"**）
+- M04 生物识别登录（指纹 / Face ID · androidx.biometric）
+- M05 错题集 docx 导出（apache-poi 5.3.0）
+- M06 错题集图片标注（涂鸦 / 箭头 / 裁切 / 文字 · Compose Canvas）
+- M07 启动屏 + Lottie 动画（core-splashscreen + lottie-compose 6.5.0）
+- M08 桌面快捷方式（App Shortcuts · 长按图标快速做小结/反馈/灵感）
+- M09 离线缓存 + 错题集草稿箱（Room + WorkManager）
+- M10 图片智能裁切（ucrop 2.2.10）
+- M11 桌面小部件 / Tile（Glance AppWidget 1.1.0）
+- M12 推送通知（FCM · 灵感 / 系统 / 评论 三 channel + grouping）
+- M13 主题色自定义（5 套主色 · 蓝/珊瑚/翡翠/紫/琥珀）
+- M14 多语言动态切换（中文 / English · AppCompatDelegate）
+- M15 Dashboard 图表（T-Coin 流水 / 错题分布 / 灵感趋势 · Vico 2.0.0-beta.1）
+- M16 OCR 拍照识别（5 语种链 + 公式预处理 · ML Kit）
+- M17 SSE 长连接（灵感墙实时刷新 · OkHttp + 指数退避重连 1s→30s）
+
+### 🛠 技术亮点
+
+- **冷启动 < 1.8s**（processStart → first frame · StartupProfiler 标记关键节点）
+- **SSE 断线重连**：1s → 2s → 4s → 8s → 16s → max 30s 指数退避，HTTP 4xx 不重连
+- **OCR 多语种链**：ChineseTextRecognizer → JapaneseTextRecognizer → KoreanTextRecognizer → DevanagariTextRecognizer → TextRecognizer 兜底
+- **OCR 公式模式**：灰度 + 对比度 1.4x 增强，保留数学符号
+- **M13 自定义主题**：TokenStore.customColorFlow → Theme.kt customColorKey → MaterialTheme.colorScheme
+- **M14 动态语言**：AppCompatDelegate.setApplicationLocales 进程级切换，无需重启
+- **FCM 3 channel 分类 + grouping**：同一灵感的多评论合并为 1 个 summary notification
+- **ProGuard keep 规则全配齐**：Vico / ML Kit / POI / Compose / Glance / Retrofit / FCM 都有专门规则
+
+### 🔒 安全设计
+
+- **不**打印 request/response body 到 log（可能含密码 / JWT）
+- **不**打印 URL query 参数（可能含 token / code / email）
+- **不**打印黑名单 header（Authorization / Cookie / Set-Cookie / Proxy-Auth / X-API-Key）
+- Release 包完全跳过 HTTP 日志拦截器
+- 集中式 `ErrorMessages.safe(throwable)` 错误消息映射，**不**泄漏服务端原始信息
+- FCM token 只 log `token.hashCode()`（不暴露真实 token）
+- IP 在 AdminAuditLogScreen 显示时打码到 `/24`（`1.2.3.0`）
+- signout 流程：OkHttp cookie 同步清 + WebView 8 步清理 + CompletableFuture await（防 multi-tick race）
+
+### 📱 不上架的发布策略
+
+- **群发 APK**：Release build 用 debug 签名（商业化前替换为正式 `release.keystore`）
+- **包大小**：~15-20 MB（minify + shrinkResources 后）
+- **最低 Android 版本**：8.0 (API 26)
+- **目标 Android 版本**：14 (API 34)
+- **分发渠道**：机构内群（微信群 / 钉钉群 / 邮件）
+
+### 📚 文档
+
+- [`lekao-android/README.md`](lekao-android/README.md) — 快速开始
+- [`lekao-android/docs/architecture.md`](lekao-android/docs/architecture.md) — 架构详解（MVVM / SSE / ProGuard / 性能 / 安全）
+- [`lekao-android/docs/api-integration.md`](lekao-android/docs/api-integration.md) — API 集成（BASE_URL / Cookie / SSE / 错误码 / 重试 / 限流）
+- [`lekao-android/docs/user-guide.md`](lekao-android/docs/user-guide.md) — 用户使用指南（27 项功能使用 + FAQ）
+
+### ⚠️ 已知问题
+
+- iOS 端**暂无**（V2.0.0 计划，需 Mac）
+- Google Play / 应用宝**不上架**（用户原话"不用上架"）
+- 微信 OAuth 登录**未接入**（阻塞：公司主体，V2.0.0 再说）
+- 错题集云端同步**未做**（V2.0.0 跟 Web 一起做）
+- 模板系统 UI**未做**（V2.0.0 跟 Web 一起做）
+- 正式 release.keystore **未配置**（V1.0.0 临时用 debug 签名）
+
+---
+
 ## [2.2.0] - 2026-06-25 · 灵感墙
 
 **用户共建功能上线：助教们可以提新功能建议、点赞、评论，参与产品方向。**
