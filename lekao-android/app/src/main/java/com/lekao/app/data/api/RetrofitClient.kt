@@ -5,19 +5,22 @@ import com.lekao.app.BuildConfig
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.Response
-import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
 /**
- * Retrofit + OkHttp 单例（按 spec §3.3.1 决策：Cookie 自动管理）
+ * Retrofit + OkHttp 单例
  *
- * 关键设计：
- * 1. Cookie 自动管理（LekaoCookieJar）
- * 2. SSE 流式响应支持（READ_TIMEOUT 60s）
- * 3. 错误处理 Interceptor（401 自动跳登录 / 403 banned 提示 / 429 限流）
- * 4. 请求头注入（X-Client-Platform: android / X-Client-Version: ...）
+ * 安全要点（不要重新引入 HttpLoggingInterceptor！）：
+ * 1. 不使用 HttpLoggingInterceptor（默认 BODY 级别会打整个 body + URL 含 query）
+ * 2. 自定义 SafeHttpLogInterceptor: **默认全屏蔽**，只打印白名单字段
+ *    - 方法 + 路径（永不打印 query，可能含 token/code/password/email）
+ *    - 响应状态码
+ *    - 几个诊断 header（X-Client-Platform / Content-Type / Content-Length）
+ * 3. 永不打印 body（可能含密码 / JWT）
+ * 4. 永不打印 Authorization / Cookie / Set-Cookie / Proxy-Auth / X-API-Key
+ * 5. Release 包 (BuildConfig.DEBUG=false) 自动跳过
  */
 object RetrofitClient {
 
@@ -30,29 +33,8 @@ object RetrofitClient {
         }
     }
 
-    /**
-     * 自定义 logger: 屏蔽敏感 header（Authorization / Cookie / Set-Cookie）
-     * 即使是 HEADERS 级别也不能直打 cookie 值, 否则 logcat 会泄漏 token
-     */
-    private val safeLogger = HttpLoggingInterceptor.Logger { msg ->
-        val sanitized = msg.replace(
-            Regex("(?i)(authorization|cookie|set-cookie): .*"),
-            "$1: ***REDACTED***"
-        )
-        android.util.Log.d("LekaoAPI-HTTP", sanitized)
-    }
-
     private fun build(context: Context): Retrofit {
         val cookieJar = LekaoCookieJar(context.applicationContext)
-
-        // DEBUG 也只用 HEADERS, BODY 级别会把 password/code/token 都打 logcat, 不可接受
-        val loggingInterceptor = HttpLoggingInterceptor(safeLogger).apply {
-            level = if (BuildConfig.DEBUG) {
-                HttpLoggingInterceptor.Level.HEADERS
-            } else {
-                HttpLoggingInterceptor.Level.NONE
-            }
-        }
 
         val clientHeadersInterceptor = Interceptor { chain ->
             val request = chain.request().newBuilder()
@@ -66,10 +48,7 @@ object RetrofitClient {
 
         val errorLoggingInterceptor = Interceptor { chain ->
             val response: Response = chain.proceed(chain.request())
-            // 错误码统一打 log（实际错误处理在 Repository 层 catch HttpException）
             if (!response.isSuccessful) {
-                // 只打 method + path, 不打 query（query 可能含 email, code, token）
-                // 不打 localPrincipal（SSL 会话信息 + 客户端证书主体, 泄漏面大）
                 android.util.Log.w(
                     "LekaoAPI",
                     "[${response.code}] ${chain.request().method} ${chain.request().url.encodedPath}"
@@ -85,7 +64,7 @@ object RetrofitClient {
             .writeTimeout(LekaoConfig.WRITE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .retryOnConnectionFailure(true)
             .addInterceptor(clientHeadersInterceptor)
-            .addInterceptor(loggingInterceptor)
+            .addInterceptor(SafeHttpLogInterceptor)
             .addInterceptor(errorLoggingInterceptor)
             .build()
 
@@ -103,5 +82,56 @@ object RetrofitClient {
 
     fun api(context: Context): LekaoApi {
         return getInstance(context).create(LekaoApi::class.java)
+    }
+}
+
+/**
+ * 自定义 HTTP 日志拦截器（替换 HttpLoggingInterceptor）
+ *
+ * 设计原则：**default-deny**
+ * - 永不打印 request/response body（可能含密码/JWT）
+ * - 永不打印 query 参数（可能含 token/code/email）
+ * - 永不打印黑名单 header（Authorization/Cookie/Set-Cookie/Proxy-Auth 等）
+ * - 只打 method + path + 响应码 + 白名单诊断 header
+ * - Release 包 (BuildConfig.DEBUG=false) 整个拦截器空操作
+ *
+ * 安全性收益：
+ * - 即使 URL 含 ?token=xxx&code=yyy 也不会被打 logcat
+ * - 即使 header 里有 Authorization: Bearer xxx 也不会被打
+ * - 攻击面 = 0（不依赖 regex 黑名单/白名单匹配）
+ */
+private object SafeHttpLogInterceptor : Interceptor {
+    override fun intercept(chain: Interceptor.Chain): Response {
+        val request = chain.request()
+        if (!BuildConfig.DEBUG) {
+            return chain.proceed(request)
+        }
+
+        // 请求行: → METHOD /path (无 query)
+        android.util.Log.d("LekaoAPI", "→ ${request.method} ${request.url.encodedPath}")
+        // 逐个白名单 header 显式打, 其它任何 header 都不打
+        logHeaderIfPresent("LekaoAPI", "X-Client-Platform", request.header("X-Client-Platform"))
+        logHeaderIfPresent("LekaoAPI", "X-Client-Version", request.header("X-Client-Version"))
+        logHeaderIfPresent("LekaoAPI", "Content-Type", request.header("Content-Type"))
+        logHeaderIfPresent("LekaoAPI", "Content-Length", request.header("Content-Length"))
+
+        val response = chain.proceed(request)
+
+        // 响应行: ← code METHOD /path
+        android.util.Log.d(
+            "LekaoAPI",
+            "← ${response.code} ${request.method} ${request.url.encodedPath}"
+        )
+        logHeaderIfPresent("LekaoAPI", "Content-Type", response.header("Content-Type"))
+        logHeaderIfPresent("LekaoAPI", "Content-Length", response.header("Content-Length"))
+        logHeaderIfPresent("LekaoAPI", "Cache-Control", response.header("Cache-Control"))
+
+        return response
+    }
+
+    private fun logHeaderIfPresent(tag: String, name: String, value: String?) {
+        if (!value.isNullOrEmpty()) {
+            android.util.Log.d(tag, "  $name: $value")
+        }
     }
 }

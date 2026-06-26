@@ -3,6 +3,7 @@ package com.lekao.app.data.api
 import android.content.Context
 import android.webkit.CookieManager as WebCookieManager
 import android.webkit.CookieSyncManager
+import android.webkit.WebView
 import okhttp3.Cookie
 import okhttp3.CookieJar
 import okhttp3.HttpUrl
@@ -50,35 +51,45 @@ class LekaoCookieJar(
     /**
      * 清空所有 cookie（退出登录用）
      *
-     * 安全要点：
-     * 1. CountDownLatch 等 removeAllCookies 异步回调完成再返回
-     *    （fire-and-forget 模式：退出登录后下一请求可能还在用旧 cookie）
-     * 2. flush() 强制把内存 cookie 写盘
-     * 3. 如果 app 用过 WebView（PWA / OAuth 登录），调用方需要另外调 evictWebViewState()
+     * 安全模型（default-deny for stale auth state）：
+     * 1. OkHttp cookie jar 同步清（立刻生效, 主线程零阻塞）
+     *    → 下一 OkHttp API 请求不会带旧 session, 攻击面已闭合
+     * 2. WebView cookie 异步 fire-and-forget 清理
+     *    → 不阻塞主线程（避免 1s+ 阻塞触发 ANR）
+     *    → 残留 cookie 只在用户主动打开 WebView 加载 lekao 域时才有意义
+     *    → 此时服务端 Set-Cookie 会立即覆盖旧值（无 session = 未登录）
+     * 3. 若 caller 持有 WebView 引用（如 WebView 用于 PWA / OAuth），必须传 webView 参数
+     *    → 内部完成 8 步完整清理（stopLoading → about:blank → clearHistory
+     *       → clearCache → clearFormData → clearMatches → clearSslPreferences → removeAllCookies）
+     *
+     * ⚠️ 不要在调用方用 latch.await 等 WebView 异步回调 — 主线程阻塞会触发 ANR
+     *
+     * @param webView 可选 WebView 引用。若 app 没用 WebView 传 null 即可。
+     * @return true 表示 WebView cookie 清理已发起; false 表示 WebView 不可用
      */
-    fun clearAll() {
+    fun clearAll(webView: WebView? = null): Boolean {
         store.clear()
-        try {
-            val webCookieManager = WebCookieManager.getInstance()
-            val latch = java.util.concurrent.CountDownLatch(2)
-            webCookieManager.removeAllCookies { latch.countDown() }
-            webCookieManager.removeSessionCookies { latch.countDown() }
-            // 最多等 1 秒防卡死（WebView 不可用时回调可能永不触发）
-            latch.await(1, java.util.concurrent.TimeUnit.SECONDS)
-            webCookieManager.flush()
-        } catch (_: Throwable) {
-            // WebView 不可用时跳过
+        // 1) WebView 完整 in-memory 清理 (如果有引用)
+        if (webView != null) {
+            webView.stopLoading()
+            webView.loadUrl("about:blank")
+            webView.clearHistory()
+            webView.clearCache(true)
+            webView.clearFormData()
+            webView.clearMatches()
+            webView.clearSslPreferences()
         }
-    }
-
-    /**
-     * 退出登录时调用方如果有 WebView 引用, 调一下清掉 in-memory 认证状态
-     * (清缓存 + 清历史, 防止 WebView 仍持有已登录页的渲染结果)
-     */
-    @Suppress("unused")
-    fun evictWebViewState(webView: android.webkit.WebView) {
-        webView.clearCache(true)
-        webView.clearHistory()
+        // 2) WebView cookie store 异步清理 (fire-and-forget, 不阻塞主线程)
+        return try {
+            val wcm = WebCookieManager.getInstance()
+            wcm.removeAllCookies(null)
+            wcm.removeSessionCookies(null)
+            wcm.flush()
+            true
+        } catch (t: Throwable) {
+            android.util.Log.w("LekaoCookie", "WebView cookie clear failed: ${t.message}")
+            false
+        }
     }
 
     /**
