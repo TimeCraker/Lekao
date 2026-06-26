@@ -1,0 +1,555 @@
+"use client";
+
+/**
+ * 周末错题反馈表 · 主容器（Stage 1 · v0.1）
+ * 来源：docs/stages/weekend-mistake-table-v0.md Stage 1
+ *
+ * 5 步骤状态机（v0.1 只实现 upload + editDate + editStudents）：
+ *   upload → editDate → editStudents → aiFeedback (Stage 3) → export (Stage 2)
+ *
+ * 设计原则：
+ * - 复用 motion/react + framer-motion 模式（跟 mistake-workflow 一致）
+ * - localStorage 草稿（key = weekend:{fileHash}:{sheetName}）
+ * - 不耦合现有 mistake 模块（独立子流程）
+ */
+
+import { useCallback, useEffect, useMemo, useState } from "react";
+import * as XLSX from "xlsx";
+import { motion, AnimatePresence } from "motion/react";
+import {
+  parseWeekendWorkbook,
+  readWeekendWorkbook,
+  getThisWeekendDate,
+} from "@/lib/mistake/weekend-parser";
+import {
+  loadWeekendDraft,
+  saveWeekendDraft,
+  clearWeekendDraft,
+} from "@/lib/mistake/weekend-draft";
+import type {
+  WeekendSheet,
+  WeekendStudent,
+  WeekendStep,
+  WeekendWorkbook,
+  WeekendStatus,
+} from "@/lib/mistake/weekend-types";
+import { WEEKEND_STATUS_OPTIONS } from "@/lib/mistake/weekend-types";
+import {
+  UploadIcon,
+  CheckIcon,
+  ExcelIcon,
+  ArrowLeftIcon,
+  ResetIcon,
+} from "@/components/icons";
+import { WeekendSheetTabs } from "./weekend-sheet-tabs";
+import { WeekendStudentTable } from "./weekend-student-table";
+
+export function WeekendMistakeWorkflow() {
+  const [step, setStep] = useState<WeekendStep>("upload");
+  const [workbook, setWorkbook] = useState<WeekendWorkbook | null>(null);
+  const [rawWb, setRawWb] = useState<XLSX.WorkBook | null>(null);
+  const [activeSheetIdx, setActiveSheetIdx] = useState(0);
+  const [newDate, setNewDate] = useState<string>(""); // 用户改后的日期
+  const [editingTitles, setEditingTitles] = useState<Record<string, string>>(
+    {},
+  );
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  // ===== Step 1：上传 Excel =====
+  const handleUpload = useCallback(async (file: File) => {
+    setIsUploading(true);
+    setUploadError(null);
+    try {
+      const { workbook: wb, fileHash } = await readWeekendWorkbook(file);
+      const parsed = parseWeekendWorkbook(wb, file.name, fileHash);
+      if (parsed.sheets.length === 0) {
+        throw new Error("Excel 里没有有效 Sheet（每个 Sheet 至少要有表头 + 1 行学生）");
+      }
+
+      // 尝试恢复每个 Sheet 的草稿
+      const restoredSheets = parsed.sheets.map((sheet) => {
+        const draft = loadWeekendDraft(fileHash, sheet.sheetName);
+        if (draft) {
+          // 合并草稿：保留 draft 的 students（用户已编辑）+ updatedTitle + newDate
+          return {
+            ...sheet,
+            students:
+              draft.students.length === sheet.students.length
+                ? draft.students
+                : sheet.students.map((s) => {
+                    const ds = draft.students.find((d) => d.name === s.name);
+                    return ds ? { ...s, status: ds.status, statusNote: ds.statusNote, qNumbersInput: ds.qNumbersInput, feedback: ds.feedback } : s;
+                  }),
+            updatedTitle: draft.updatedTitle || sheet.updatedTitle,
+            newDate: draft.newDate || sheet.newDate,
+          };
+        }
+        return sheet;
+      });
+
+      // 初始化用户可编辑的标题 + 日期
+      const titles: Record<string, string> = {};
+      const dates: Record<string, string> = {};
+      restoredSheets.forEach((s) => {
+        titles[s.sheetName] = s.updatedTitle;
+        dates[s.sheetName] = s.newDate;
+      });
+      setEditingTitles(titles);
+      setNewDate(restoredSheets[0]?.newDate ?? getThisWeekendDate());
+
+      setRawWb(wb);
+      setWorkbook({
+        ...parsed,
+        sheets: restoredSheets,
+      });
+      setActiveSheetIdx(0);
+      setStep("editDate");
+    } catch (e) {
+      setUploadError(e instanceof Error ? e.message : "解析失败");
+    } finally {
+      setIsUploading(false);
+    }
+  }, []);
+
+  // ===== 标题编辑 =====
+  const updateSheetTitle = useCallback(
+    (sheetName: string, title: string) => {
+      setEditingTitles((prev) => ({ ...prev, [sheetName]: title }));
+    },
+    [],
+  );
+
+  // ===== 学生变更 =====
+  const updateStudent = useCallback(
+    (sheetName: string, rowIndex: number, patch: Partial<WeekendStudent>) => {
+      setWorkbook((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          sheets: prev.sheets.map((s) => {
+            if (s.sheetName !== sheetName) return s;
+            return {
+              ...s,
+              students: s.students.map((st) =>
+                st.rowIndex === rowIndex ? { ...st, ...patch } : st,
+              ),
+            };
+          }),
+        };
+      });
+    },
+    [],
+  );
+
+  // ===== 自动保存草稿（编辑学生时实时）=====
+  useEffect(() => {
+    if (!workbook) return;
+    workbook.sheets.forEach((sheet) => {
+      saveWeekendDraft({
+        fileHash: workbook.fileHash,
+        fileName: workbook.fileName,
+        sheetName: sheet.sheetName,
+        students: sheet.students,
+        updatedTitle: editingTitles[sheet.sheetName] ?? sheet.updatedTitle,
+        newDate: sheet.newDate,
+        savedAt: Date.now(),
+      });
+    });
+  }, [workbook, editingTitles]);
+
+  // ===== 当前 Sheet =====
+  const activeSheet: WeekendSheet | null = useMemo(() => {
+    if (!workbook) return null;
+    return workbook.sheets[activeSheetIdx] ?? null;
+  }, [workbook, activeSheetIdx]);
+
+  // ===== 步骤切换 =====
+  const goToEditStudents = useCallback(() => {
+    // 把 editingTitles 应用到 workbook.sheets
+    setWorkbook((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        sheets: prev.sheets.map((s) => ({
+          ...s,
+          updatedTitle: editingTitles[s.sheetName] ?? s.updatedTitle,
+        })),
+      };
+    });
+    setStep("editStudents");
+  }, [editingTitles]);
+
+  const backToUpload = useCallback(() => {
+    setWorkbook(null);
+    setRawWb(null);
+    setEditingTitles({});
+    setActiveSheetIdx(0);
+    setStep("upload");
+  }, []);
+
+  const backToEditDate = useCallback(() => {
+    setStep("editDate");
+  }, []);
+
+  const resetAll = useCallback(() => {
+    if (!workbook) return;
+    if (
+      !confirm(
+        `确定重置整个工作簿？\n\n将清空：所有 Sheet 的学生编辑 + 草稿\n保留：上传的文件\n\n此操作不可撤销`,
+      )
+    )
+      return;
+    workbook.sheets.forEach((s) => {
+      clearWeekendDraft(workbook.fileHash, s.sheetName);
+    });
+    backToUpload();
+  }, [workbook, backToUpload]);
+
+  return (
+    <div className="space-y-6">
+      {/* 顶部：标题 + 重置按钮 */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold text-ink">
+            周末错题反馈表（v0.1）
+          </h2>
+          <p className="text-xs text-ink-muted mt-1">
+            上传周末 Excel → 改日期 → 手动填错题 → 导出/AI 反馈（Stage 3）
+          </p>
+        </div>
+        {workbook && (
+          <button
+            type="button"
+            onClick={resetAll}
+            className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-md text-ink-muted hover:text-danger hover:bg-canvas-alt transition"
+          >
+            <ResetIcon className="w-3.5 h-3.5" />
+            重置全部
+          </button>
+        )}
+      </div>
+
+      {/* 步骤指示器 */}
+      {workbook && (
+        <WeekendStepIndicator step={step} />
+      )}
+
+      {/* Step 1：上传 */}
+      {step === "upload" && (
+        <WeekendUploadStep
+          onUpload={handleUpload}
+          isUploading={isUploading}
+          error={uploadError}
+        />
+      )}
+
+      {/* Step 2：改 R1 表头日期 */}
+      {step === "editDate" && workbook && (
+        <WeekendEditDateStep
+          workbook={workbook}
+          editingTitles={editingTitles}
+          onTitleChange={updateSheetTitle}
+          onConfirm={goToEditStudents}
+          onBack={backToUpload}
+        />
+      )}
+
+      {/* Step 3：编辑学生表 */}
+      {step === "editStudents" && workbook && activeSheet && (
+        <WeekendEditStudentsStep
+          workbook={workbook}
+          activeSheetIdx={activeSheetIdx}
+          onSheetChange={setActiveSheetIdx}
+          onStudentChange={updateStudent}
+          onBack={backToEditDate}
+        />
+      )}
+    </div>
+  );
+}
+
+// ============== 子组件 ==============
+
+function WeekendStepIndicator({ step }: { step: WeekendStep }) {
+  const steps: Array<{ id: WeekendStep; label: string }> = [
+    { id: "upload", label: "上传" },
+    { id: "editDate", label: "改日期" },
+    { id: "editStudents", label: "填错题" },
+    { id: "aiFeedback", label: "AI 反馈" },
+    { id: "export", label: "导出" },
+  ];
+  const activeIdx = steps.findIndex((s) => s.id === step);
+  const visibleSteps = steps.filter((s) =>
+    step !== "aiFeedback" && step !== "export"
+      ? s.id !== "aiFeedback" && s.id !== "export"
+      : true,
+  );
+  // v0.1 暂时只显示前 3 步
+  const showSteps = visibleSteps.slice(0, 3);
+  const activeIdxVisible = showSteps.findIndex((s) => s.id === step);
+
+  return (
+    <div className="flex items-center gap-2">
+      {showSteps.map((s, i) => {
+        const isActive = i === activeIdxVisible;
+        const isDone = i < activeIdxVisible;
+        return (
+          <div key={s.id} className="flex items-center gap-2">
+            <div
+              className={`
+                flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition
+                ${
+                  isActive
+                    ? "bg-accent text-white"
+                    : isDone
+                    ? "bg-success-soft text-success-text"
+                    : "bg-canvas-alt text-ink-subtle"
+                }
+              `}
+            >
+              <span
+                className={`
+                  w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold
+                  ${
+                    isActive
+                      ? "bg-white text-accent"
+                      : isDone
+                      ? "bg-success text-white"
+                      : "bg-hairline text-ink-subtle"
+                  }
+                `}
+              >
+                {isDone ? <CheckIcon className="w-3 h-3" /> : i + 1}
+              </span>
+              {s.label}
+            </div>
+            {i < showSteps.length - 1 && (
+              <div
+                className={`w-6 h-px ${isDone ? "bg-success" : "bg-hairline"}`}
+              />
+            )}
+          </div>
+        );
+      })}
+      <span className="text-xs text-ink-muted ml-2">
+        （AI 反馈 / 导出 在 v0.3 / v0.2 阶段）
+      </span>
+    </div>
+  );
+}
+
+function WeekendUploadStep({
+  onUpload,
+  isUploading,
+  error,
+}: {
+  onUpload: (file: File) => void;
+  isUploading: boolean;
+  error: string | null;
+}) {
+  return (
+    <div className="rounded-2xl border border-hairline bg-white p-8">
+      <div className="flex flex-col items-center justify-center text-center py-8">
+        <div className="w-16 h-16 rounded-2xl bg-accent-soft flex items-center justify-center mb-4">
+          <ExcelIcon className="w-8 h-8 text-accent-text" />
+        </div>
+        <h3 className="text-base font-medium text-ink mb-2">
+          上传周末反馈表 Excel
+        </h3>
+        <p className="text-xs text-ink-muted mb-6 max-w-md">
+          1 个 Excel 可包含多个 Sheet（数学/物理/化学等）。
+          系统会自动识别 R1 表头日期并改成本周日期，姓名自动提取，C 列（错题）你手动填。
+        </p>
+
+        <label className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-accent-text text-white text-sm font-medium hover:bg-accent-hover transition cursor-pointer disabled:opacity-50">
+          <UploadIcon className="w-4 h-4" />
+          {isUploading ? "解析中..." : "选择 Excel 文件"}
+          <input
+            type="file"
+            accept=".xlsx,.xls"
+            disabled={isUploading}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) onUpload(file);
+              e.target.value = "";
+            }}
+            className="hidden"
+          />
+        </label>
+
+        {error && (
+          <div className="mt-4 text-xs text-danger bg-danger-soft rounded-lg px-3 py-2">
+            ⚠️ {error}
+          </div>
+        )}
+
+        <div className="mt-8 text-xs text-ink-muted max-w-md">
+          <div className="font-medium text-ink mb-1">表格格式参考：</div>
+          <ul className="space-y-0.5 list-disc list-inside">
+            <li>R1：标题（如「2026超火1班数学反馈表 6月14日」）</li>
+            <li>R2：序号 | 姓名 | 课后作业错题 | 课后作业反馈</li>
+            <li>R3+：学生数据（错题/反馈列可空，你手动填）</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function WeekendEditDateStep({
+  workbook,
+  editingTitles,
+  onTitleChange,
+  onConfirm,
+  onBack,
+}: {
+  workbook: WeekendWorkbook;
+  editingTitles: Record<string, string>;
+  onTitleChange: (sheetName: string, title: string) => void;
+  onConfirm: () => void;
+  onBack: () => void;
+}) {
+  return (
+    <div className="rounded-2xl border border-hairline bg-white p-6 space-y-5">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-base font-semibold text-ink">
+            改 R1 表头日期
+          </h3>
+          <p className="text-xs text-ink-muted mt-1">
+            系统已自动把日期改成本周（{getThisWeekendDate()}）。你也可以手动微调标题。
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onBack}
+          className="inline-flex items-center gap-1 text-sm text-ink-muted hover:text-ink transition"
+        >
+          <ArrowLeftIcon className="w-3.5 h-3.5" />
+          重新上传
+        </button>
+      </div>
+
+      <div className="space-y-3">
+        {workbook.sheets.map((sheet) => (
+          <div
+            key={sheet.sheetName}
+            className="rounded-xl border border-hairline bg-canvas-alt/30 p-4"
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <ExcelIcon className="w-4 h-4 text-accent-text" />
+              <span className="text-sm font-medium text-ink">
+                {sheet.sheetName}
+              </span>
+              {sheet.detectedDate && (
+                <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-success-soft text-success-text">
+                  ✓ 识别日期 {sheet.detectedDate}
+                </span>
+              )}
+            </div>
+            <input
+              type="text"
+              value={editingTitles[sheet.sheetName] ?? sheet.updatedTitle}
+              onChange={(e) => onTitleChange(sheet.sheetName, e.target.value)}
+              placeholder="R1 标题（含日期）"
+              className="w-full rounded-lg border border-hairline px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-accent/50"
+            />
+            <div className="mt-2 text-xs text-ink-muted">
+              原标题：<span className="text-ink-subtle">{sheet.originalTitle}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex justify-end pt-3 border-t border-hairline">
+        <button
+          type="button"
+          onClick={onConfirm}
+          className="px-5 py-2.5 rounded-xl bg-accent-text text-white text-sm font-medium hover:bg-accent-hover transition"
+        >
+          下一步：填错题 →
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function WeekendEditStudentsStep({
+  workbook,
+  activeSheetIdx,
+  onSheetChange,
+  onStudentChange,
+  onBack,
+}: {
+  workbook: WeekendWorkbook;
+  activeSheetIdx: number;
+  onSheetChange: (idx: number) => void;
+  onStudentChange: (
+    sheetName: string,
+    rowIndex: number,
+    patch: Partial<WeekendStudent>,
+  ) => void;
+  onBack: () => void;
+}) {
+  const activeSheet = workbook.sheets[activeSheetIdx];
+
+  return (
+    <div className="rounded-2xl border border-hairline bg-white p-6 space-y-5">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-base font-semibold text-ink">
+            手动填错题 + 选特殊情况
+          </h3>
+          <p className="text-xs text-ink-muted mt-1">
+            C 列（错题）批改完手动填；特殊情况在下拉选「网课/请假/未交」时 C 列自动锁定。
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onBack}
+          className="inline-flex items-center gap-1 text-sm text-ink-muted hover:text-ink transition"
+        >
+          <ArrowLeftIcon className="w-3.5 h-3.5" />
+          改标题日期
+        </button>
+      </div>
+
+      <WeekendSheetTabs
+        sheets={workbook.sheets.map((s) => ({
+          sheetName: s.sheetName,
+          studentCount: s.students.length,
+          filledCount: s.students.filter(
+            (st) => st.qNumbersInput || st.status !== "normal",
+          ).length,
+        }))}
+        activeIdx={activeSheetIdx}
+        onChange={onSheetChange}
+      />
+
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={activeSheet.sheetName}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.25 }}
+        >
+          <WeekendStudentTable
+            sheetName={activeSheet.sheetName}
+            students={activeSheet.students}
+            onStudentChange={(rowIndex, patch) =>
+              onStudentChange(activeSheet.sheetName, rowIndex, patch)
+            }
+          />
+        </motion.div>
+      </AnimatePresence>
+
+      <div className="flex justify-end pt-3 border-t border-hairline text-xs text-ink-muted">
+        <span>
+          Stage 2 · 导出 Excel | Stage 3 · AI 反馈 将在下一阶段完成
+        </span>
+      </div>
+    </div>
+  );
+}
