@@ -7,6 +7,7 @@ import com.lekao.app.LekaoApp
 import com.lekao.app.data.api.AuditLogDto
 import com.lekao.app.data.api.LekaoApi
 import com.lekao.app.data.api.RetrofitClient
+import com.lekao.app.util.ErrorMessages
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -84,7 +85,7 @@ class AdminAuditLogViewModel(
                     _state.update { it.copy(refreshing = false, loading = false, loadingMore = false, error = "HTTP ${resp.code()}") }
                 }
             } catch (t: Throwable) {
-                _state.update { it.copy(refreshing = false, loading = false, loadingMore = false, error = t.message) }
+                _state.update { it.copy(refreshing = false, loading = false, loadingMore = false, error = ErrorMessages.safe(t)) }
             }
         }
     }

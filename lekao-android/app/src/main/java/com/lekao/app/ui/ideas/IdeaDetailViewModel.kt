@@ -10,6 +10,7 @@ import com.lekao.app.data.api.LekaoApi
 import com.lekao.app.data.api.LekaoCookieJar
 import com.lekao.app.data.api.RetrofitClient
 import com.lekao.app.data.local.TokenStore
+import com.lekao.app.util.ErrorMessages
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -39,15 +40,34 @@ class IdeaDetailViewModel(
     val state: StateFlow<UiState> = _state.asStateFlow()
 
     init {
-        load()
+        // 校验 ideaId 格式，避免无效 id 触发不必要的 listIdeas 全量拉取
+        if (isValidIdeaId(ideaId)) {
+            load()
+        } else {
+            _state.update { it.copy(error = "无效的灵感 ID") }
+        }
+    }
+
+    /**
+     * ideaId 格式校验：alphanumeric + 长度 8~32
+     * 不合法的 id 直接拒绝，不调 API
+     */
+    private fun isValidIdeaId(id: String): Boolean {
+        if (id.isBlank() || id.length < 8 || id.length > 32) return false
+        return id.all { it.isLetterOrDigit() || it == '_' || it == '-' }
     }
 
     fun load() {
+        // 二次校验（防御深度）
+        if (!isValidIdeaId(ideaId)) {
+            _state.update { it.copy(error = "无效的灵感 ID") }
+            return
+        }
         viewModelScope.launch {
             _state.update { it.copy(loading = true, error = null) }
             try {
                 // 加载灵感详情（用 list 过滤，因为没有 /lekao/ideas/:id 详情接口）
-                val listResp = api.listIdeas(sort = "new")
+                val listResp = api.listIdeas(sort = "new", limit = 20)
                 val found = listResp.body()?.ideas?.firstOrNull { it.id == ideaId }
                 val commentsResp = api.getIdeaComments(ideaId)
                 val comments = commentsResp.body()?.comments ?: emptyList()
@@ -59,7 +79,7 @@ class IdeaDetailViewModel(
                     )
                 }
             } catch (t: Throwable) {
-                _state.update { it.copy(loading = false, error = t.message) }
+                _state.update { it.copy(loading = false, error = ErrorMessages.safe(t)) }
             }
         }
     }

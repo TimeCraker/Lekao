@@ -8,6 +8,7 @@ import com.lekao.app.data.api.BanRequest
 import com.lekao.app.data.api.CoinAdjustRequest
 import com.lekao.app.data.api.LekaoApi
 import com.lekao.app.data.api.RetrofitClient
+import com.lekao.app.util.ErrorMessages
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -63,7 +64,7 @@ class AdminUserBanViewModel(
                     _state.update { it.copy(banSubmitting = false, error = "封禁失败 HTTP ${resp.code()}") }
                 }
             } catch (t: Throwable) {
-                _state.update { it.copy(banSubmitting = false, error = "封禁失败: ${t.message}") }
+                _state.update { it.copy(banSubmitting = false, error = "封禁失败: ${ErrorMessages.safe(t)}") }
             }
         }
     }
@@ -99,7 +100,7 @@ class AdminUserBanViewModel(
                     _state.update { it.copy(coinSubmitting = false, error = "调币失败 HTTP ${resp.code()}") }
                 }
             } catch (t: Throwable) {
-                _state.update { it.copy(coinSubmitting = false, error = "调币失败: ${t.message}") }
+                _state.update { it.copy(coinSubmitting = false, error = "调币失败: ${ErrorMessages.safe(t)}") }
             }
         }
     }

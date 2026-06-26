@@ -37,6 +37,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -59,6 +60,23 @@ fun AdminAuditLogScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val listState = rememberLazyListState()
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    // UI 层 admin role gate（防御深度 — 即便 API 端已 gate，UI 层再 gate 一次）
+    val tokenStore = remember { com.lekao.app.data.local.TokenStore.getInstance(context) }
+    val isAdmin by tokenStore.userFlow.collectAsState(initial = null)
+    val adminGatePassed = isAdmin?.role == "ADMIN"
+    if (!adminGatePassed) {
+        // 非 admin 直接拦截，不渲染内容
+        Column(
+            modifier = Modifier.fillMaxSize().padding(24.dp),
+            verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
+            horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
+        ) {
+            Text("无权限访问", style = MaterialTheme.typography.titleMedium)
+        }
+        return
+    }
     val shouldLoadMore by remember {
         derivedStateOf {
             val total = listState.layoutInfo.totalItemsCount
@@ -189,15 +207,32 @@ private fun AuditLogItem(log: AuditLogDto) {
                 )
             }
             log.details?.let {
-                Text(it, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 2.dp))
+                // details 截断到 200 字符，避免泄露超长堆栈
+                Text(
+                    if (it.length > 200) it.take(200) + "…" else it,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
             }
             log.ip?.let {
+                // IP 末段 redact (xxx.xxx.xxx.0/24) — 常规审计无需末段
                 Text(
-                    "IP: $it",
+                    "IP: ${redactIp(it)}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
     }
+}
+
+/**
+ * IP 末段 redact（xxx.xxx.xxx.0/24）
+ * IPv4: 192.168.1.100 → 192.168.1.0
+ * IPv6: 完整保留（一般后端不会返回 IPv6 详细）
+ */
+private fun redactIp(ip: String): String {
+    if (ip.isBlank()) return ip
+    val parts = ip.split('.')
+    return if (parts.size == 4) "${parts[0]}.${parts[1]}.${parts[2]}.0" else ip
 }
