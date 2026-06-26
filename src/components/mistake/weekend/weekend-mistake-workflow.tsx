@@ -33,6 +33,7 @@ import {
 } from "@/lib/mistake/weekend-draft";
 import {
   exportWeekendWorkbook,
+  loadWeekendWorkbookForExport,
   suggestExportFileName,
 } from "@/lib/mistake/weekend-exporter";
 import {
@@ -58,6 +59,8 @@ export function WeekendMistakeWorkflow() {
   const [step, setStep] = useState<WeekendStep>("upload");
   const [workbook, setWorkbook] = useState<WeekendWorkbook | null>(null);
   const [rawWb, setRawWb] = useState<XLSX.WorkBook | null>(null);
+  /** v0.2.2: 原 File 对象（导出时用 exceljs 重新加载以保留样式）*/
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [activeSheetIdx, setActiveSheetIdx] = useState(0);
   const [newDate, setNewDate] = useState<string>(""); // 用户改后的日期
   const [editingTitles, setEditingTitles] = useState<Record<string, string>>(
@@ -113,6 +116,7 @@ export function WeekendMistakeWorkflow() {
       setNewDate(restoredSheets[0]?.newDate ?? getThisWeekendDate());
 
       setRawWb(wb);
+      setUploadedFile(file); // v0.2.2: 保存原 File 用于导出时 exceljs 重新加载
       setWorkbook({
         ...parsed,
         sheets: restoredSheets,
@@ -225,6 +229,7 @@ export function WeekendMistakeWorkflow() {
   const backToUpload = useCallback(() => {
     setWorkbook(null);
     setRawWb(null);
+    setUploadedFile(null);
     setEditingTitles({});
     setActiveSheetIdx(0);
     setStep("upload");
@@ -304,6 +309,7 @@ export function WeekendMistakeWorkflow() {
           onStudentChange={updateStudent}
           onAutoSort={(sheetName) => autoSortSheet(sheetName)}
           onBack={backToEditDate}
+          uploadedFile={uploadedFile}
         />
       )}
     </div>
@@ -519,6 +525,7 @@ function WeekendEditStudentsStep({
   onStudentChange,
   onAutoSort,
   onBack,
+  uploadedFile,
 }: {
   workbook: WeekendWorkbook;
   activeSheetIdx: number;
@@ -530,6 +537,7 @@ function WeekendEditStudentsStep({
   ) => void;
   onAutoSort: (sheetName: string) => { moved: number; total: number };
   onBack: () => void;
+  uploadedFile: File | null;
 }) {
   const activeSheet = workbook.sheets[activeSheetIdx];
 
@@ -592,14 +600,20 @@ function WeekendEditStudentsStep({
       </div>
 
       {/* Stage 2 · 导出 Excel 工具栏 */}
-      <WeekendExportBar workbook={workbook} />
+      <WeekendExportBar workbook={workbook} uploadedFile={uploadedFile} />
     </div>
   );
 }
 
 // ============== Stage 2 · 导出工具栏 ==============
 
-function WeekendExportBar({ workbook }: { workbook: WeekendWorkbook }) {
+function WeekendExportBar({
+  workbook,
+  uploadedFile,
+}: {
+  workbook: WeekendWorkbook;
+  uploadedFile: File | null;
+}) {
   const today = getThisWeekendDate();
   const firstSheetName = workbook.sheets[0]?.sheetName ?? "反馈表";
   const defaultName = suggestExportFileName(firstSheetName, today);
@@ -626,6 +640,13 @@ function WeekendExportBar({ workbook }: { workbook: WeekendWorkbook }) {
   );
 
   const handleExport = useCallback(async () => {
+    if (!uploadedFile) {
+      setExportResult({
+        success: false,
+        msg: "导出失败：原文件已丢失，请重新上传",
+      });
+      return;
+    }
     if (!fileName.trim()) {
       alert("文件名不能为空");
       return;
@@ -633,7 +654,9 @@ function WeekendExportBar({ workbook }: { workbook: WeekendWorkbook }) {
     setIsExporting(true);
     setExportResult(null);
     try {
-      exportWeekendWorkbook(workbook, fileName);
+      // v0.2.2: 用 exceljs 重新加载原 File（保留样式）
+      const wb = await loadWeekendWorkbookForExport(uploadedFile);
+      await exportWeekendWorkbook(wb, workbook.sheets, fileName);
       setExportResult({
         success: true,
         msg: `✓ 已下载 ${fileName}（${workbook.sheets.length} 个 Sheet · ${filledStudents}/${totalStudents} 人已填）`,
@@ -646,15 +669,15 @@ function WeekendExportBar({ workbook }: { workbook: WeekendWorkbook }) {
     } finally {
       setIsExporting(false);
     }
-  }, [workbook, fileName, filledStudents, totalStudents]);
+  }, [uploadedFile, workbook.sheets, fileName, filledStudents, totalStudents]);
 
   return (
     <div className="rounded-xl border border-accent-line/60 bg-accent-soft/10 p-5 space-y-4">
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-accent text-white text-xs font-semibold">
-          Stage 2
+          Stage 2.1
         </span>
-        <h4 className="text-sm font-semibold text-ink">导出 Excel</h4>
+        <h4 className="text-sm font-semibold text-ink">导出 Excel（保留模板样式）</h4>
         <span className="text-xs text-ink-muted">
           · {workbook.sheets.length} 个 Sheet · {filledStudents}/{totalStudents} 人已填
         </span>
@@ -684,9 +707,14 @@ function WeekendExportBar({ workbook }: { workbook: WeekendWorkbook }) {
         </button>
       </div>
 
-      <div className="text-xs text-ink-muted">
-        💡 导出会保留原 R1 标题（含替换后的日期）+ R2 列头 + 学生 A 序号 + B 姓名 +
-        C 列你填的错题 + D 列反馈。浏览器默认下载路径。
+      <div className="text-xs text-ink-muted space-y-1">
+        <div>
+          💡 导出会<strong>保留原模板样式</strong>：浅蓝色表头 / 列宽 / 合并单元格 / 字体 / 对齐。
+          只修改：R1 标题（含替换后的日期）+ 学生 A 序号 + C 错题 + D 反馈。
+        </div>
+        <div className="text-ink-subtle">
+          技术细节：用 exceljs 重新加载原 File 改单元格 value（不是 aoa_to_sheet 重写），styles/cols/merges 完整保留。
+        </div>
       </div>
 
       {exportResult && (

@@ -1,138 +1,166 @@
 /**
- * 周末错题反馈表 · Excel 导出器
- * 来源：docs/stages/weekend-mistake-table-v0.md Stage 2
+ * 周末错题反馈表 · Excel 导出器（v0.2.2 · 保留模板样式）
+ * 来源：docs/stages/weekend-mistake-table-v0.md Stage 2 + 用户 2026-06-26 反馈
  *
- * 跟现有 mistake/docx-generator 完全不同（docx 是单个学生一个文件）
- * 周末反馈表是 **整个 workbook 多 Sheet 写回**：
- * - 保留原 R1（标题，updatedTitle 已替换日期）
- * - 保留原 R2（列头）
- * - 学生行：A 序号 | B 姓名 | C qNumbersInput（错题或特殊值） | D feedback
- * - 多 Sheet 同时导出为 1 个 xlsx
- * - 文件名：用户改或默认生成
+ * 关键设计：**modify-in-place**（不是 aoa_to_sheet 重写）
  *
- * 实现策略（XLSX.utils.aoa_to_sheet 重建）：
- * - 把 rawRows 复制 → 在 R3+ 行替换 C 列 + D 列
- * - updatedTitle 替换 R1 对应单元格
- * - 不依赖原 workbook 的结构（保留 rawRows 完整数组 + 在 index 2+ 操作）
+ * 用户模板实测（2026超火1班数学6.21【反馈表】.xlsx）：
+ * - !cols: A=6.2, B=11.6, C=16.7, D=70.2（特定列宽）
+ * - !merges: B1:D1（标题合并） + D18:D38（特殊情况区域 20 行合并）
+ * - 表头 R2: patternType=solid + fgColor=9BC2E6（浅蓝）
+ * - B 列名: patternType=solid + fgColor=BDD7EE（更浅蓝）
+ *
+ * ❌ v0.2.1 错误做法：XLSX.utils.aoa_to_sheet(rawRows) → 完全丢失 styles
+ * ❌ v0.2.2 尝试用 SheetJS xlsx + setCellValue → 仍然丢失 cell.s 样式
+ *    （SheetJS 社区版 writeFile 不支持 cell styles，只有 sheetjs-style fork 支持）
+ * ✅ v0.2.3 正确做法：换用 **exceljs**（已装 · 4.4.0）+ 修改单元格 value
+ *    exceljs 完全保留 styles/cols/merges/conditional formatting
+ *
+ * 关键 API：
+ * - wb.xlsx.load(arrayBuffer) → 从内存加载（浏览器）
+ * - ws.getCell("A1").value = "..." → 修改值（保留 style + format + border）
+ * - wb.xlsx.writeBuffer() → 输出 ArrayBuffer
+ * - saveAs(new Blob([buffer]), filename) → 浏览器下载
  */
 
-import * as XLSX from "xlsx";
-import type {
-  WeekendSheet,
-  WeekendStudent,
-  WeekendWorkbook,
-} from "./weekend-types";
+import ExcelJS from "exceljs";
+import { saveAs } from "file-saver";
+import type { WeekendSheet, WeekendStudent } from "./weekend-types";
 
 /**
- * 把 1 个 Sheet 写成 worksheet
- *
- * @param rawRows 原 sheet 的二维数组（来自 XLSX.utils.sheet_to_json）
- * @param sheet 编辑过的 sheet 数据
- * @returns XLSX.Worksheet
+ * 修改单个 Sheet 的指定单元格（保留原样式）
  */
-function buildSheet(rawRows: unknown[][], sheet: WeekendSheet): XLSX.WorkSheet {
-  // 复制原 rows
-  const rows: unknown[][] = rawRows.map((r) => [...r]);
+function setCellText(
+  ws: ExcelJS.Worksheet,
+  ref: string,
+  value: string | undefined,
+): void {
+  if (value === undefined || value === null) return;
+  ws.getCell(ref).value = value;
+}
 
-  // ===== R1：标题行（rows[0]）=====
-  if (rows.length > 0 && sheet.updatedTitle) {
-    const r1 = rows[0];
-    // 找第一个非空单元格位置（标题所在位置）
-    let targetCol = 0;
-    for (let c = 0; c < r1.length; c++) {
-      if (r1[c] && String(r1[c]).trim()) {
-        targetCol = c;
-        break;
-      }
+/**
+ * 更新单个 Sheet：
+ * 1. R1 标题 → updatedTitle（替换第一个非空 cell）
+ * 2. R3+ 学生行 → A 序号 / C 错题 / D 反馈（B 姓名原值保留不动）
+ */
+function updateSheetInPlace(
+  ws: ExcelJS.Worksheet,
+  sheet: WeekendSheet,
+): void {
+  // ===== R1：标题行（row 1）=====
+  // 找第一个非空单元格位置（实测在 B1，不是 A1）
+  let titleCol = -1;
+  const row1 = ws.getRow(1);
+  for (let c = 1; c <= row1.cellCount; c++) {
+    const cell = row1.getCell(c);
+    if (cell.value !== null && cell.value !== undefined && String(cell.value).trim()) {
+      titleCol = c;
+      break;
     }
-    r1[targetCol] = sheet.updatedTitle;
+  }
+  if (titleCol >= 1 && sheet.updatedTitle) {
+    setCellText(ws, `${colLetter(titleCol)}1`, sheet.updatedTitle);
   }
 
-  // ===== R2：列头（rows[1]）保持不变 =====
-
-  // ===== R3+：学生行（rows[2:]）=====
-  // students 按 rowIndex 排序（保留原顺序）
+  // ===== R3+：学生行（row 3+）=====
+  // 学生按 rowIndex 索引（rowIndex = 在 rawRows 数组中的索引，对应 Excel row 3+）
   const studentsByRowIdx = new Map<number, WeekendStudent>();
   for (const s of sheet.students) {
     studentsByRowIdx.set(s.rowIndex, s);
   }
 
-  // 遍历 rows[2:]，对每个有学生的行填 C/D 列 + 序号 A 列
-  for (let r = 2; r < rows.length; r++) {
-    const row = rows[r];
-    if (!row) continue;
+  // Excel row N = rawRows index N-1；students.rowIndex 是 rawRows 数组 index
+  // 所以 Excel row = students.rowIndex + 1
+  for (const student of sheet.students) {
+    const excelRow = student.rowIndex + 1;
+    if (excelRow < 3) continue; // 跳过标题/列头
 
-    // 学生匹配：按 rowIndex
-    const student = studentsByRowIdx.get(r);
-    if (!student) continue;
-
-    // B 列姓名验证（如果 B 列为空就不填这条）
-    const nameInRow = String(row[1] ?? "").trim();
-    if (!nameInRow) continue;
-
-    // A 列：序号（用户在 UI 里可能改过 serialNumber）
+    // A 列：序号
     if (student.serialNumber !== undefined) {
-      row[0] = student.serialNumber;
+      setCellText(ws, `A${excelRow}`, student.serialNumber);
     }
 
-    // C 列：错题（C 列原内容被覆盖）
-    row[2] = student.qNumbersInput ?? "";
+    // C 列：错题（覆盖原 C 列内容）
+    if (student.qNumbersInput !== undefined) {
+      setCellText(ws, `C${excelRow}`, student.qNumbersInput);
+    }
 
     // D 列：反馈
-    row[3] = student.feedback ?? "";
+    if (student.feedback !== undefined) {
+      setCellText(ws, `D${excelRow}`, student.feedback);
+    }
   }
+}
 
-  return XLSX.utils.aoa_to_sheet(rows);
+/** Excel 列号转字母（1=A, 2=B, ...）*/
+function colLetter(n: number): string {
+  let s = "";
+  while (n > 0) {
+    const m = (n - 1) % 26;
+    s = String.fromCharCode(65 + m) + s;
+    n = Math.floor((n - 1) / 26);
+  }
+  return s;
 }
 
 /**
- * 生成导出 workbook 供下载或下载
+ * 浏览器端：从用户上传的 File 重新加载为 exceljs Workbook
+ *
+ * 注意：不能用 parseWeekendWorkbook 时的 wb（那是 xlsx 的）
+ * 需要从原始 ArrayBuffer 用 exceljs 重新加载，保留所有样式
  */
-export function buildExportWorkbook(workbook: WeekendWorkbook): XLSX.WorkBook {
-  const wb = XLSX.utils.book_new();
-
-  for (const sheet of workbook.sheets) {
-    const ws = buildSheet(sheet.rawRows, sheet);
-    XLSX.utils.book_append_sheet(wb, ws, sheet.sheetName);
-  }
-
+export async function loadWeekendWorkbookForExport(file: File): Promise<ExcelJS.Workbook> {
+  const buf = await file.arrayBuffer();
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.load(buf);
   return wb;
 }
 
 /**
- * 导出整个工作簿 → 浏览器下载（默认路径）
+ * 修改原 workbook 原地（保留所有样式 + 列宽 + 合并 + 表头色 + 字体）
  *
- * @param workbook 编辑过的 workbook
- * @param fileName 下载的文件名（如 "2026超火1班数学6.26【反馈表】.xlsx"）
+ * @param wb 原 workbook（来自 loadWeekendWorkbookForExport）
+ * @param sheets 编辑过的 sheets
+ * @returns 修改后的 workbook（同引用）
  */
-export function exportWeekendWorkbook(
-  workbook: WeekendWorkbook,
-  fileName: string,
-): void {
-  const wb = buildExportWorkbook(workbook);
-
-  // SheetJS 自带 writeFile 会触发浏览器下载
-  // 第二个参数是文件名，第三个是配置
-  XLSX.writeFile(wb, fileName, {
-    bookType: "xlsx",
-    compression: true,
-  });
+export function buildExportWorkbook(
+  wb: ExcelJS.Workbook,
+  sheets: WeekendSheet[],
+): ExcelJS.Workbook {
+  for (const sheet of sheets) {
+    const ws = wb.getWorksheet(sheet.sheetName);
+    if (!ws) {
+      console.warn(`Sheet "${sheet.sheetName}" 在原 workbook 中不存在，跳过`);
+      continue;
+    }
+    updateSheetInPlace(ws, sheet);
+  }
+  return wb;
 }
 
 /**
- * 生成默认文件名（用户可改）
+ * 触发浏览器下载（保留原模板样式）
  *
- * 规则：
- * - 从 firstSheet.updatedTitle 提取班级+学科（去掉日期+前缀）
- * - 简化：用 sheetName 作为核心（"超火1班数学"）+ 今日日期
- * - 示例："2026超火1班数学6.26【反馈表】.xlsx"
- *
- * @param sheetName 第一个 sheet 的 sheetName
- * @param date ISO 日期 "2026-06-26"
- * @returns 建议文件名
+ * 浏览器场景下用 writeBuffer + file-saver 的 Blob 方案
+ */
+export async function exportWeekendWorkbook(
+  wb: ExcelJS.Workbook,
+  sheets: WeekendSheet[],
+  fileName: string,
+): Promise<void> {
+  const finalWb = buildExportWorkbook(wb, sheets);
+  const buffer = await finalWb.xlsx.writeBuffer();
+  const blob = new Blob([buffer], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
+  saveAs(blob, fileName);
+}
+
+/**
+ * 生成默认文件名
  */
 export function suggestExportFileName(sheetName: string, date: string): string {
-  // date 格式：YYYY-MM-DD
   const [, m, d] = date.split("-");
   const md = `${parseInt(m, 10)}.${parseInt(d, 10)}`;
   return `${sheetName}${md}【反馈表】.xlsx`;
