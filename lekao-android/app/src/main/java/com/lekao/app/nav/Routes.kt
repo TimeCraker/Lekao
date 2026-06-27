@@ -13,6 +13,7 @@ sealed class Routes(val path: String) {
     // ============ 启动 / Auth ============
     object Splash : Routes("splash")
     object Login : Routes("login")
+    object Register : Routes("register")
 
     // ============ 主流程 ============
     object Dashboard : Routes("dashboard")

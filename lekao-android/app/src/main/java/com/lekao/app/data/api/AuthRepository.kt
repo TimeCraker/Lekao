@@ -98,6 +98,30 @@ class AuthRepository(
     }
 
     /**
+     * 注册新账号 (F02 register)
+     * 成功后自动 signInWithPassword 走标准登录拿 cookie
+     */
+    suspend fun register(
+        email: String,
+        password: String,
+        name: String?,
+        code: String,
+    ): Result<UserDto> = withContext(Dispatchers.IO) {
+        try {
+            val resp = api.register(RegisterRequest(email, password, name, code))
+            if (resp.isSuccessful) {
+                // 注册成功, 接着用 password 登录拿 cookie + token
+                return@withContext signInWithPassword(email, password)
+            }
+            val raw = resp.errorBody()?.string().orEmpty()
+            val msg = parseErrorMessage(raw) ?: "注册失败 (HTTP ${resp.code()})"
+            Result.failure(RuntimeException(msg))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
      * 验证码登录 (F02)
      *
      * 失败时优先返回服务端 error 字段（真实原因）：

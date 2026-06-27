@@ -29,6 +29,10 @@ interface LekaoApi {
     @POST("auth/verify-code")
     suspend fun verifyCode(@Body req: VerifyCodeRequest): Response<AuthResponse>
 
+    // ⭐ T82 修复: 注册接口
+    @POST("auth/register")
+    suspend fun register(@Body req: RegisterRequest): Response<RegisterResponse>
+
     @POST("auth/sign-in-password")
     suspend fun signInWithPassword(@Body req: SignInPasswordRequest): Response<AuthResponse>
 

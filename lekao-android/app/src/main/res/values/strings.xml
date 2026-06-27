@@ -43,6 +43,14 @@
     <string name="login_biometric_subtitle">确认是你本人</string>
     <string name="login_biometric_negative">使用密码登录</string>
 
+    <!-- ============ 注册 T82b ============ -->
+    <string name="register_title">注册新账号</string>
+    <string name="register_subtitle">填写邮箱和密码创建账号</string>
+    <string name="register_name">昵称（可选）</string>
+    <string name="register_name_placeholder">比如 张老师</string>
+    <string name="register_confirm_password">确认密码</string>
+    <string name="register_submit">注册并登录</string>
+
     <!-- ============ Dashboard F03 ============ -->
     <string name="dashboard_title">工作台</string>
     <string name="dashboard_guest">访客</string>

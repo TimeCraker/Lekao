@@ -30,6 +30,20 @@ data class SignInPasswordRequest(
     val password: String
 )
 
+// ⭐ T82 修复: 注册 API
+data class RegisterRequest(
+    val email: String,
+    val password: String,
+    val name: String? = null,
+    val code: String
+)
+
+data class RegisterResponse(
+    val success: Boolean = false,
+    val message: String? = null,
+    val user: UserDto? = null
+)
+
 data class SendCodeRequest(
     val email: String,
     val purpose: String  // "register" | "login" | "reset"

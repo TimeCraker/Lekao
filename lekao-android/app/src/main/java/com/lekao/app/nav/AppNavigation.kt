@@ -25,6 +25,7 @@ import com.lekao.app.ui.ideas.IdeaDetailScreen
 import com.lekao.app.ui.ideas.IdeasScreen
 import com.lekao.app.ui.login.LoginScreen
 import com.lekao.app.ui.login.SplashScreen
+import com.lekao.app.ui.register.RegisterScreen
 import com.lekao.app.ui.mistake.MistakeDraftsScreen
 import com.lekao.app.ui.mistake.MistakeScreen
 import com.lekao.app.ui.settings.SettingsScreen
@@ -90,7 +91,22 @@ fun AppNavigation(
                     navController.navigate(Routes.Dashboard.path) {
                         popUpTo(Routes.Login.path) { inclusive = true }
                     }
+                },
+                onNavigateToRegister = {
+                    navController.navigate(Routes.Register.path)
                 }
+            )
+        }
+
+        // ⭐ T82b: 注册页面
+        composable(Routes.Register.path) {
+            RegisterScreen(
+                onRegisterSuccess = {
+                    navController.navigate(Routes.Dashboard.path) {
+                        popUpTo(Routes.Login.path) { inclusive = true }
+                    }
+                },
+                onNavigateBack = { navController.popBackStack() }
             )
         }
 
