@@ -340,28 +340,48 @@ export function WeekendAiFeedbackPanel({
         }),
       });
 
-      const data = await res.json();
+      // ⭐ Stage 18.5：JWT 异常或任何 500 时服务器可能返 HTML，先 res.text() 兜底
+      // 避免原生 SyntaxError 暴露给用户
+      const rawText = await res.text();
+      let data: Record<string, unknown> = {};
+      try {
+        data = rawText ? JSON.parse(rawText) : {};
+      } catch {
+        setStatus({
+          type: "error",
+          message: `服务器返回非 JSON（HTTP ${res.status}）· 请硬刷新 (Ctrl+Shift+R) 或重试`,
+        });
+        return;
+      }
 
       if (!res.ok) {
         setStatus({
           type: "error",
-          message: data.error || `请求失败 (${res.status})`,
+          message:
+            (typeof data.error === "string" ? data.error : null) ||
+            `请求失败 (${res.status})`,
         });
         return;
       }
 
       // 成功
       const done: AiFeedbackDone = {
-        subject: data.subject,
-        topic: data.topic,
-        keyPoints: data.keyPoints,
-        summary: data.summary,
-        totalTokens: data.totalTokens,
+        subject: typeof data.subject === "string" ? data.subject : "",
+        topic: typeof data.topic === "string" ? data.topic : "",
+        keyPoints: Array.isArray(data.keyPoints)
+          ? (data.keyPoints as string[])
+          : [],
+        summary: typeof data.summary === "string" ? data.summary : "",
+        totalTokens: typeof data.totalTokens === "number" ? data.totalTokens : 0,
       };
       setStatus({ type: "done", result: done });
 
       // 将反馈传回父组件
-      onFeedbackReady(data.students);
+      onFeedbackReady(
+        Array.isArray(data.students)
+          ? (data.students as unknown as BatchStudentResult[])
+          : [],
+      );
     } catch (err) {
       setStatus({
         type: "error",

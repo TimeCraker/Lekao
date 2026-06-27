@@ -14,6 +14,7 @@
 
 import { NextRequest } from "next/server";
 import { getServerSession } from "next-auth";
+import type { Session } from "next-auth";
 import { randomUUID } from "node:crypto";
 import { authOptions } from "@/lib/auth";
 import { generateBatchFeedbacks, DEFAULT_SUMMARY_LENGTH, type SummaryLength } from "@/lib/ai/batch-feedback";
@@ -50,7 +51,20 @@ export async function POST(req: NextRequest) {
   const correlationId = `lekao-batch-${randomUUID()}`;
 
   // 1. Auth
-  const session = await getServerSession(authOptions);
+  // ⭐ Stage 18.5：getServerSession 在 JWT 解码失败时会抛 Invalid Compact JWE 异常
+  // （常发生在 NEXTAUTH_SECRET 变了之后 + 旧 cookie 还没过期），这里兜底成 401 JSON
+  // 避免异常逃逸到 Next.js 全局 handler → 500 HTML → 前端 res.json() 炸
+  let session: Session | null;
+  try {
+    session = await getServerSession(authOptions);
+  } catch (err) {
+    console.error(`[${correlationId}] getServerSession 异常（JWT 解码失败？）:`, err);
+    return jsonError(
+      401,
+      "登录态已失效，请重新登录后再试（cookie secret 已变更）",
+      correlationId,
+    );
+  }
   if (!session?.user?.email || !session.user.id) {
     return jsonError(401, "未登录，请先登录", correlationId);
   }
