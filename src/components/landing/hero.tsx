@@ -100,10 +100,14 @@ export function Hero() {
             <FreeIcon className="w-4 h-4 text-accent-text" />
             免费开始 · 送 5 T-Coin
           </Link>
-          {/* D1-G V1.0.0: 安卓端下载入口 — APK 公开下载 */}
+          {/* D1-G V1.0.0: 安卓端下载入口 — APK 公开下载
+              - target="_blank": 微信内置 X5 拦截 binary, 新窗口会让微信弹"浏览器打开"对话框
+              - rel="noopener": 安全白名单最佳实践 */}
           <a
             href="/downloads/lekao-android-V1.0.0.apk"
             download="lekao-android-V1.0.0.apk"
+            target="_blank"
+            rel="noopener noreferrer"
             className="px-8 py-3.5 bg-emerald-600 text-white text-base font-medium rounded-xl hover:bg-emerald-700 transition shadow-md hover:shadow-lg flex items-center gap-2"
           >
             <DownloadIcon className="w-4 h-4" />
