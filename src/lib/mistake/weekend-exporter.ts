@@ -271,11 +271,14 @@ function autoAdjustColumnWidths(
     if (cols[col - 1]) cols[col - 1].width = w;
   }
 
-  // 4) 行高：按反馈列内容决定（长反馈行高足够；短反馈紧凑）
-  const feedbackRowHeight = maxFeedbackLen >= 20 ? 60 : 22;
+  // 4) 行高：⭐ Stage 11.5 改回模板原值 19.95（≈ 20）
+  //    用户原话："纵宽应该按照模板原来的那个宽度去设置"
+  //    实测 lekao-weekend-mistake-template.xlsx R3+ 行高 = 19.95
+  //    长反馈不再撑高 60（太宽），改用 wrapText + 较宽列宽吸收
+  const dataRowHeight = 20;
   for (let r = 3; r < 3 + sheet.students.length; r++) {
     const row = ws.getRow(r);
-    row.height = feedbackRowHeight;
+    row.height = dataRowHeight;
   }
 }
 
@@ -391,6 +394,8 @@ function updateSheetInPlace(
   if (titleCol >= 1 && sheet.updatedTitle) {
     setCellText(ws, `${colLetter(titleCol)}1`, sheet.updatedTitle);
   }
+  // ⭐ Stage 12：标题行适度拉高（模板原 33 → 38，给加粗大字号一点呼吸空间）
+  row1.height = 38;
 
   // ===== R3+：学生行（按 students 数组当前顺序连续写入）=====
   const students = sheet.students;
