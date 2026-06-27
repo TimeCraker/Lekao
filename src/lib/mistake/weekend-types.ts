@@ -126,5 +126,5 @@ export function sortStudentsByCellValue(students: WeekendStudent[]): WeekendStud
 
 // ============== 导出共享类型（防止循环引用） ==============
 
-export type { WeekendStudent, WeekendSheet, WeekendWorkbook, WeekendDraft, WeekendStep } from "./weekend-types-base";
-export { WEEKEND_STUDENT_LIMIT } from "./weekend-types-base";
+export type { WeekendStudent, WeekendSheet, WeekendWorkbook, WeekendDraft, WeekendStep, FieldColumnMap } from "./weekend-types-base";
+export { WEEKEND_STUDENT_LIMIT, WEEKEND_DRAFT_SCHEMA_VERSION, getQNumberLabels } from "./weekend-types-base";

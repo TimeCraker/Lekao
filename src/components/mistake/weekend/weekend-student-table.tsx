@@ -1,24 +1,19 @@
 "use client";
 
 /**
- * 周末错题反馈表 · 学生表视图（v0.3 修订版）
+ * 周末错题反馈表 · 学生表视图（v0.4 · Stage 6 动态列版）
  * 来源：docs/stages/weekend-mistake-table-v0.md + 用户 2026-06-27 反馈
+ *
+ * v0.4 关键改动（Stage 6）：
+ * - 表头 + 行渲染按 fieldColumns.qNumbersCols.length 动态切 1/2 列错题
+ * - 列名优先用 R2 表头原文（"课后作业错题" / "堂测错题"），fallback 通用 "错题"
+ * - 序号列在 serial=null 时不渲染
+ * - 反馈列在 feedback=null 时不渲染（虽然实际场景几乎都有）
  *
  * v0.3 修订（Stage 4）：
  * - 姓名改成可编辑 input（之前是只读 div）
  * - 末尾"+ 添加学生"按钮追加横列（rowIndex 用 max+1）
  * - 每行末加"删除"按钮（可单独删除某行）
- *
- * v0.2.1 修订（用户实测）：
- * - 自动排序按钮现在有真实功能 + 视觉反馈（绿色 toast 2s 自动消失）
- * - 排序结果按"已排序"状态高亮整个表头边框
- * - 每次 sort 后计算移动人数 + 反馈
- *
- * v0.2 简化：
- * - 去掉特殊情况 dropdown（用户原话："特殊情况不用单独列，到时候填到题号列里"）
- * - C 列改成"单一 input + 快捷按钮组"（5 个特殊值 + 用户自由输入题号）
- * - 添加自动排序按钮
- * - D 列保留为 textarea（v0.1 没变）
  *
  * 自动排序逻辑见 weekend-types.ts: sortStudentsByCellValue()
  */
@@ -29,18 +24,26 @@ import {
   classifyCellValue,
   shouldSkipAiFeedback,
   WEEKEND_STUDENT_LIMIT,
+  getQNumberLabels,
   type WeekendStudent,
+  type FieldColumnMap,
 } from "@/lib/mistake/weekend-types";
 import { CloseIcon, AddIcon } from "@/components/icons";
 
 export function WeekendStudentTable({
   students,
+  fieldColumns,
+  rawR2,
   onStudentChange,
   onAutoSort,
   onAddStudent,
   onDeleteStudent,
 }: {
   students: WeekendStudent[];
+  /** ⭐ Stage 6：R2 表头识别的列布局（决定 UI 渲染哪些列）*/
+  fieldColumns: FieldColumnMap;
+  /** ⭐ Stage 6.5：R2 表头原文（rows[1]）· 用于显示真实列名 */
+  rawR2?: unknown[];
   onStudentChange: (rowIndex: number, patch: Partial<WeekendStudent>) => void;
   onAutoSort: () => { moved: number; total: number };
   onAddStudent: () => void;
@@ -54,12 +57,19 @@ export function WeekendStudentTable({
     return () => clearTimeout(t);
   }, [sortFeedback]);
 
+  // ⭐ Stage 6.5：错题列标签（用 R2 原文）
+  const qLabels = getQNumberLabels(fieldColumns, rawR2);
+  const qCount = fieldColumns.qNumbersCols.length;
+
   // 统计已填数量（用于显示在排序按钮旁边）
   const filledCount = students.filter(
-    (s) => s.qNumbersInput.trim() !== "" || s.feedback.trim() !== "",
+    (s) =>
+      s.qNumbersInput.trim() !== "" ||
+      (s.qNumbersInput2?.trim() ?? "") !== "" ||
+      s.feedback.trim() !== "",
   ).length;
 
-  // 按 category 统计（用于预览"排序后会变怎样"）
+  // 按 category 统计（用于预览"排序后会变怎样"）—— 只看第一个错题列
   const categoryCounts = students.reduce<Record<string, number>>((acc, s) => {
     const c = classifyCellValue(s.qNumbersInput);
     acc[c] = (acc[c] ?? 0) + 1;
@@ -70,6 +80,11 @@ export function WeekendStudentTable({
   );
 
   const atMax = students.length >= WEEKEND_STUDENT_LIMIT;
+  const showSerial = fieldColumns.serial !== null;
+  const showFeedback = fieldColumns.feedback !== null;
+
+  // ⭐ 表格总列数（min-w 同步调整）
+  const totalCols = (showSerial ? 1 : 0) + 1 + qCount + (showFeedback ? 1 : 0) + 1;
 
   return (
     <div className="space-y-3">
@@ -113,7 +128,7 @@ export function WeekendStudentTable({
                   : "bg-accent-text text-white hover:bg-accent-hover shadow-sm"
               }
             `}
-            title="按 C 列自动排序：有题号(数字升序) → 全对 → 网课 → 作业未交 → 留空"
+            title={`按 ${qLabels[0] ?? "错题"} 列自动排序：有题号(数字升序) → 全对 → 网课 → 作业未交 → 留空`}
           >
             <span>↕️</span>
             <span>{sortFeedback ?? "自动排序"}</span>
@@ -132,10 +147,10 @@ export function WeekendStudentTable({
         </div>
       </div>
 
-      {/* 排序提示横幅（C 列全空时） */}
+      {/* 排序提示横幅（错题 1 列全空时） */}
       {!hasAnyFilled && (
         <div className="rounded-lg bg-warning-soft/40 border border-warning/30 px-3 py-2 text-xs text-ink-muted">
-          💡 先在 C 列填一些错题号（如"3，6"）或选特殊值按钮，点排序才有效果。当前 C 列全留空 → 排序按姓名拼音升序（基本不会改变原顺序）。
+          💡 先在「{qLabels[0] ?? "错题"}」列填一些错题号（如"3，6"）或选特殊值按钮，点排序才有效果。当前列全留空 → 排序按姓名拼音升序（基本不会改变原顺序）。
         </div>
       )}
 
@@ -144,18 +159,36 @@ export function WeekendStudentTable({
           <table className="w-full text-sm min-w-[760px]">
             <thead>
               <tr className="bg-canvas-alt/50 border-b border-hairline">
-                <th className="px-3 py-2.5 text-left text-xs font-medium text-ink-muted w-14">
-                  序号
-                </th>
+                {showSerial && (
+                  <th className="px-3 py-2.5 text-left text-xs font-medium text-ink-muted w-14">
+                    序号
+                  </th>
+                )}
                 <th className="px-3 py-2.5 text-left text-xs font-medium text-ink-muted w-28">
                   姓名
                 </th>
-                <th className="px-3 py-2.5 text-left text-xs font-medium text-ink-muted min-w-[260px]">
-                  错题（C 列 · 题号/特殊值）
-                </th>
-                <th className="px-3 py-2.5 text-left text-xs font-medium text-ink-muted min-w-[220px]">
-                  反馈（D 列 · Stage 3 AI 接入）
-                </th>
+                {/* ⭐ Stage 6.5：错题列动态渲染 */}
+                {qLabels.map((label, idx) => (
+                  <th
+                    key={`q-${idx}`}
+                    className={`px-3 py-2.5 text-left text-xs font-medium text-ink-muted ${qCount >= 2 ? "min-w-[180px]" : "min-w-[260px]"}`}
+                  >
+                    {label}
+                    <span className="ml-1 text-[10px] text-ink-subtle">
+                      ({String.fromCharCode(64 + (fieldColumns.qNumbersCols[idx] ?? 0))} 列)
+                    </span>
+                  </th>
+                ))}
+                {showFeedback && (
+                  <th className="px-3 py-2.5 text-left text-xs font-medium text-ink-muted min-w-[220px]">
+                    反馈
+                    {fieldColumns.feedback !== null && (
+                      <span className="ml-1 text-[10px] text-ink-subtle">
+                        ({String.fromCharCode(64 + fieldColumns.feedback)} 列 · Stage 3 AI 接入)
+                      </span>
+                    )}
+                  </th>
+                )}
                 <th className="px-3 py-2.5 text-left text-xs font-medium text-ink-muted w-14">
                   操作
                 </th>
@@ -165,7 +198,7 @@ export function WeekendStudentTable({
               {students.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={totalCols}
                     className="px-3 py-8 text-center text-sm text-ink-muted"
                   >
                     这个 Sheet 没有学生数据 · 点上方"添加学生"或在 Excel 里准备好名单
@@ -176,6 +209,8 @@ export function WeekendStudentTable({
                   <WeekendStudentRow
                     key={student.rowIndex}
                     student={student}
+                    qLabels={qLabels}
+                    fieldColumns={fieldColumns}
                     onChange={(patch) =>
                       onStudentChange(student.rowIndex, patch)
                     }
@@ -193,17 +228,21 @@ export function WeekendStudentTable({
 
 function WeekendStudentRow({
   student,
+  qLabels,
+  fieldColumns,
   onChange,
   onDelete,
 }: {
   student: WeekendStudent;
+  qLabels: string[];
+  fieldColumns: FieldColumnMap;
   onChange: (patch: Partial<WeekendStudent>) => void;
   onDelete: () => void;
 }) {
   const category = classifyCellValue(student.qNumbersInput);
   const skipAi = shouldSkipAiFeedback(category);
 
-  // 视觉样式：根据 category 染色
+  // 视觉样式：根据 category 染色（按第 1 个错题列分类）
   const categoryStyles: Record<string, string> = {
     qnumber: "border-accent/40 bg-accent-soft/10",
     allCorrect: "border-success/40 bg-success-soft/20",
@@ -216,20 +255,25 @@ function WeekendStudentRow({
   };
   const rowStyle = categoryStyles[category] ?? "border-hairline bg-white";
 
+  const showSerial = fieldColumns.serial !== null;
+  const showFeedback = fieldColumns.feedback !== null;
+
   return (
     <tr
       className={`border-b border-hairline last:border-b-0 hover:bg-canvas-alt/20 transition border-l-4 ${rowStyle}`}
     >
-      {/* 序号 */}
-      <td className="px-3 py-2 align-top">
-        <input
-          type="text"
-          value={student.serialNumber}
-          onChange={(e) => onChange({ serialNumber: e.target.value })}
-          placeholder="—"
-          className="w-12 text-sm px-2 py-1 rounded border border-hairline bg-white focus:outline-none focus:ring-1 focus:ring-accent/40 text-center"
-        />
-      </td>
+      {/* 序号（serial=null 时不渲染） */}
+      {showSerial && (
+        <td className="px-3 py-2 align-top">
+          <input
+            type="text"
+            value={student.serialNumber}
+            onChange={(e) => onChange({ serialNumber: e.target.value })}
+            placeholder="—"
+            className="w-12 text-sm px-2 py-1 rounded border border-hairline bg-white focus:outline-none focus:ring-1 focus:ring-accent/40 text-center"
+          />
+        </td>
+      )}
 
       {/* 姓名（可编辑） */}
       <td className="px-3 py-2 align-top">
@@ -243,54 +287,70 @@ function WeekendStudentRow({
         />
       </td>
 
-      {/* C 列 · 错题（统一 input + 快捷按钮） */}
-      <td className="px-3 py-2 align-top">
-        <input
-          type="text"
-          value={student.qNumbersInput}
-          onChange={(e) => onChange({ qNumbersInput: e.target.value })}
-          placeholder="输入题号如 3，6 或选下方特殊值"
-          className="w-full text-sm px-2 py-1 rounded border border-hairline bg-white focus:outline-none focus:ring-1 focus:ring-accent/40 font-mono"
-        />
-        <div className="mt-1.5 flex flex-wrap gap-1">
-          {QUICK_FILL_OPTIONS.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => onChange({ qNumbersInput: opt.value })}
-              className={`
-                text-[10px] px-1.5 py-0.5 rounded transition
-                ${
-                  student.qNumbersInput === opt.value
-                    ? "bg-warning-text text-white"
-                    : "bg-canvas-alt text-ink-muted hover:bg-warning-soft hover:text-warning-text"
-                }
-              `}
-              title={`填入 ${opt.value}`}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      </td>
+      {/* ⭐ Stage 6.5：错题列动态渲染（1-N 列） */}
+      {fieldColumns.qNumbersCols.map((col, idx) => {
+        const isFirst = idx === 0;
+        const value = isFirst
+          ? student.qNumbersInput
+          : student.qNumbersInput2 ?? "";
+        const fieldKey = isFirst ? "qNumbersInput" : "qNumbersInput2";
+        return (
+          <td key={`qcell-${idx}`} className="px-3 py-2 align-top">
+            <input
+              type="text"
+              value={value}
+              onChange={(e) =>
+                onChange({ [fieldKey]: e.target.value } as Partial<WeekendStudent>)
+              }
+              placeholder={`输入题号如 3，6 或选下方特殊值（${qLabels[idx] ?? ""}）`}
+              className="w-full text-sm px-2 py-1 rounded border border-hairline bg-white focus:outline-none focus:ring-1 focus:ring-accent/40 font-mono"
+            />
+            {/* ⭐ 快捷按钮组只在第 1 列显示（避免重复） */}
+            {isFirst && (
+              <div className="mt-1.5 flex flex-wrap gap-1">
+                {QUICK_FILL_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => onChange({ qNumbersInput: opt.value })}
+                    className={`
+                      text-[10px] px-1.5 py-0.5 rounded transition
+                      ${
+                        student.qNumbersInput === opt.value
+                          ? "bg-warning-text text-white"
+                          : "bg-canvas-alt text-ink-muted hover:bg-warning-soft hover:text-warning-text"
+                      }
+                    `}
+                    title={`填入 ${opt.value}`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </td>
+        );
+      })}
 
-      {/* D 列 · 反馈 */}
-      <td className="px-3 py-2 align-top">
-        <textarea
-          value={student.feedback}
-          onChange={(e) => onChange({ feedback: e.target.value })}
-          placeholder={
-            skipAi
-              ? "（特殊情况，AI 跳过此行；最后手动合并单元格写小结）"
-              : "Stage 3 AI 自动填入 / 你也可以手动写"
-          }
-          rows={2}
-          className={`
-            w-full text-xs px-2 py-1.5 rounded border bg-white focus:outline-none focus:ring-1 focus:ring-accent/40 resize-none
-            ${skipAi ? "border-hairline text-ink-muted" : "border-hairline"}
-          `}
-        />
-      </td>
+      {/* 反馈（feedback=null 时不渲染） */}
+      {showFeedback && (
+        <td className="px-3 py-2 align-top">
+          <textarea
+            value={student.feedback}
+            onChange={(e) => onChange({ feedback: e.target.value })}
+            placeholder={
+              skipAi
+                ? "（特殊情况，AI 跳过此行；最后手动合并单元格写小结）"
+                : "Stage 3 AI 自动填入 / 你也可以手动写"
+            }
+            rows={2}
+            className={`
+              w-full text-xs px-2 py-1.5 rounded border bg-white focus:outline-none focus:ring-1 focus:ring-accent/40 resize-none
+              ${skipAi ? "border-hairline text-ink-muted" : "border-hairline"}
+            `}
+          />
+        </td>
+      )}
 
       {/* ⭐ Stage 4：删除按钮 */}
       <td className="px-3 py-2 align-top">

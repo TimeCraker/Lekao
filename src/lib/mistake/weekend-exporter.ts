@@ -30,7 +30,11 @@
 
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
-import type { WeekendSheet, WeekendStudent } from "./weekend-types";
+import type {
+  WeekendSheet,
+  WeekendStudent,
+  FieldColumnMap,
+} from "./weekend-types";
 
 /**
  * 设置单元格文本（保留原样式）
@@ -72,43 +76,77 @@ function ensureThinBorder(ws: ExcelJS.Worksheet, ref: string): void {
 }
 
 /**
- * ⭐ v0.3：把指定行的 A/C/D/E 列清空（用于"原 rowIndex 位置留空"）
- * 列映射基于 2026-06-27 新模板：
- *   A 序号 | B 姓名 | C 错题1 | D 错题2 | E 反馈
+ * ⭐ Stage 6：把所有数据列的列号收集出来（清空/写入/边框都用）
  */
-function clearStudentRow(ws: ExcelJS.Worksheet, excelRow: number): void {
-  if (excelRow < 3) return;
-  clearCellText(ws, `A${excelRow}`);
-  clearCellText(ws, `C${excelRow}`);
-  clearCellText(ws, `D${excelRow}`);
-  clearCellText(ws, `E${excelRow}`);
+function getDataCols(fc: FieldColumnMap): number[] {
+  const cols: number[] = [];
+  if (fc.serial !== null) cols.push(fc.serial);
+  cols.push(fc.name);
+  cols.push(...fc.qNumbersCols);
+  if (fc.feedback !== null) cols.push(fc.feedback);
+  return cols;
 }
 
 /**
- * ⭐ v0.3：把学生数据写入指定 Excel 行（含补框线）
- * 列映射基于 2026-06-27 新模板：
- *   A 序号 | B 姓名 | C 错题1 | D 错题2 | E 反馈
+ * ⭐ Stage 6：把指定行的所有数据列清空（不再硬编码 A/C/D/E）
+ */
+function clearStudentRow(
+  ws: ExcelJS.Worksheet,
+  excelRow: number,
+  fc: FieldColumnMap,
+): void {
+  if (excelRow < 3) return;
+  for (const col of getDataCols(fc)) {
+    clearCellText(ws, `${colLetter(col)}${excelRow}`);
+  }
+}
+
+/**
+ * ⭐ Stage 6：把学生数据写入指定 Excel 行（按 fieldColumns 定位）
  */
 function writeStudentRow(
   ws: ExcelJS.Worksheet,
   excelRow: number,
   student: WeekendStudent,
+  fc: FieldColumnMap,
 ): void {
-  // A 列：序号
-  setCellText(ws, `A${excelRow}`, student.serialNumber || undefined);
-  // B 列：姓名（导出时把浏览器编辑过的名字写回 Excel 模板）
-  setCellText(ws, `B${excelRow}`, student.name);
-  // C 列：错题
-  setCellText(ws, `C${excelRow}`, student.qNumbersInput);
-  // D 列：错题2（保持原样，不写）
-  // E 列：反馈
-  setCellText(ws, `E${excelRow}`, student.feedback);
-  // ⭐ v0.3：给 5 个单元格补 thin 框线（用户反馈有些没框线）
-  ensureThinBorder(ws, `A${excelRow}`);
-  ensureThinBorder(ws, `B${excelRow}`);
-  ensureThinBorder(ws, `C${excelRow}`);
-  ensureThinBorder(ws, `D${excelRow}`);
-  ensureThinBorder(ws, `E${excelRow}`);
+  // 序号列
+  if (fc.serial !== null) {
+    setCellText(
+      ws,
+      `${colLetter(fc.serial)}${excelRow}`,
+      student.serialNumber || undefined,
+    );
+  }
+  // 姓名列
+  setCellText(ws, `${colLetter(fc.name)}${excelRow}`, student.name);
+  // 错题列（1-N）
+  if (fc.qNumbersCols[0] !== undefined) {
+    setCellText(
+      ws,
+      `${colLetter(fc.qNumbersCols[0])}${excelRow}`,
+      student.qNumbersInput,
+    );
+  }
+  if (fc.qNumbersCols[1] !== undefined) {
+    setCellText(
+      ws,
+      `${colLetter(fc.qNumbersCols[1])}${excelRow}`,
+      student.qNumbersInput2 ?? "",
+    );
+  }
+  // 反馈列
+  if (fc.feedback !== null) {
+    setCellText(
+      ws,
+      `${colLetter(fc.feedback)}${excelRow}`,
+      student.feedback,
+    );
+  }
+  // ⭐ v0.3：给所有数据列补 thin 框线
+  for (const col of getDataCols(fc)) {
+    ensureThinBorder(ws, `${colLetter(col)}${excelRow}`);
+  }
 }
 
 /**
@@ -143,7 +181,7 @@ function updateSheetInPlace(
   const students = sheet.students;
   if (students.length === 0) return;
 
-  // 1. 先清空原 rowIndex 位置残留（A/C/D 列）—— 避免旧数据"原位残留"
+  // 1. 先清空原 rowIndex 位置残留（按 fieldColumns）—— 避免旧数据"原位残留"
   //    注：如果原 rowIndex = 3 (R3)，但新顺序写到 R5，清 R3 留空
   const newExcelRows = new Set<number>();
   for (let i = 0; i < students.length; i++) {
@@ -153,7 +191,7 @@ function updateSheetInPlace(
     const origRow = s.rowIndex + 1;
     if (origRow >= 3 && !newExcelRows.has(origRow)) {
       // 原 rowIndex 位置不会复用 → 清空
-      clearStudentRow(ws, origRow);
+      clearStudentRow(ws, origRow, sheet.fieldColumns);
     }
   }
 
@@ -161,7 +199,7 @@ function updateSheetInPlace(
   for (let i = 0; i < students.length; i++) {
     const student = students[i];
     const excelRow = i + 3; // R3 起
-    writeStudentRow(ws, excelRow, student);
+    writeStudentRow(ws, excelRow, student, sheet.fieldColumns);
   }
 }
 

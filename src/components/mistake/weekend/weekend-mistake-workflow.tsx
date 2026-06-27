@@ -101,6 +101,7 @@ export function WeekendMistakeWorkflow() {
                       ? {
                           ...s,
                           qNumbersInput: ds.qNumbersInput,
+                          qNumbersInput2: ds.qNumbersInput2 ?? s.qNumbersInput2,
                           feedback: ds.feedback,
                         }
                       : s;
@@ -186,6 +187,7 @@ export function WeekendMistakeWorkflow() {
               serialNumber: nextSerial,
               name: "",
               qNumbersInput: "",
+              qNumbersInput2: "",
               feedback: "",
             };
             return { ...s, students: [...s.students, newStudent] };
@@ -260,12 +262,16 @@ export function WeekendMistakeWorkflow() {
       }
       // 复制 R1 (rawRows[0]) + R2 (rawRows[1])，students 清空
       const newRawRows: unknown[][] = src.rawRows.slice(0, 2).map((row) => [...row]);
-      // 更新 R1 标题：用新 sheet 名 + 当前日期
+      // 更新 R1 标题：用新 sheet 名 + 当前日期（替换第一个非空 cell）
       const today = getThisWeekendDate();
       const newTitle = `${trimmed}反馈表 ${today}`;
       if (newRawRows[0] && Array.isArray(newRawRows[0])) {
-        // R1 是合并行（merged B1:E1），只保留 B 列位置作为标题
-        newRawRows[0][1] = newTitle;
+        for (let c = 0; c < newRawRows[0].length; c++) {
+          if (newRawRows[0][c] && String(newRawRows[0][c]).trim()) {
+            newRawRows[0][c] = newTitle;
+            break;
+          }
+        }
       }
       const newSheet: WeekendSheet = {
         sheetName: trimmed,
@@ -277,6 +283,8 @@ export function WeekendMistakeWorkflow() {
         students: [],
         rawRows: newRawRows,
         cols: src.cols,
+        // ⭐ Stage 6：复制源 sheet 的字段列布局
+        fieldColumns: { ...src.fieldColumns },
         // ⭐ Stage 5.2：标记新加的 sheet（导出时 clone sourceSheet 样式）
         sourceSheetName: sourceSheetName,
         isNewSheet: true,
@@ -868,6 +876,8 @@ function WeekendEditStudentsStep({
         >
           <WeekendStudentTable
             students={activeSheet.students}
+            fieldColumns={activeSheet.fieldColumns}
+            rawR2={activeSheet.rawRows[1]}
             onStudentChange={(rowIndex, patch) =>
               onStudentChange(activeSheet.sheetName, rowIndex, patch)
             }

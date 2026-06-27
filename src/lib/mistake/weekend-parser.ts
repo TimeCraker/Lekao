@@ -19,7 +19,13 @@ import type {
   WeekendSheet,
   WeekendStudent,
   WeekendWorkbook,
+  FieldColumnMap,
 } from "./weekend-types";
+import {
+  parseR2Headers,
+  DEFAULT_FIELD_COLUMNS,
+  readCell,
+} from "./weekend-headers";
 
 // ============== 日期工具 ==============
 
@@ -129,6 +135,11 @@ export async function hashFileContent(file: File): Promise<string> {
  *
  * 关键：周末表格 C/D 列默认空（用户手动填），不读 Excel 已有错题号
  * （用户 2026-06-26 决策：周末拿到的表 C 列是空的）
+ *
+ * ⭐ Stage 6 (用户 2026-06-27 反馈重构)：
+ * - 不再硬编码 B=姓名/C=错题/D=反馈
+ * - 用 R2 表头字符串动态识别字段列号（见 weekend-headers.ts）
+ * - 读 R3+ 原始内容（C/D/E 列）作为初始值，不丢用户已填内容
  */
 function parseWeekendSheet(
   workbook: XLSX.WorkBook,
@@ -153,6 +164,7 @@ function parseWeekendSheet(
       students: [],
       rawRows: [],
       cols: 4,
+      fieldColumns: { ...DEFAULT_FIELD_COLUMNS },
     };
   }
 
@@ -191,28 +203,43 @@ function parseWeekendSheet(
     }
   }
 
-  // ===== R3+：学生数据 =====
+  // ===== R2：列头识别（⭐ Stage 6）=====
+  const fieldColumns: FieldColumnMap =
+    rows.length > 1
+      ? parseR2Headers(rows[1] as unknown[])
+      : { ...DEFAULT_FIELD_COLUMNS };
+
+  // ===== R3+：学生数据（按 fieldColumns 读）=====
   const students: WeekendStudent[] = [];
   // 跳过 R1 (rows[0]) + R2 (rows[1] 列头)
   for (let i = 2; i < rows.length; i++) {
     const row = rows[i] as unknown[];
     if (!row || row.length === 0) continue;
 
-    // B 列姓名（row[1]），如果空就跳过这行
-    const name = String(row[1] ?? "").trim();
+    // 姓名列（按 fieldColumns.name 定位）
+    const name = readCell(row, fieldColumns.name);
     if (!name) continue;
 
-    // A 列序号（row[0]，可空）
-    const serialNumber = String(row[0] ?? "").trim();
+    // 序号列（可选）
+    const serialNumber = readCell(row, fieldColumns.serial);
 
-    // C 列（row[2]）默认空，**不读 Excel 已有内容** — 用户手动填
-    // D 列反馈（row[3]）默认空
+    // 错题列（按 fieldColumns.qNumbersCols 定位，可能有 1-2 列）
+    const qNumbersInput = readCell(row, fieldColumns.qNumbersCols[0] ?? null);
+    const qNumbersInput2 =
+      fieldColumns.qNumbersCols.length >= 2
+        ? readCell(row, fieldColumns.qNumbersCols[1])
+        : undefined;
+
+    // 反馈列（按 fieldColumns.feedback 定位）
+    const feedback = readCell(row, fieldColumns.feedback);
+
     students.push({
       rowIndex: i,
       serialNumber,
       name,
-      qNumbersInput: "",
-      feedback: "",
+      qNumbersInput,
+      qNumbersInput2,
+      feedback,
     });
   }
 
@@ -226,6 +253,7 @@ function parseWeekendSheet(
     students,
     rawRows: rows,
     cols: Math.max(maxCol, 4),
+    fieldColumns,
   };
 }
 
