@@ -1,8 +1,13 @@
 "use client";
 
 /**
- * 周末错题反馈表 · 学生表视图（v0.2.1 修订版）
- * 来源：docs/stages/weekend-mistake-table-v0.md + 用户 2026-06-26 反馈
+ * 周末错题反馈表 · 学生表视图（v0.3 修订版）
+ * 来源：docs/stages/weekend-mistake-table-v0.md + 用户 2026-06-27 反馈
+ *
+ * v0.3 修订（Stage 4）：
+ * - 姓名改成可编辑 input（之前是只读 div）
+ * - 末尾"+ 添加学生"按钮追加横列（rowIndex 用 max+1）
+ * - 每行末加"删除"按钮（可单独删除某行）
  *
  * v0.2.1 修订（用户实测）：
  * - 自动排序按钮现在有真实功能 + 视觉反馈（绿色 toast 2s 自动消失）
@@ -23,17 +28,23 @@ import {
   QUICK_FILL_OPTIONS,
   classifyCellValue,
   shouldSkipAiFeedback,
+  WEEKEND_STUDENT_LIMIT,
   type WeekendStudent,
 } from "@/lib/mistake/weekend-types";
+import { CloseIcon, AddIcon } from "@/components/icons";
 
 export function WeekendStudentTable({
   students,
   onStudentChange,
   onAutoSort,
+  onAddStudent,
+  onDeleteStudent,
 }: {
   students: WeekendStudent[];
   onStudentChange: (rowIndex: number, patch: Partial<WeekendStudent>) => void;
   onAutoSort: () => { moved: number; total: number };
+  onAddStudent: () => void;
+  onDeleteStudent: (rowIndex: number) => void;
 }) {
   const [sortFeedback, setSortFeedback] = useState<string | null>(null);
 
@@ -42,14 +53,6 @@ export function WeekendStudentTable({
     const t = setTimeout(() => setSortFeedback(null), 2500);
     return () => clearTimeout(t);
   }, [sortFeedback]);
-
-  if (students.length === 0) {
-    return (
-      <div className="rounded-xl border border-dashed border-hairline bg-canvas-alt/30 p-8 text-center text-sm text-ink-muted">
-        这个 Sheet 没有学生数据
-      </div>
-    );
-  }
 
   // 统计已填数量（用于显示在排序按钮旁边）
   const filledCount = students.filter(
@@ -66,12 +69,16 @@ export function WeekendStudentTable({
     (s) => classifyCellValue(s.qNumbersInput) !== "blank",
   );
 
+  const atMax = students.length >= WEEKEND_STUDENT_LIMIT;
+
   return (
     <div className="space-y-3">
       {/* 顶部工具栏：分类预览 + 已填统计 + 自动排序按钮 */}
       <div className="flex items-center justify-between gap-3 px-1 flex-wrap">
         <div className="flex items-center gap-3 text-xs text-ink-muted flex-wrap">
-          <span>共 {students.length} 人 · 已填 {filledCount} 人</span>
+          <span>
+            共 {students.length} / {WEEKEND_STUDENT_LIMIT} 人 · 已填 {filledCount} 人
+          </span>
           {hasAnyFilled && (
             <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-canvas-alt/60">
               <span className="text-[10px]">📊</span>
@@ -87,29 +94,42 @@ export function WeekendStudentTable({
             </span>
           )}
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            const { moved, total } = onAutoSort();
-            if (moved === 0) {
-              setSortFeedback(`已是排序顺序（${total} 人）`);
-            } else {
-              setSortFeedback(`✓ 已排序（移动 ${moved} / ${total} 人）`);
-            }
-          }}
-          className={`
-            inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md transition font-medium
-            ${
-              sortFeedback
-                ? "bg-success-soft text-success-text border border-success/40"
-                : "bg-accent-text text-white hover:bg-accent-hover shadow-sm"
-            }
-          `}
-          title="按 C 列自动排序：有题号(数字升序) → 全对 → 网课 → 作业未交 → 留空"
-        >
-          <span>↕️</span>
-          <span>{sortFeedback ?? "自动排序"}</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              const { moved, total } = onAutoSort();
+              if (moved === 0) {
+                setSortFeedback(`已是排序顺序（${total} 人）`);
+              } else {
+                setSortFeedback(`✓ 已排序（移动 ${moved} / ${total} 人）`);
+              }
+            }}
+            className={`
+              inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md transition font-medium
+              ${
+                sortFeedback
+                  ? "bg-success-soft text-success-text border border-success/40"
+                  : "bg-accent-text text-white hover:bg-accent-hover shadow-sm"
+              }
+            `}
+            title="按 C 列自动排序：有题号(数字升序) → 全对 → 网课 → 作业未交 → 留空"
+          >
+            <span>↕️</span>
+            <span>{sortFeedback ?? "自动排序"}</span>
+          </button>
+          {/* ⭐ Stage 4：末尾追加学生按钮 */}
+          <button
+            type="button"
+            onClick={onAddStudent}
+            disabled={atMax}
+            title={atMax ? `已达 ${WEEKEND_STUDENT_LIMIT} 人上限` : "在末尾追加一行学生"}
+            className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-canvas-alt text-ink hover:bg-accent-soft hover:text-accent-text transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <AddIcon className="w-3.5 h-3.5" />
+            <span>添加学生</span>
+          </button>
+        </div>
       </div>
 
       {/* 排序提示横幅（C 列全空时） */}
@@ -121,7 +141,7 @@ export function WeekendStudentTable({
 
       <div className="rounded-xl border border-hairline overflow-hidden bg-white">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[720px]">
+          <table className="w-full text-sm min-w-[760px]">
             <thead>
               <tr className="bg-canvas-alt/50 border-b border-hairline">
                 <th className="px-3 py-2.5 text-left text-xs font-medium text-ink-muted w-14">
@@ -136,18 +156,33 @@ export function WeekendStudentTable({
                 <th className="px-3 py-2.5 text-left text-xs font-medium text-ink-muted min-w-[220px]">
                   反馈（D 列 · Stage 3 AI 接入）
                 </th>
+                <th className="px-3 py-2.5 text-left text-xs font-medium text-ink-muted w-14">
+                  操作
+                </th>
               </tr>
             </thead>
             <tbody>
-              {students.map((student) => (
-                <WeekendStudentRow
-                  key={student.rowIndex}
-                  student={student}
-                  onChange={(patch) =>
-                    onStudentChange(student.rowIndex, patch)
-                  }
-                />
-              ))}
+              {students.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={5}
+                    className="px-3 py-8 text-center text-sm text-ink-muted"
+                  >
+                    这个 Sheet 没有学生数据 · 点上方"添加学生"或在 Excel 里准备好名单
+                  </td>
+                </tr>
+              ) : (
+                students.map((student) => (
+                  <WeekendStudentRow
+                    key={student.rowIndex}
+                    student={student}
+                    onChange={(patch) =>
+                      onStudentChange(student.rowIndex, patch)
+                    }
+                    onDelete={() => onDeleteStudent(student.rowIndex)}
+                  />
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -159,9 +194,11 @@ export function WeekendStudentTable({
 function WeekendStudentRow({
   student,
   onChange,
+  onDelete,
 }: {
   student: WeekendStudent;
   onChange: (patch: Partial<WeekendStudent>) => void;
+  onDelete: () => void;
 }) {
   const category = classifyCellValue(student.qNumbersInput);
   const skipAi = shouldSkipAiFeedback(category);
@@ -194,11 +231,16 @@ function WeekendStudentRow({
         />
       </td>
 
-      {/* 姓名 */}
+      {/* 姓名（可编辑） */}
       <td className="px-3 py-2 align-top">
-        <div className="text-sm font-medium text-ink truncate max-w-[8rem]">
-          {student.name}
-        </div>
+        <input
+          type="text"
+          value={student.name}
+          onChange={(e) => onChange({ name: e.target.value })}
+          placeholder="姓名"
+          maxLength={20}
+          className="w-full text-sm font-medium text-ink px-2 py-1 rounded border border-transparent bg-white hover:border-hairline focus:outline-none focus:ring-1 focus:ring-accent/40 focus:border-accent truncate"
+        />
       </td>
 
       {/* C 列 · 错题（统一 input + 快捷按钮） */}
@@ -248,6 +290,19 @@ function WeekendStudentRow({
             ${skipAi ? "border-hairline text-ink-muted" : "border-hairline"}
           `}
         />
+      </td>
+
+      {/* ⭐ Stage 4：删除按钮 */}
+      <td className="px-3 py-2 align-top">
+        <button
+          type="button"
+          onClick={onDelete}
+          title="删除此学生"
+          aria-label={`删除 ${student.name || "此学生"}`}
+          className="w-7 h-7 rounded text-ink-subtle hover:bg-danger/10 hover:text-danger transition inline-flex items-center justify-center"
+        >
+          <CloseIcon className="w-3.5 h-3.5" />
+        </button>
       </td>
     </tr>
   );

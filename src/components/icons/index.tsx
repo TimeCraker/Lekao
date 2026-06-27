@@ -297,6 +297,16 @@ export function CloseIcon(props: IconProps) {
   );
 }
 
+/** Add / Plus — 添加（Stage 4 学生表添加按钮） */
+export function AddIcon(props: IconProps) {
+  return (
+    <svg {...baseProps} {...props}>
+      <path d="M12 5v14" />
+      <path d="M5 12h14" />
+    </svg>
+  );
+}
+
 /** Document — 文档 */
 export function DocumentIcon(props: IconProps) {
   return (

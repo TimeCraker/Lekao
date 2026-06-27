@@ -38,6 +38,7 @@ import {
 } from "@/lib/mistake/weekend-exporter";
 import {
   sortStudentsByCellValue,
+  WEEKEND_STUDENT_LIMIT,
   type WeekendSheet,
   type WeekendStudent,
   type WeekendStep,
@@ -154,6 +155,57 @@ export function WeekendMistakeWorkflow() {
               students: s.students.map((st) =>
                 st.rowIndex === rowIndex ? { ...st, ...patch } : st,
               ),
+            };
+          }),
+        };
+      });
+    },
+    [],
+  );
+
+  // ===== ⭐ Stage 4：在 Sheet 末尾追加一名学生 =====
+  const addStudent = useCallback(
+    (sheetName: string) => {
+      setWorkbook((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          sheets: prev.sheets.map((s) => {
+            if (s.sheetName !== sheetName) return s;
+            if (s.students.length >= WEEKEND_STUDENT_LIMIT) return s; // 上限保护
+            // 找当前最大 rowIndex + 1（用最大避免跟原始数据冲突，rowIndex 只是标识符）
+            const maxRow = s.students.reduce(
+              (max, st) => Math.max(max, st.rowIndex),
+              0,
+            );
+            const nextSerial = String(s.students.length + 1);
+            const newStudent: WeekendStudent = {
+              rowIndex: maxRow + 1,
+              serialNumber: nextSerial,
+              name: "",
+              qNumbersInput: "",
+              feedback: "",
+            };
+            return { ...s, students: [...s.students, newStudent] };
+          }),
+        };
+      });
+    },
+    [],
+  );
+
+  // ===== ⭐ Stage 4：删除指定学生 =====
+  const deleteStudent = useCallback(
+    (sheetName: string, rowIndex: number) => {
+      setWorkbook((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          sheets: prev.sheets.map((s) => {
+            if (s.sheetName !== sheetName) return s;
+            return {
+              ...s,
+              students: s.students.filter((st) => st.rowIndex !== rowIndex),
             };
           }),
         };
@@ -339,6 +391,8 @@ export function WeekendMistakeWorkflow() {
           onSheetChange={setActiveSheetIdx}
           onStudentChange={updateStudent}
           onAutoSort={(sheetName) => autoSortSheet(sheetName)}
+          onAddStudent={addStudent}
+          onDeleteStudent={deleteStudent}
           onBack={backToEditDate}
           uploadedFile={uploadedFile}
           onApplyAiFeedback={applyAiFeedback}
@@ -576,6 +630,8 @@ function WeekendEditStudentsStep({
   onSheetChange,
   onStudentChange,
   onAutoSort,
+  onAddStudent,
+  onDeleteStudent,
   onBack,
   uploadedFile,
   onApplyAiFeedback,
@@ -589,6 +645,8 @@ function WeekendEditStudentsStep({
     patch: Partial<WeekendStudent>,
   ) => void;
   onAutoSort: (sheetName: string) => { moved: number; total: number };
+  onAddStudent: (sheetName: string) => void;
+  onDeleteStudent: (sheetName: string, rowIndex: number) => void;
   onBack: () => void;
   uploadedFile: File | null;
   onApplyAiFeedback: (sheetName: string, results: BatchStudentResult[]) => void;
@@ -642,6 +700,10 @@ function WeekendEditStudentsStep({
               onStudentChange(activeSheet.sheetName, rowIndex, patch)
             }
             onAutoSort={() => onAutoSort(activeSheet.sheetName)}
+            onAddStudent={() => onAddStudent(activeSheet.sheetName)}
+            onDeleteStudent={(rowIndex) =>
+              onDeleteStudent(activeSheet.sheetName, rowIndex)
+            }
           />
         </motion.div>
       </AnimatePresence>
