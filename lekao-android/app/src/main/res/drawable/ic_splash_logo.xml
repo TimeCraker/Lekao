@@ -1,17 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Lekao Splash Logo · 启动屏 + LoginScreen 顶部 72dp logo
+  与 launcher icon / Web 端 src/app/icon.tsx 品牌 100% 一致:
+  - 黑色圆底 + L 字 (cream) + signal coral 右上角圆点
+  - 108×108 viewport 全可见 (不是 adaptive icon, 不需要安全区)
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Lekao 几何 Logo · 同 Web 端 lekao-mark.svg -->
+
+    <!-- 黑色圆形底 (中心 54, 半径 48) -->
     <path
-        android:fillColor="#3B82F6"
-        android:pathData="M54,18 L78,42 L78,66 L54,90 L30,66 L30,42 Z" />
+        android:fillColor="#1a1a1a"
+        android:pathData="M 54,6 A 48,48 0 1,0 54.001,6 Z" />
+
+    <!-- L 字 (粗笔画, 圆内水平居中略偏左) -->
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M54,30 L68,44 L68,64 L54,78 L40,64 L40,44 Z" />
+        android:fillColor="#faf8f3"
+        android:pathData="M 30,30 L 42,30 L 42,60 L 72,60 L 72,72 L 30,72 Z" />
+
+    <!-- signal coral 圆点 (右上角) -->
     <path
-        android:fillColor="#FB7185"
-        android:pathData="M54,42 L62,50 L62,58 L54,66 L46,58 L46,50 Z" />
+        android:fillColor="#e85a3c"
+        android:pathData="M 68,22 A 6,6 0 1,0 68.001,22 Z" />
+
 </vector>
