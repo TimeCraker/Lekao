@@ -154,6 +154,28 @@ function ensureCellAlignment(
  * - 姓名列：固定 14
  * - 序号列：固定 6
  */
+/**
+ * ⭐ Stage 11：所有数据列按内容自适应宽度
+ *
+ * 用户 2026-06-27 反馈："所有的列根据他的填入数据的长度去做这个自适应"
+ *
+ * 算法：每个字段列（serial/name/qNumbersCols/feedback）独立计算
+ *   candidates = students[对应字段] + rawRows[R3+][col-1]
+ *   width = clamp(max(visualLen) + 2, colMin, colMax)
+ *
+ * visualLen: 中文字符 ×2（CJK + 全角），ASCII ×1
+ *
+ * 列宽 clamp 范围：
+ *   - serial  : [4, 10]  · 序号最多 2-3 位
+ *   - name    : [10, 24] · 中文姓名 2-4 字
+ *   - qNumbers: [10, 24] · 错题号 + "全对/网课/作业未交" 等
+ *   - feedback: [18, 70] · Stage 10 范围，长中文反馈
+ *
+ * 兜底：fc.feedback=null 时（如物理「练习评价」关键词未识别）→ 找 R2 表头
+ *   最右侧、非已知字段、非空列作为 fallback feedback 列（Stage 11 通用性）。
+ *
+ * 行高：按最宽反馈列内容长度决定（≥20 单位 → 60；否则 22）。
+ */
 function autoAdjustColumnWidths(
   ws: ExcelJS.Worksheet,
   sheet: WeekendSheet,
@@ -162,56 +184,90 @@ function autoAdjustColumnWidths(
   const cols = ws.columns;
   if (!cols || cols.length === 0) return;
 
-  // 1) 收集所有反馈来源（Stage 10：合并浏览器编辑 + 原 Excel 手填）
-  const feedbackSources: string[] = sheet.students.map((s) => s.feedback || "");
-  if (fc.feedback !== null) {
-    for (let r = 2; r < sheet.rawRows.length; r++) {
-      // rawRows[0]=R1 标题, [1]=R2 表头, [2]=R3 起（0-based）
-      const v = sheet.rawRows[r]?.[fc.feedback - 1];
-      if (v != null) feedbackSources.push(String(v));
-    }
-  }
-
-  // 2) 计算"列宽单位"长度（中文 ×2，全角符号 ×2）
+  // visualLen: 中文/全角 ×2, ASCII ×1
   const visualLen = (s: string): number => {
     let n = 0;
     for (const ch of s) {
-      // CJK Unified Ideographs + 全角 ASCII + 全角标点
       const code = ch.codePointAt(0) ?? 0;
-      if (code > 0x2e80) n += 2; // CJK + 全角范围（含中文日文韩文）
+      if (code > 0x2e80) n += 2;
       else n += 1;
     }
     return n;
   };
-  const maxFeedbackLen = feedbackSources.reduce(
-    (max, f) => Math.max(max, visualLen(f)),
-    0,
-  );
 
-  // 3) 反馈列宽：clamp 18~70（Stage 10 放宽 + 中文加权后更准）
-  const feedbackColWidth = Math.min(70, Math.max(18, maxFeedbackLen + 4));
+  // 收集某列的所有候选值（students 字段 + rawRows 原 Excel 数据）
+  const collectCol = (col: number, fromStudent: string | undefined): string[] => {
+    const out: string[] = [];
+    if (fromStudent !== undefined) out.push(fromStudent);
+    for (let r = 2; r < sheet.rawRows.length; r++) {
+      const v = sheet.rawRows[r]?.[col - 1];
+      if (v != null) out.push(String(v));
+    }
+    return out;
+  };
 
-  // 4) 行高：长反馈（≥ 20 单位 ≈ 10 个汉字）→ 60；否则 22
-  const feedbackRowHeight = maxFeedbackLen >= 20 ? 60 : 22;
+  // 计算某列 maxLen
+  const maxLenOf = (sources: string[]): number =>
+    sources.reduce((max, f) => Math.max(max, visualLen(f)), 0);
 
-  // 5) 设置各列宽度（1-based col index）
-  if (fc.serial !== null && cols[fc.serial - 1]) {
-    cols[fc.serial - 1].width = 6;
+  // clamp 宽度：maxLen + padding
+  const fitWidth = (maxLen: number, min: number, max: number, padding = 2): number =>
+    Math.min(max, Math.max(min, maxLen + padding));
+
+  // 1) 计算每个字段列宽度
+  const widths: Record<number, number> = {};
+
+  if (fc.serial !== null) {
+    const cands = collectCol(fc.serial, undefined);
+    // serial 不从 students 取（students 没单独存），只从 rawRows
+    widths[fc.serial] = fitWidth(maxLenOf(cands), 4, 10, 4);
   }
-  if (cols[fc.name - 1]) {
-    cols[fc.name - 1].width = 14;
+  if (fc.name) {
+    const cands = collectCol(fc.name, undefined);
+    // name 也不从 students.serialNumber 取
+    widths[fc.name] = fitWidth(maxLenOf(cands), 10, 24, 4);
   }
   for (let i = 0; i < fc.qNumbersCols.length; i++) {
     const c = fc.qNumbersCols[i];
-    if (cols[c - 1]) {
-      cols[c - 1].width = 18;
-    }
-  }
-  if (fc.feedback !== null && cols[fc.feedback - 1]) {
-    cols[fc.feedback - 1].width = feedbackColWidth;
+    const fromStudent = i === 0 ? undefined : undefined; // 不从 students 取（candidates 已含 rawRows）
+    const cands = collectCol(c, fromStudent);
+    widths[c] = fitWidth(maxLenOf(cands), 10, 24, 4);
   }
 
-  // 6) 数据行行高（从 R3 起）
+  // 2) feedback 列（用 students[].feedback + rawRows；Stage 11 兜底找最右未识别列）
+  let feedbackCol = fc.feedback;
+  if (feedbackCol === null) {
+    const known = new Set<number>([
+      ...(fc.serial !== null ? [fc.serial] : []),
+      fc.name,
+      ...fc.qNumbersCols,
+    ]);
+    const row2 = sheet.rawRows[1] || [];
+    for (let c = row2.length - 1; c >= 0; c--) {
+      const col = c + 1;
+      if (known.has(col)) continue;
+      if (String(row2[c] ?? "").trim() === "") continue;
+      feedbackCol = col;
+      break;
+    }
+  }
+  let maxFeedbackLen = 0;
+  if (feedbackCol !== null) {
+    const cands = collectCol(feedbackCol, undefined);
+    // ⭐ Stage 11 关键：合并 students[].feedback（浏览器/AI 填的）
+    for (const s of sheet.students) cands.push(s.feedback || "");
+    maxFeedbackLen = maxLenOf(cands);
+    widths[feedbackCol] = fitWidth(maxFeedbackLen, 18, 70, 4);
+  }
+
+  // 3) 写入列宽
+  for (const [colStr, w] of Object.entries(widths)) {
+    const col = Number(colStr);
+    if (cols[col - 1]) cols[col - 1].width = w;
+  }
+
+  // 4) 行高：按反馈列内容决定（长反馈行高足够；短反馈紧凑）
+  const feedbackRowHeight = maxFeedbackLen >= 20 ? 60 : 22;
   for (let r = 3; r < 3 + sheet.students.length; r++) {
     const row = ws.getRow(r);
     row.height = feedbackRowHeight;
