@@ -49,6 +49,43 @@ function setCellText(
 }
 
 /**
+ * ⭐ Stage 9.2：解开 worksheet 的非 R1 合并（防止老模板上传后写入失败）
+ *
+ * 用户 2026-06-27 反馈：模板的"特殊情况区域"合并（D19:D38）导致 AI 反馈填不进去。
+ * 解决方案：
+ * 1. 模板侧：strip-template-merges.cjs 已处理 public/templates/
+ * 2. 用户上传老模板时：export 前动态解开所有非 R1 合并（不影响样式，只解 merge）
+ *
+ * 注意：只解 R2+ 的合并（R1 标题合并保留）
+ */
+function stripNonTitleMerges(ws: ExcelJS.Worksheet): number {
+  const merges = (ws.model && (ws.model as { merges?: string[] }).merges) || [];
+  let removed = 0;
+  const toRemove: string[] = [];
+  for (const m of merges) {
+    const start = m.match(/^[A-Z]+(\d+):/);
+    if (!start) {
+      toRemove.push(m);
+      continue;
+    }
+    const startRow = parseInt(start[1], 10);
+    if (startRow !== 1) toRemove.push(m);
+  }
+  for (const m of toRemove) {
+    try {
+      ws.unMergeCells(m);
+      removed++;
+    } catch (e) {
+      console.warn(`[weekend-exporter] 无法解开 merge ${m}:`, e);
+    }
+  }
+  if (removed > 0) {
+    console.log(`[weekend-exporter] Sheet "${ws.name}": 解开 ${removed} 个非标题合并`);
+  }
+  return removed;
+}
+
+/**
  * 清空单元格 value（不删样式，仅清空内容）
  */
 function clearCellText(ws: ExcelJS.Worksheet, ref: string): void {
@@ -240,6 +277,9 @@ function updateSheetInPlace(
   ws: ExcelJS.Worksheet,
   sheet: WeekendSheet,
 ): void {
+  // ⭐ Stage 9.2：解开非标题合并（防老模板上传后写入失败）
+  stripNonTitleMerges(ws);
+
   // ===== R1：标题行（row 1）=====
   // 找第一个非空单元格位置（实测在 B1，不是 A1）
   let titleCol = -1;

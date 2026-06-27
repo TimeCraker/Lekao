@@ -201,13 +201,13 @@ export function WeekendStudentTable({
                             ({String.fromCharCode(64 + (fieldColumns.qNumbersCols[idx] ?? 0))} 列)
                           </span>
                         </span>
-                        {/* ⭐ Stage 8：表头整列清空按钮 */}
+                        {/* ⭐ Stage 8 + 9.1：表头整列清空按钮（始终可见 · 弱描边 · hover 强化） */}
                         <button
                           type="button"
                           onClick={() => handleClearColumn(field, label)}
                           title={`清空整列「${label}」（${students.length} 人）`}
                           aria-label={`清空整列 ${label}`}
-                          className="opacity-0 group-hover:opacity-100 w-5 h-5 rounded text-ink-subtle hover:bg-danger/10 hover:text-danger transition inline-flex items-center justify-center"
+                          className="w-5 h-5 rounded text-ink-subtle bg-canvas/40 border border-hairline/60 hover:bg-danger/10 hover:text-danger hover:border-danger/40 transition inline-flex items-center justify-center"
                         >
                           <CloseIcon className="w-3 h-3" />
                         </button>
@@ -226,13 +226,13 @@ export function WeekendStudentTable({
                           </span>
                         )}
                       </span>
-                      {/* ⭐ Stage 8：反馈列表头整列清空按钮 */}
+                      {/* ⭐ Stage 8 + 9.1：反馈列表头整列清空按钮（始终可见 · 弱描边 · hover 强化） */}
                       <button
                         type="button"
                         onClick={() => handleClearColumn("feedback", "反馈")}
                         title={`清空整列「反馈」（${students.length} 人）`}
                         aria-label="清空整列反馈"
-                        className="opacity-0 group-hover:opacity-100 w-5 h-5 rounded text-ink-subtle hover:bg-danger/10 hover:text-danger transition inline-flex items-center justify-center"
+                        className="w-5 h-5 rounded text-ink-subtle bg-canvas/40 border border-hairline/60 hover:bg-danger/10 hover:text-danger hover:border-danger/40 transition inline-flex items-center justify-center"
                       >
                         <CloseIcon className="w-3 h-3" />
                       </button>
