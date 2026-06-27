@@ -219,18 +219,23 @@ function autoAdjustColumnWidths(
 
   if (fc.serial !== null) {
     const cands = collectCol(fc.serial, undefined);
-    // serial 不从 students 取（students 没单独存），只从 rawRows
+    // ⭐ Stage 11 补：合并 students[].serialNumber
+    for (const s of sheet.students) cands.push(s.serialNumber || "");
     widths[fc.serial] = fitWidth(maxLenOf(cands), 4, 10, 4);
   }
   if (fc.name) {
     const cands = collectCol(fc.name, undefined);
-    // name 也不从 students.serialNumber 取
+    // ⭐ Stage 11 补：合并 students[].name
+    for (const s of sheet.students) cands.push(s.name || "");
     widths[fc.name] = fitWidth(maxLenOf(cands), 10, 24, 4);
   }
   for (let i = 0; i < fc.qNumbersCols.length; i++) {
     const c = fc.qNumbersCols[i];
-    const fromStudent = i === 0 ? undefined : undefined; // 不从 students 取（candidates 已含 rawRows）
-    const cands = collectCol(c, fromStudent);
+    const cands = collectCol(c, undefined);
+    // ⭐ Stage 11 补：合并 students[].qNumbersInput / qNumbersInput2
+    for (const s of sheet.students) {
+      cands.push(i === 0 ? (s.qNumbersInput || "") : (s.qNumbersInput2 || ""));
+    }
     widths[c] = fitWidth(maxLenOf(cands), 10, 24, 4);
   }
 
