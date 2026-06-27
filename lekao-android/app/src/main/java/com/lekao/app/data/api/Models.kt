@@ -37,7 +37,8 @@ data class SendCodeRequest(
 
 data class VerifyCodeRequest(
     val email: String,
-    val code: String
+    val code: String,
+    val inviteCode: String? = null  // 可选邀请码, 填了送 15 枚代币
 )
 
 data class ResetPasswordRequest(

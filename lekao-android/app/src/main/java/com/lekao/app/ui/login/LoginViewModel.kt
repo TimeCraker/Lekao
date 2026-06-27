@@ -35,6 +35,7 @@ class LoginViewModel(
         val email: String = "",
         val password: String = "",
         val code: String = "",
+        val inviteCode: String = "",
         val sendingCode: Boolean = false,
         val codeSent: Boolean = false,
         val codeCountdown: Int = 0,
@@ -52,6 +53,10 @@ class LoginViewModel(
     fun setCode(code: String) = _state.update {
         // 只允许 6 位数字
         it.copy(code = code.filter { c -> c.isDigit() }.take(6), error = null)
+    }
+    fun setInviteCode(code: String) = _state.update {
+        // 大写字母 + 数字, 最多 8 位
+        it.copy(inviteCode = code.uppercase().filter { c -> c.isLetterOrDigit() }.take(8), error = null)
     }
 
     /**
@@ -108,7 +113,7 @@ class LoginViewModel(
                         _state.update { it.copy(submitting = false, error = "验证码是 6 位数字") }
                         return@launch
                     }
-                    authRepository.signInWithCode(s.email, s.code)
+                    authRepository.signInWithCode(s.email, s.code, s.inviteCode.ifBlank { null })
                 }
             }
             result.fold(

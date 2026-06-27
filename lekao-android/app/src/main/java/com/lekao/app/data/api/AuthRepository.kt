@@ -91,9 +91,9 @@ class AuthRepository(
     /**
      * 验证码登录 (F02)
      */
-    suspend fun signInWithCode(email: String, code: String): Result<UserDto> = withContext(Dispatchers.IO) {
+    suspend fun signInWithCode(email: String, code: String, inviteCode: String? = null): Result<UserDto> = withContext(Dispatchers.IO) {
         runCatching {
-            val resp = api.verifyCode(VerifyCodeRequest(email, code))
+            val resp = api.verifyCode(VerifyCodeRequest(email, code, inviteCode))
             if (!resp.isSuccessful) throw retrofit2.HttpException(resp)
             val body = resp.body() ?: throw IllegalStateException("空响应")
             val user = body.user ?: UserDto(
