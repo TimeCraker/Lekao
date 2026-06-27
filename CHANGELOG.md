@@ -4,6 +4,35 @@
 
 ---
 
+## [v2.3.0] - 2026-06-27 · UI 优化 + 折叠 AI + 动效打磨
+
+> 🎨 **纯体验打磨**：功能 100% 不变,只优化 5 项体验痛点 + 2 项一致性修补。Stage 18.6 视觉模型稳定性 + Stage 19 UI 优化 = v2.3.0 稳定版。
+
+### ✨ 5 必做项
+
+- **折叠 AI 助手**(周末 panel) · 默认展开,无 localStorage 持久化(简化心智),切 sheet 自动重置为展开
+- **5 段假进度条** · AI 生成中显示「读图 → 识别学科 → 分析错题 → 生成反馈 → 整理小结」3s 一段纯 UI 模拟,不动后端
+- **错误 / 成功态动效** · 错误条 motion fade-in + x 抖动数组,成功条挂 SuccessBurst 6 粒子爆发(0.6s 收回)
+- **学生表空态修复** · 文案从"点上方添加学生"(错误) → "请在底部「添加学生」按钮新增" + WeekendIcon 引导 + motion fade-in
+- **summary-workflow.tsx 补 0.5x 档** · 跟周末 panel + 后端 5 档对齐(原 UI 只 4 档)
+
+### 🛠️ 2 顺手项
+
+- **5 档选择器滑动指示器** · 周末 panel 改 motion `layoutId="weekend-length-indicator"` 滑动选中态(对齐 summary-workflow 风格)
+- **`--danger` token 矩阵化** · 加 `--danger-text` (`#b91c1c` WCAG AA 5.21:1) + `--danger-soft` (`#fee2e2` 背景),3 处不一致红色统一(copy-button / excel-uploader / banned + weekend-ai-feedback err 状态)
+
+### 🐛 修
+
+- (无,纯 UI 优化 + 一致性修补,无功能改动)
+
+### 🔧 不做的事
+
+- ❌ 不持久化 AI 折叠态(用户确认"默认展开,不持久化")
+- ❌ 不做真流式 progress(后端不改,纯 UI 假推进)
+- ❌ 不做 dark mode / 全局 toast / Skeleton 库(超出范围)
+
+---
+
 ## [Android V1.0.0] - 2026-06-27 · Android 客户端首发
 
 > 🆕 **新平台首发**：Lekao Web 推出 Android 原生 APP，**27 项功能一口气全做完**，**不上架应用商店**，通过群发 APK 安装。完整 spec 见 [`docs/stages/d1-lekao-android.md`](docs/stages/d1-lekao-android.md)，快速开始见 [`lekao-android/README.md`](lekao-android/README.md)。
