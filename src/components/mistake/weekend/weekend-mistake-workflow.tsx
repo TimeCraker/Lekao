@@ -75,6 +75,12 @@ export function WeekendMistakeWorkflow() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   // ⭐ Stage 14：自动排序开关（默认 ON · 用户可关掉退回手动模式）
   const [autoSortEnabled, setAutoSortEnabled] = useState(true);
+  // ⭐ Stage 15：行高亮闪烁（addStudent / 搜索命中都用 · 2.5s 后自动清）
+  const [flashRowIndex, setFlashRowIndex] = useState<number | null>(null);
+  const flashTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // ⭐ Stage 15：新加学生 rowIndex（角标 3s 自动消失 · isNew 字段同时管 sort 末尾）
+  const [newRowIndex, setNewRowIndex] = useState<number | null>(null);
+  const newRowTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ⭐ Stage 13：每个 sheet 的 debounce timer ref（onChange 防抖自动排序用）
   const sortTimersRef = useRef<Record<string, ReturnType<typeof setTimeout> | null>>({});
@@ -206,7 +212,20 @@ export function WeekendMistakeWorkflow() {
     [autoSortSheet],
   );
 
+  // ⭐ Stage 15：触发"新"角标（3 秒后自动消失 · 同时清掉上一个 timer）
+  const setNewRowBadge = useCallback((rowIndex: number) => {
+    if (newRowTimeoutRef.current) {
+      clearTimeout(newRowTimeoutRef.current);
+    }
+    setNewRowIndex(rowIndex);
+    newRowTimeoutRef.current = setTimeout(() => {
+      setNewRowIndex(null);
+      newRowTimeoutRef.current = null;
+    }, 3000);
+  }, []);
+
   // ===== ⭐ Stage 13：学生变更（onChange 走 debounce 500ms 自动排序）=====
+  // ===== ⭐ Stage 15：用户开始填数据 → 清掉 isNew（让 sort 把它排到正确位置）=====
   const updateStudent = useCallback(
     (sheetName: string, rowIndex: number, patch: Partial<WeekendStudent>) => {
       setWorkbook((prev) => {
@@ -217,9 +236,21 @@ export function WeekendMistakeWorkflow() {
             if (s.sheetName !== sheetName) return s;
             return {
               ...s,
-              students: s.students.map((st) =>
-                st.rowIndex === rowIndex ? { ...st, ...patch } : st,
-              ),
+              students: s.students.map((st) => {
+                if (st.rowIndex !== rowIndex) return st;
+                const merged = { ...st, ...patch };
+                // ⭐ Stage 15：用户填了姓名/错题/反馈 → 立即清除 isNew
+                if (
+                  st.isNew &&
+                  (patch.name !== undefined ||
+                    patch.qNumbersInput !== undefined ||
+                    patch.qNumbersInput2 !== undefined ||
+                    patch.feedback !== undefined)
+                ) {
+                  merged.isNew = false;
+                }
+                return merged;
+              }),
             };
           }),
         };
@@ -231,9 +262,10 @@ export function WeekendMistakeWorkflow() {
   );
 
   // ===== ⭐ Stage 4：在 Sheet 末尾追加一名学生 =====
-  // ===== ⭐ Stage 13：添加学生（清掉 debounce → 立即排序）=====
+  // ===== ⭐ Stage 15：addStudent 不再立即排序（保留末尾位置）+ isNew 角标 =====
   const addStudent = useCallback(
     (sheetName: string) => {
+      let newRowIdx: number | null = null;
       setWorkbook((prev) => {
         if (!prev) return prev;
         return {
@@ -253,19 +285,24 @@ export function WeekendMistakeWorkflow() {
               qNumbersInput: "",
               qNumbersInput2: "",
               feedback: "",
+              isNew: true, // ⭐ Stage 15：sort 时排到同 category 末尾 + UI 角标
             };
+            newRowIdx = newStudent.rowIndex;
             return { ...s, students: [...s.students, newStudent] };
           }),
         };
       });
-      // 清掉 debounce + 立即排序
+      // ⭐ Stage 15：触发 3 秒角标（不调 autoSortSheet · 让学生稳定停留在末尾）
+      if (newRowIdx !== null) {
+        setNewRowBadge(newRowIdx);
+      }
+      // 清掉之前残留的 debounce（避免后续 updateStudent 立即触发排序）
       if (sortTimersRef.current[sheetName]) {
         clearTimeout(sortTimersRef.current[sheetName]!);
         sortTimersRef.current[sheetName] = null;
       }
-      autoSortSheet(sheetName);
     },
-    [autoSortSheet],
+    [setNewRowBadge],
   );
 
   // ===== ⭐ Stage 13：删除指定学生（清掉 debounce → 立即排序）=====
@@ -545,6 +582,8 @@ export function WeekendMistakeWorkflow() {
           autoSortEnabled={autoSortEnabled}
           onToggleAutoSort={toggleAutoSort}
           onManualSort={manualSortSheet}
+          // ⭐ Stage 15：行高亮 + 新加学生角标
+          newRowIndex={newRowIndex}
         />
       )}
     </div>
@@ -911,6 +950,8 @@ function WeekendEditStudentsStep({
   autoSortEnabled,
   onToggleAutoSort,
   onManualSort,
+  // ⭐ Stage 15：新加学生 rowIndex（UI 显示"新"角标 3s）
+  newRowIndex,
 }: {
   workbook: WeekendWorkbook;
   activeSheetIdx: number;
@@ -933,6 +974,8 @@ function WeekendEditStudentsStep({
   autoSortEnabled: boolean;
   onToggleAutoSort: () => void;
   onManualSort: (sheetName: string) => { moved: number; total: number };
+  // ⭐ Stage 15：新加学生 rowIndex
+  newRowIndex: number | null;
 }) {
   const activeSheet = workbook.sheets[activeSheetIdx];
   const today = getThisWeekendDate();
@@ -993,6 +1036,8 @@ function WeekendEditStudentsStep({
             autoSortEnabled={autoSortEnabled}
             onToggleAutoSort={onToggleAutoSort}
             onManualSort={() => onManualSort(activeSheet.sheetName)}
+            // ⭐ Stage 15：新加学生 rowIndex（UI 角标）
+            newRowIndex={newRowIndex}
           />
         </motion.div>
       </AnimatePresence>

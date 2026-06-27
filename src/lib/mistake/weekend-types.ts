@@ -114,6 +114,12 @@ export function sortStudentsByCellValue(students: WeekendStudent[]): WeekendStud
     const orderDiff = CATEGORY_ORDER[ca] - CATEGORY_ORDER[cb];
     if (orderDiff !== 0) return orderDiff;
 
+    // ⭐ Stage 15：同类别内 · isNew=true 排到最末（让新加学生稳定显示在末尾，
+    //   等用户填了错题号/姓名/反馈 → updateStudent 清掉 isNew → 排到正确位置）
+    if (ca === cb && a.isNew !== b.isNew) {
+      return a.isNew ? 1 : -1;
+    }
+
     // 同类别细分排序
     if (ca === "qnumber") {
       const na = extractFirstNumber(a.qNumbersInput);

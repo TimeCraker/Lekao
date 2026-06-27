@@ -62,6 +62,8 @@ export interface WeekendStudent {
   qNumbersInput2?: string;
   /** 反馈列（AI 生成 / 手动填） */
   feedback: string;
+  /** ⭐ Stage 15：刚加的学生（true 时 sort 把它排到同 category 最末 · UI 显示"新"角标） */
+  isNew?: boolean;
 }
 
 export interface WeekendSheet {

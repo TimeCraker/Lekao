@@ -42,6 +42,8 @@ export function WeekendStudentTable({
   autoSortEnabled,
   onToggleAutoSort,
   onManualSort,
+  // ⭐ Stage 15：新加学生 rowIndex（UI 显示"新"角标）
+  newRowIndex,
 }: {
   students: WeekendStudent[];
   /** ⭐ Stage 6：R2 表头识别的列布局（决定 UI 渲染哪些列）*/
@@ -57,6 +59,8 @@ export function WeekendStudentTable({
   autoSortEnabled: boolean;
   onToggleAutoSort: () => void;
   onManualSort: () => { moved: number; total: number };
+  // ⭐ Stage 15：新加学生 rowIndex（UI 显示"新"角标 3s）
+  newRowIndex: number | null;
 }) {
   const [clearFeedback, setClearFeedback] = useState<string | null>(null);
   // ⭐ Stage 14：手动排序 toast（OFF 模式点立即排后显示反馈）
@@ -297,6 +301,7 @@ export function WeekendStudentTable({
                       onStudentChange(student.rowIndex, patch)
                     }
                     onDelete={() => onDeleteStudent(student.rowIndex)}
+                    newRowIndex={newRowIndex}
                   />
                 ))
               )}
@@ -339,15 +344,20 @@ function WeekendStudentRow({
   fieldColumns,
   onChange,
   onDelete,
+  // ⭐ Stage 15：新加学生 rowIndex（用于显示"新"角标）
+  newRowIndex,
 }: {
   student: WeekendStudent;
   qLabels: string[];
   fieldColumns: FieldColumnMap;
   onChange: (patch: Partial<WeekendStudent>) => void;
   onDelete: () => void;
+  newRowIndex: number | null;
 }) {
   const category = classifyCellValue(student.qNumbersInput);
   const skipAi = shouldSkipAiFeedback(category);
+  // ⭐ Stage 15：刚加的学生显示"新"角标（3s 自动消失）
+  const isNewlyAdded = newRowIndex === student.rowIndex;
 
   // 视觉样式：根据 category 染色（按第 1 个错题列分类）
   const categoryStyles: Record<string, string> = {
@@ -367,8 +377,17 @@ function WeekendStudentRow({
 
   return (
     <tr
-      className={`border-b border-hairline last:border-b-0 hover:bg-canvas-alt/20 transition border-l-4 ${rowStyle}`}
+      className={`relative border-b border-hairline last:border-b-0 hover:bg-canvas-alt/20 transition border-l-4 ${rowStyle}`}
     >
+      {/* ⭐ Stage 15：新加学生角标（3s 自动消失）· 浮在行左上角 */}
+      {isNewlyAdded && (
+        <span
+          className="absolute top-0 left-1 z-10 px-1.5 py-0.5 rounded-b bg-success-text text-white text-[10px] font-semibold shadow-sm leading-tight pointer-events-none"
+          aria-label="新加学生"
+        >
+          ✨ 新
+        </span>
+      )}
       {/* 序号（serial=null 时不渲染） */}
       {showSerial && (
         <td className="px-3 py-2 align-top">
