@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -53,8 +54,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -372,23 +371,24 @@ private fun ModeTabs(
     current: LoginViewModel.Mode,
     onChange: (LoginViewModel.Mode) -> Unit,
 ) {
-    val configuration = LocalConfiguration.current
-    val density = LocalDensity.current
-    // 父容器宽度 = 卡片宽度 - 内边距 24dp*2
-    // 我们让父容器占满, 内部用 weight 1:1 两个 Tab
-    // pill 宽度 = 父容器宽度的一半, 偏移根据 current 决定
-    Box(
+    // 用 BoxWithConstraints 拿真实父容器宽, 避免硬算外边距导致 pill 错位
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
             .height(44.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(LekaoCanvasAlt),
     ) {
-        // 用 Row 内的 weight 让两个 Tab 平分宽度, 然后我们用一个 Box 用 offset 实现滑动
+        val totalWidth = maxWidth
+        val halfWidth = totalWidth / 2
+        val pillWidth = halfWidth - 8.dp  // 4dp 左右各留一点空隙
+        val pillHeight = 36.dp
+        val targetX = if (current == LoginViewModel.Mode.PASSWORD) 4.dp else halfWidth + 4.dp
+
+        // 底层 Tab (可点击)
         Row(
             modifier = Modifier.fillMaxWidth().height(44.dp),
         ) {
-            // 占位, 真正的 pill 在最外层 Box 上, 通过 alignment + offset 控制
             TabItem(
                 label = stringResource(R.string.login_password_tab),
                 selected = current == LoginViewModel.Mode.PASSWORD,
@@ -402,27 +402,18 @@ private fun ModeTabs(
                 modifier = Modifier.weight(1f),
             )
         }
-        // pill 滑动指示器
-        val pillOffset by animateDpAsState(
-            targetValue = if (current == LoginViewModel.Mode.PASSWORD) 4.dp else with(density) {
-                // 用 BoxWithConstraints 才能精确算, 这里用占位: Tab 总宽 = 父容器宽, 2 个 Tab 等分
-                // 实际运行时父容器宽 = configuration.screenWidthDp.dp - 48.dp (左右各 24dp padding) - 48.dp (卡片 padding)
-                // 所以 pill 偏移 = (父容器宽 / 2) - 4dp (左 padding)
-                val parentWidth = configuration.screenWidthDp.dp - 48.dp - 48.dp - 48.dp  // 屏幕宽 - 外层 padding - 卡片 padding - 卡内 padding
-                parentWidth / 2 - 4.dp
-            },
+
+        // 白色 pill 滑动指示器 (absolute 覆盖)
+        val animatedX by animateDpAsState(
+            targetValue = targetX,
             animationSpec = spring(stiffness = 380f, dampingRatio = 0.8f),
             label = "pill-offset",
         )
         Box(
             modifier = Modifier
-                .padding(4.dp)
-                .offset(x = if (current == LoginViewModel.Mode.PASSWORD) 0.dp else pillOffset)
-                .width(with(density) {
-                    val parentWidth = configuration.screenWidthDp.dp - 48.dp - 48.dp - 48.dp
-                    parentWidth / 2
-                })
-                .height(36.dp)
+                .offset(x = animatedX, y = 4.dp)
+                .width(pillWidth)
+                .height(pillHeight)
                 .clip(RoundedCornerShape(10.dp))
                 .background(LekaoWhite)
                 .shadow(2.dp, RoundedCornerShape(10.dp), clip = false),

@@ -140,19 +140,18 @@ class LoginViewModel(
         return email.isNotBlank() && android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()
     }
 
+    /**
+     * 错误信息优先用服务端真实文案（AuthRepository 已经把 { error: "..." } 透传过来）
+     * 只有在网络/解析失败这种"完全没拿到服务端消息"时才用兜底文案
+     */
     private fun Throwable.userMessage(): String {
-        if (this is retrofit2.HttpException) {
-            return when (code()) {
-                400 -> "请求格式有误"
-                401 -> "邮箱或密码错误"
-                403 -> "账号已被禁用"
-                404 -> "用户不存在"
-                429 -> "操作太频繁, 请稍后再试"
-                500, 502, 503 -> "服务器错误, 请稍后重试"
-                else -> "登录失败 (HTTP ${code()})"
-            }
+        val msg = this.message
+        // 兜底区分: retrofit 的 IOException 走网络文案, 其他用 message
+        return when {
+            this is java.io.IOException -> "网络错误, 请检查连接后重试"
+            !msg.isNullOrBlank() -> msg
+            else -> "操作失败, 请重试"
         }
-        return message ?: "网络错误"
     }
 
     companion object {

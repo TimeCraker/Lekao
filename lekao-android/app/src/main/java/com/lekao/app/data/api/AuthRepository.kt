@@ -79,34 +79,52 @@ class AuthRepository(
 
     /**
      * 发送验证码 (F02)
+     *
+     * 失败时优先返回服务端 error 字段（真实原因）：
+     * - "该邮箱未注册" / "请 30 秒后再试" / "邮件发送失败" / "该邮箱已注册" 等
+     * HTTP 状态码只有兜底意义（如网络 5xx 用"服务器错误"）
      */
     suspend fun sendCode(email: String, purpose: String = "login"): Result<Unit> = withContext(Dispatchers.IO) {
-        runCatching {
+        try {
             val resp = api.sendCode(SendCodeRequest(email, purpose))
-            if (!resp.isSuccessful) throw retrofit2.HttpException(resp)
-            Unit
+            if (resp.isSuccessful) return@withContext Result.success(Unit)
+            // 解析服务端 error 字段
+            val raw = resp.errorBody()?.string().orEmpty()
+            val msg = parseErrorMessage(raw) ?: "发送失败 (HTTP ${resp.code()})"
+            Result.failure(RuntimeException(msg))
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 
     /**
      * 验证码登录 (F02)
+     *
+     * 失败时优先返回服务端 error 字段（真实原因）：
+     * - "验证码错误或已过期" / "账号已被封禁" / "用户不存在" 等
      */
     suspend fun signInWithCode(email: String, code: String, inviteCode: String? = null): Result<UserDto> = withContext(Dispatchers.IO) {
-        runCatching {
+        try {
             val resp = api.verifyCode(VerifyCodeRequest(email, code, inviteCode))
-            if (!resp.isSuccessful) throw retrofit2.HttpException(resp)
-            val body = resp.body() ?: throw IllegalStateException("空响应")
-            val user = body.user ?: UserDto(
-                id = "",
-                email = email,
-                name = null,
-                role = "USER",
-                tCoin = body.tCoin,
-                lekaoGiftCoin = body.lekaoGiftCoin
-            )
-            tokenStore.saveUser(user)
-            _authState.value = user
-            user
+            if (resp.isSuccessful) {
+                val body = resp.body() ?: return@withContext Result.failure(IllegalStateException("空响应"))
+                val user = body.user ?: UserDto(
+                    id = "",
+                    email = email,
+                    name = null,
+                    role = "USER",
+                    tCoin = body.tCoin,
+                    lekaoGiftCoin = body.lekaoGiftCoin
+                )
+                tokenStore.saveUser(user)
+                _authState.value = user
+                return@withContext Result.success(user)
+            }
+            val raw = resp.errorBody()?.string().orEmpty()
+            val msg = parseErrorMessage(raw) ?: "登录失败 (HTTP ${resp.code()})"
+            Result.failure(RuntimeException(msg))
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 
@@ -146,5 +164,21 @@ class AuthRepository(
     private suspend fun clearAuth() {
         tokenStore.clearUser()
         _authState.value = null
+    }
+
+    /**
+     * 解析服务端 { error: "..." } JSON 字段
+     * 服务端 Next.js route.ts 全部用 NextResponse.json({ error: "..." }) 返错
+     */
+    private fun parseErrorMessage(raw: String): String? {
+        if (raw.isBlank()) return null
+        return try {
+            val obj = org.json.JSONObject(raw)
+            obj.optString("error").takeIf { it.isNotBlank() }
+                ?: obj.optString("message").takeIf { it.isNotBlank() }
+                ?: obj.optString("reason").takeIf { it.isNotBlank() }
+        } catch (_: Exception) {
+            null
+        }
     }
 }
