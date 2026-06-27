@@ -6,7 +6,7 @@ import { motion, type Variants } from "motion/react";
 import { MeshGradientBg } from "./mesh-gradient";
 import { HeroTitle } from "./hero-title";
 import { MouseTrail } from "./mouse-trail";
-import { ArrowRightIcon, FreeIcon, GithubIcon, MailIcon } from "@/components/icons";
+import { ArrowRightIcon, DownloadIcon, FreeIcon, GithubIcon, MailIcon } from "@/components/icons";
 
 const ACCOUNT_KEY = "lekao-account-exists";
 
@@ -100,6 +100,15 @@ export function Hero() {
             <FreeIcon className="w-4 h-4 text-accent-text" />
             免费开始 · 送 5 T-Coin
           </Link>
+          {/* D1-G V1.0.0: 安卓端下载入口 — APK 公开下载 */}
+          <a
+            href="/downloads/lekao-android-V1.0.0.apk"
+            download="lekao-android-V1.0.0.apk"
+            className="px-8 py-3.5 bg-emerald-600 text-white text-base font-medium rounded-xl hover:bg-emerald-700 transition shadow-md hover:shadow-lg flex items-center gap-2"
+          >
+            <DownloadIcon className="w-4 h-4" />
+            下载 Android APP · V1.0.0
+          </a>
         </motion.div>
 
         {/* Trust signal */}
