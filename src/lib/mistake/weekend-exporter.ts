@@ -1,8 +1,13 @@
 /**
- * 周末错题反馈表 · Excel 导出器（v0.2.2 · 保留模板样式）
- * 来源：docs/stages/weekend-mistake-table-v0.md Stage 2 + 用户 2026-06-26 反馈
+ * 周末错题反馈表 · Excel 导出器（v0.3 · 保留模板样式 + 排序顺序）
+ * 来源：docs/stages/weekend-mistake-table-v0.md Stage 2 + 用户 2026-06-27 反馈
  *
  * 关键设计：**modify-in-place**（不是 aoa_to_sheet 重写）
+ *
+ * ⭐ v0.3 关键修复（用户 2026-06-27 反馈）：
+ * - 之前按 student.rowIndex 写入 Excel 行号 → 浏览器排序后导出仍按原行号（错）
+ * - 现在按 students 数组当前顺序从 row 3 开始连续写入 → 排序生效
+ * - 同时清空原 rowIndex 位置残留值 + 补全框线
  *
  * 用户模板实测（2026超火1班数学6.21【反馈表】.xlsx）：
  * - !cols: A=6.2, B=11.6, C=16.7, D=70.2（特定列宽）
@@ -28,7 +33,7 @@ import { saveAs } from "file-saver";
 import type { WeekendSheet, WeekendStudent } from "./weekend-types";
 
 /**
- * 修改单个 Sheet 的指定单元格（保留原样式）
+ * 设置单元格文本（保留原样式）
  */
 function setCellText(
   ws: ExcelJS.Worksheet,
@@ -40,9 +45,80 @@ function setCellText(
 }
 
 /**
- * 更新单个 Sheet：
- * 1. R1 标题 → updatedTitle（替换第一个非空 cell）
- * 2. R3+ 学生行 → A 序号 / C 错题 / D 反馈（B 姓名原值保留不动）
+ * 清空单元格 value（不删样式，仅清空内容）
+ */
+function clearCellText(ws: ExcelJS.Worksheet, ref: string): void {
+  const cell = ws.getCell(ref);
+  cell.value = null;
+}
+
+/**
+ * ⭐ v0.3：给单元格补 thin 框线（不覆盖已有 style，只补 border）
+ */
+function ensureThinBorder(ws: ExcelJS.Worksheet, ref: string): void {
+  const cell = ws.getCell(ref);
+  const existing = cell.style || {};
+  const border = existing.border || {};
+  const thin: Partial<ExcelJS.Border> = { style: "thin" };
+  cell.style = {
+    ...existing,
+    border: {
+      top: border.top ?? thin,
+      left: border.left ?? thin,
+      bottom: border.bottom ?? thin,
+      right: border.right ?? thin,
+    },
+  };
+}
+
+/**
+ * ⭐ v0.3：把指定行的 A/C/D/E 列清空（用于"原 rowIndex 位置留空"）
+ * 列映射基于 2026-06-27 新模板：
+ *   A 序号 | B 姓名 | C 错题1 | D 错题2 | E 反馈
+ */
+function clearStudentRow(ws: ExcelJS.Worksheet, excelRow: number): void {
+  if (excelRow < 3) return;
+  clearCellText(ws, `A${excelRow}`);
+  clearCellText(ws, `C${excelRow}`);
+  clearCellText(ws, `D${excelRow}`);
+  clearCellText(ws, `E${excelRow}`);
+}
+
+/**
+ * ⭐ v0.3：把学生数据写入指定 Excel 行（含补框线）
+ * 列映射基于 2026-06-27 新模板：
+ *   A 序号 | B 姓名 | C 错题1 | D 错题2 | E 反馈
+ */
+function writeStudentRow(
+  ws: ExcelJS.Worksheet,
+  excelRow: number,
+  student: WeekendStudent,
+): void {
+  // A 列：序号
+  setCellText(ws, `A${excelRow}`, student.serialNumber || undefined);
+  // B 列：姓名（导出时把浏览器编辑过的名字写回 Excel 模板）
+  setCellText(ws, `B${excelRow}`, student.name);
+  // C 列：错题
+  setCellText(ws, `C${excelRow}`, student.qNumbersInput);
+  // D 列：错题2（保持原样，不写）
+  // E 列：反馈
+  setCellText(ws, `E${excelRow}`, student.feedback);
+  // ⭐ v0.3：给 5 个单元格补 thin 框线（用户反馈有些没框线）
+  ensureThinBorder(ws, `A${excelRow}`);
+  ensureThinBorder(ws, `B${excelRow}`);
+  ensureThinBorder(ws, `C${excelRow}`);
+  ensureThinBorder(ws, `D${excelRow}`);
+  ensureThinBorder(ws, `E${excelRow}`);
+}
+
+/**
+ * ⭐ v0.3：更新单个 Sheet（按 students 当前顺序写入 R3+）
+ *
+ * 关键变化（相对 v0.2.x）：
+ * - 之前按 student.rowIndex 写入 → 排序后导出仍按原 rowIndex（错）
+ * - 现在按 students 数组顺序从 R3 连续写入 → 排序生效
+ * - 原 rowIndex 位置若被空出 → 清空残留值
+ * - 每行补 thin 框线（兼容老模板部分单元格无框线）
  */
 function updateSheetInPlace(
   ws: ExcelJS.Worksheet,
@@ -63,33 +139,29 @@ function updateSheetInPlace(
     setCellText(ws, `${colLetter(titleCol)}1`, sheet.updatedTitle);
   }
 
-  // ===== R3+：学生行（row 3+）=====
-  // 学生按 rowIndex 索引（rowIndex = 在 rawRows 数组中的索引，对应 Excel row 3+）
-  const studentsByRowIdx = new Map<number, WeekendStudent>();
-  for (const s of sheet.students) {
-    studentsByRowIdx.set(s.rowIndex, s);
+  // ===== R3+：学生行（按 students 数组当前顺序连续写入）=====
+  const students = sheet.students;
+  if (students.length === 0) return;
+
+  // 1. 先清空原 rowIndex 位置残留（A/C/D 列）—— 避免旧数据"原位残留"
+  //    注：如果原 rowIndex = 3 (R3)，但新顺序写到 R5，清 R3 留空
+  const newExcelRows = new Set<number>();
+  for (let i = 0; i < students.length; i++) {
+    newExcelRows.add(i + 3); // R3 起
+  }
+  for (const s of students) {
+    const origRow = s.rowIndex + 1;
+    if (origRow >= 3 && !newExcelRows.has(origRow)) {
+      // 原 rowIndex 位置不会复用 → 清空
+      clearStudentRow(ws, origRow);
+    }
   }
 
-  // Excel row N = rawRows index N-1；students.rowIndex 是 rawRows 数组 index
-  // 所以 Excel row = students.rowIndex + 1
-  for (const student of sheet.students) {
-    const excelRow = student.rowIndex + 1;
-    if (excelRow < 3) continue; // 跳过标题/列头
-
-    // A 列：序号
-    if (student.serialNumber !== undefined) {
-      setCellText(ws, `A${excelRow}`, student.serialNumber);
-    }
-
-    // C 列：错题（覆盖原 C 列内容）
-    if (student.qNumbersInput !== undefined) {
-      setCellText(ws, `C${excelRow}`, student.qNumbersInput);
-    }
-
-    // D 列：反馈
-    if (student.feedback !== undefined) {
-      setCellText(ws, `D${excelRow}`, student.feedback);
-    }
+  // 2. 按当前数组顺序写入 R3+
+  for (let i = 0; i < students.length; i++) {
+    const student = students[i];
+    const excelRow = i + 3; // R3 起
+    writeStudentRow(ws, excelRow, student);
   }
 }
 
@@ -118,7 +190,63 @@ export async function loadWeekendWorkbookForExport(file: File): Promise<ExcelJS.
 }
 
 /**
+ * ⭐ Stage 5.2：从 sourceSheet 复制样式创建新 worksheet
+ *
+ * ExcelJS 的 Worksheet 没有官方 clone API，只能手工复制：
+ * - 列宽（!cols）
+ * - 合并（!merges）
+ * - R1 标题 + R2 表头 的 cell 样式（含字体/填充/边框）
+ *
+ * 不复制 R3+（学生数据由 updateSheetInPlace 后续写入）
+ */
+function cloneWorksheetFromSource(
+  wb: ExcelJS.Workbook,
+  sourceWs: ExcelJS.Worksheet,
+  newName: string,
+): ExcelJS.Worksheet {
+  const newWs = wb.addWorksheet(newName);
+
+  // 1. 复制列宽
+  if (sourceWs.columns) {
+    newWs.columns = sourceWs.columns.map((c) => ({
+      ...(c.width !== undefined ? { width: c.width } : {}),
+      ...(c.hidden !== undefined ? { hidden: c.hidden } : {}),
+    }));
+  }
+
+  // 2. 复制合并（merges 在 exceljs 里是 string[] A1:B1 形式）
+  const srcMerges: unknown = sourceWs.model && (sourceWs.model as { merges?: unknown }).merges;
+  if (Array.isArray(srcMerges)) {
+    (newWs.model as { merges: string[] }).merges = (srcMerges as string[]).slice();
+  }
+
+  // 3. 复制 R1 + R2 的 cell style（不复制 value，由 updateSheetInPlace 后续写入）
+  for (const rowNum of [1, 2]) {
+    const srcRow = sourceWs.getRow(rowNum);
+    const dstRow = newWs.getRow(rowNum);
+    // 行高
+    if (srcRow.height !== undefined) dstRow.height = srcRow.height;
+    for (let c = 1; c <= srcRow.cellCount; c++) {
+      const srcCell = srcRow.getCell(c);
+      const dstCell = dstRow.getCell(c);
+      if (srcCell.style) {
+        dstCell.style = JSON.parse(JSON.stringify(srcCell.style));
+      }
+      if (srcCell.numFmt) dstCell.numFmt = srcCell.numFmt;
+      if (srcCell.font) dstCell.font = JSON.parse(JSON.stringify(srcCell.font));
+      if (srcCell.alignment) dstCell.alignment = JSON.parse(JSON.stringify(srcCell.alignment));
+      if (srcCell.border) dstCell.border = JSON.parse(JSON.stringify(srcCell.border));
+      if (srcCell.fill) dstCell.fill = JSON.parse(JSON.stringify(srcCell.fill));
+    }
+  }
+
+  return newWs;
+}
+
+/**
  * 修改原 workbook 原地（保留所有样式 + 列宽 + 合并 + 表头色 + 字体）
+ *
+ * ⭐ Stage 5.2：处理"新加 sheet"——isNewSheet=true 时先从 sourceSheet 复制样式创建新 worksheet
  *
  * @param wb 原 workbook（来自 loadWeekendWorkbookForExport）
  * @param sheets 编辑过的 sheets
@@ -129,11 +257,25 @@ export function buildExportWorkbook(
   sheets: WeekendSheet[],
 ): ExcelJS.Workbook {
   for (const sheet of sheets) {
-    const ws = wb.getWorksheet(sheet.sheetName);
+    let ws = wb.getWorksheet(sheet.sheetName);
+
     if (!ws) {
-      console.warn(`Sheet "${sheet.sheetName}" 在原 workbook 中不存在，跳过`);
-      continue;
+      // 找不到：可能是新加的 sheet
+      if (sheet.isNewSheet && sheet.sourceSheetName) {
+        const srcWs = wb.getWorksheet(sheet.sourceSheetName);
+        if (srcWs) {
+          console.log(`[weekend-exporter] 新 sheet「${sheet.sheetName}」从「${sheet.sourceSheetName}」clone 样式`);
+          ws = cloneWorksheetFromSource(wb, srcWs, sheet.sheetName);
+        } else {
+          console.warn(`Sheet "${sheet.sheetName}" + source "${sheet.sourceSheetName}" 都不存在，跳过`);
+          continue;
+        }
+      } else {
+        console.warn(`Sheet "${sheet.sheetName}" 在原 workbook 中不存在，跳过`);
+        continue;
+      }
     }
+
     updateSheetInPlace(ws, sheet);
   }
   return wb;

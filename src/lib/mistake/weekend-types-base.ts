@@ -26,6 +26,14 @@ export interface WeekendSheet {
   students: WeekendStudent[];
   rawRows: unknown[][];
   cols: number;
+  /**
+   * ⭐ Stage 5.2：标记此 sheet 是在浏览器里新增的（不在原 Excel 里）。
+   * 导出时需要从 sourceSheetName 复制样式创建新 worksheet。
+   * 加载已有 Excel 时不设此字段。
+   */
+  sourceSheetName?: string;
+  /** ⭐ Stage 5.2：是否新增 sheet（true 时导出时 clone 样式）*/
+  isNewSheet?: boolean;
 }
 
 export interface WeekendWorkbook {

@@ -52,6 +52,8 @@ import {
   ResetIcon,
   SortIcon,
   DownloadIcon,
+  AddIcon,
+  CloseIcon,
 } from "@/components/icons";
 import { WeekendSheetTabs } from "./weekend-sheet-tabs";
 import { WeekendStudentTable } from "./weekend-student-table";
@@ -243,6 +245,52 @@ export function WeekendMistakeWorkflow() {
     [],
   );
 
+  // ===== ⭐ Stage 5.2：从 sourceSheet 复制结构，添加新 Sheet =====
+  const addSheet = useCallback(
+    (newName: string, sourceSheetName: string): { ok: boolean; error?: string; newIdx?: number } => {
+      const trimmed = newName.trim();
+      if (!trimmed) return { ok: false, error: "新 Sheet 名不能为空" };
+      if (!workbook) return { ok: false, error: "Workbook 未初始化" };
+      if (workbook.sheets.some((s) => s.sheetName === trimmed)) {
+        return { ok: false, error: `Sheet 名「${trimmed}」已存在` };
+      }
+      const src = workbook.sheets.find((s) => s.sheetName === sourceSheetName);
+      if (!src) {
+        return { ok: false, error: `源 Sheet「${sourceSheetName}」不存在` };
+      }
+      // 复制 R1 (rawRows[0]) + R2 (rawRows[1])，students 清空
+      const newRawRows: unknown[][] = src.rawRows.slice(0, 2).map((row) => [...row]);
+      // 更新 R1 标题：用新 sheet 名 + 当前日期
+      const today = getThisWeekendDate();
+      const newTitle = `${trimmed}反馈表 ${today}`;
+      if (newRawRows[0] && Array.isArray(newRawRows[0])) {
+        // R1 是合并行（merged B1:E1），只保留 B 列位置作为标题
+        newRawRows[0][1] = newTitle;
+      }
+      const newSheet: WeekendSheet = {
+        sheetName: trimmed,
+        originalTitle: newTitle,
+        updatedTitle: newTitle,
+        classroomHint: trimmed,
+        detectedDate: null,
+        newDate: today,
+        students: [],
+        rawRows: newRawRows,
+        cols: src.cols,
+        // ⭐ Stage 5.2：标记新加的 sheet（导出时 clone sourceSheet 样式）
+        sourceSheetName: sourceSheetName,
+        isNewSheet: true,
+      };
+      const newSheets = [...workbook.sheets, newSheet];
+      setWorkbook({ ...workbook, sheets: newSheets });
+      setEditingTitles((prev) => ({ ...prev, [trimmed]: newTitle }));
+      const newIdx = newSheets.length - 1;
+      setActiveSheetIdx(newIdx);
+      return { ok: true, newIdx };
+    },
+    [workbook],
+  );
+
   // ===== 自动排序（v0.2 新增 · v0.2.1 修订：返回 moved/total 用于 toast 反馈）=====
   const autoSortSheet = useCallback(
     (sheetName: string): { moved: number; total: number } => {
@@ -380,6 +428,7 @@ export function WeekendMistakeWorkflow() {
           onTitleChange={updateSheetTitle}
           onConfirm={goToEditStudents}
           onBack={backToUpload}
+          onAddSheet={addSheet}
         />
       )}
 
@@ -516,8 +565,8 @@ function WeekendUploadStep({
         <div className="mt-8 text-xs text-ink-muted max-w-md">
           <div className="font-medium text-ink mb-1">表格格式参考：</div>
           <ul className="space-y-0.5 list-disc list-inside">
-            <li>R1：标题（如「2026超火1班数学反馈表 6月14日」）</li>
-            <li>R2：序号 | 姓名 | 课后作业错题 | 课后作业反馈</li>
+            <li>R1：标题（如「2026超火1班数学反馈表 6月28日」）</li>
+            <li>R2：序号 | 姓名 | 错题1 | 错题2 | 反馈</li>
             <li>R3+：学生数据（错题/反馈列默认空，你手动填）</li>
           </ul>
         </div>
@@ -552,13 +601,21 @@ function WeekendEditDateStep({
   onTitleChange,
   onConfirm,
   onBack,
+  onAddSheet,
 }: {
   workbook: WeekendWorkbook;
   editingTitles: Record<string, string>;
   onTitleChange: (sheetName: string, title: string) => void;
   onConfirm: () => void;
   onBack: () => void;
+  onAddSheet: (newName: string, sourceSheetName: string) => { ok: boolean; error?: string; newIdx?: number };
 }) {
+  const [showAddSheet, setShowAddSheet] = useState(false);
+  const [newSheetName, setNewSheetName] = useState("");
+  const [sourceSheetName, setSourceSheetName] = useState(
+    workbook.sheets[0]?.sheetName ?? "",
+  );
+  const [addSheetError, setAddSheetError] = useState<string | null>(null);
   const today = getThisWeekendDate();
   return (
     <div className="rounded-2xl border border-hairline bg-white p-6 space-y-5">
@@ -611,7 +668,20 @@ function WeekendEditDateStep({
         ))}
       </div>
 
-      <div className="flex justify-end pt-3 border-t border-hairline">
+      <div className="flex justify-between items-center pt-3 border-t border-hairline">
+        <button
+          type="button"
+          onClick={() => {
+            setShowAddSheet(true);
+            setAddSheetError(null);
+            setNewSheetName("");
+            setSourceSheetName(workbook.sheets[0]?.sheetName ?? "");
+          }}
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm text-accent-text border border-accent-line hover:bg-accent-soft transition"
+        >
+          <AddIcon className="w-4 h-4" />
+          添加新 Sheet
+        </button>
         <button
           type="button"
           onClick={onConfirm}
@@ -620,6 +690,108 @@ function WeekendEditDateStep({
           下一步：填错题 →
         </button>
       </div>
+
+      {/* ⭐ Stage 5.2 · 添加新 Sheet 弹窗 */}
+      <AnimatePresence>
+        {showAddSheet && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-ink/30 backdrop-blur-sm p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowAddSheet(false)}
+          >
+            <motion.div
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4"
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-semibold text-ink">添加新 Sheet</h3>
+                <button
+                  type="button"
+                  onClick={() => setShowAddSheet(false)}
+                  className="p-1 rounded-md hover:bg-canvas-alt text-ink-muted"
+                  aria-label="关闭"
+                >
+                  <CloseIcon className="w-4 h-4" />
+                </button>
+              </div>
+
+              <p className="text-xs text-ink-muted">
+                从现有 Sheet 复制 R1 标题格式 + R2 列头，students 留空。
+                新 Sheet 默认标题为「{newSheetName.trim() || "新班名"}反馈表 {getThisWeekendDate()}」。
+              </p>
+
+              <div>
+                <label className="text-xs font-medium text-ink mb-1 block">
+                  新 Sheet 名（如「超火1班英语」）
+                </label>
+                <input
+                  type="text"
+                  value={newSheetName}
+                  onChange={(e) => {
+                    setNewSheetName(e.target.value);
+                    setAddSheetError(null);
+                  }}
+                  placeholder="例：超火1班英语"
+                  className="w-full rounded-lg border border-hairline px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-accent/50"
+                  autoFocus
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-ink mb-1 block">
+                  复制以下 Sheet 的结构
+                </label>
+                <select
+                  value={sourceSheetName}
+                  onChange={(e) => setSourceSheetName(e.target.value)}
+                  className="w-full rounded-lg border border-hairline px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-accent/50"
+                >
+                  {workbook.sheets.map((s) => (
+                    <option key={s.sheetName} value={s.sheetName}>
+                      {s.sheetName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {addSheetError && (
+                <div className="text-xs text-danger bg-danger-soft rounded-lg px-3 py-2">
+                  ⚠️ {addSheetError}
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddSheet(false)}
+                  className="px-4 py-2 rounded-lg text-sm text-ink-muted hover:bg-canvas-alt transition"
+                >
+                  取消
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const result = onAddSheet(newSheetName, sourceSheetName);
+                    if (result.ok) {
+                      setShowAddSheet(false);
+                    } else if (result.error) {
+                      setAddSheetError(result.error);
+                    }
+                  }}
+                  className="px-4 py-2 rounded-lg bg-accent-text text-white text-sm font-medium hover:bg-accent-hover transition"
+                >
+                  添加
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
