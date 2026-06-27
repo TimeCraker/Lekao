@@ -42,19 +42,29 @@ sealed class Routes(val path: String) {
     object AdminUserBan : Routes("admin/user-ban")
 
     companion object {
-        /** 启动入口 (M07 SplashScreen → 主流程) */
-        val START = Splash.path
+        /**
+         * 启动入口 (M07 SplashScreen → 主流程)
+         *
+         * 用 by lazy 包一层是关键: 嵌套 sealed object + companion 互相引用会触发
+         * Kotlin classloader 循环依赖, Routes.<clinit> 跑到这一行时 Splash.INSTANCE 还没初始化
+         * → NPE on Routes$Splash.getPath()
+         * 改成 by lazy 后: Routes.<clinit> 只放 lazy delegate, 不立即求值 Splash.path
+         * 第一次访问 Routes.START 时 Routes 已完整初始化, Splash.INSTANCE 已 ready
+         */
+        val START: String by lazy { Splash.path }
 
         /** DeepLink 路由表（M08 桌面快捷方式 + M12 推送通知） */
         const val DEEP_LINK_HOST = "lekao"
 
-        val DEEP_LINKS = mapOf(
-            "summary" to Summary.path,
-            "feedback" to Feedback.path,
-            "ideas" to Ideas.path,
-            "mistake" to Mistake.path,
-            "settings" to Settings.path
-        )
+        val DEEP_LINKS: Map<String, String> by lazy {
+            mapOf(
+                "summary" to Summary.path,
+                "feedback" to Feedback.path,
+                "ideas" to Ideas.path,
+                "mistake" to Mistake.path,
+                "settings" to Settings.path
+            )
+        }
     }
 }
 
