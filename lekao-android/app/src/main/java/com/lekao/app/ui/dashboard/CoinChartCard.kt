@@ -11,7 +11,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -40,12 +39,14 @@ fun CoinChartCard(
     // 30 天 mock 数据: 简单递增 + 轻微波动
     val mockData = remember { List(30) { idx -> (idx * 6 + (idx % 4) * 11).toFloat() } }
 
-    val modelProducer = remember { ChartEntryModelProducer() }
-    val chart = remember { LineChart() }
-
-    LaunchedEffect(refreshTrigger, mockData) {
-        modelProducer.setEntries(mockData.mapIndexed { idx, v -> entryOf(x = idx.toFloat(), y = v) })
+    // T82c 修复:必须同步在 remember 阶段 setEntries,否则首次渲染时
+    // LaunchedEffect 还没跑,Chart() 同步调 requireModel() 抛 NPE
+    val modelProducer = remember {
+        ChartEntryModelProducer().apply {
+            setEntries(mockData.mapIndexed { idx, v -> entryOf(x = idx.toFloat(), y = v) })
+        }
     }
+    val chart = remember { LineChart() }
 
     Card(
         shape = RoundedCornerShape(16.dp),

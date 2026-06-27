@@ -6,7 +6,7 @@
 
 | 文件 | 大小 | SHA256 | 签名验证 |
 |------|------|--------|---------|
-| `lekao-android-V1.0.0.apk` | 70 MB | `d6d88a7f6129f0a9d6ce7435e8ea92894e9eac5e3610f8c78f1412113bc1214c` | ✅ APK Signature v2 · `CN=Lekao V1.0.0 Demo` |
+| `lekao-android-V1.0.0.apk` | 70 MB | `eb07470b49f297855b683e175a662c6dd2e68b599eb1755ec76b0730bb63dd7c` | ✅ APK Signature v2 · `CN=Lekao V1.0.0 Demo` |
 
 **apksigner verify 输出**:
 ```
