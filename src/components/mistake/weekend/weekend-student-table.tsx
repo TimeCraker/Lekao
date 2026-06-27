@@ -35,7 +35,6 @@ export function WeekendStudentTable({
   fieldColumns,
   rawR2,
   onStudentChange,
-  onAutoSort,
   onAddStudent,
   onDeleteStudent,
   onClearColumn,
@@ -46,20 +45,12 @@ export function WeekendStudentTable({
   /** ⭐ Stage 6.5：R2 表头原文（rows[1]）· 用于显示真实列名 */
   rawR2?: unknown[];
   onStudentChange: (rowIndex: number, patch: Partial<WeekendStudent>) => void;
-  onAutoSort: () => { moved: number; total: number };
   onAddStudent: () => void;
   onDeleteStudent: (rowIndex: number) => void;
   /** ⭐ Stage 8：整列清空回调（field: "qNumbersInput" | "qNumbersInput2" | "feedback"）*/
   onClearColumn: (field: "qNumbersInput" | "qNumbersInput2" | "feedback") => number;
 }) {
-  const [sortFeedback, setSortFeedback] = useState<string | null>(null);
   const [clearFeedback, setClearFeedback] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!sortFeedback) return;
-    const t = setTimeout(() => setSortFeedback(null), 2500);
-    return () => clearTimeout(t);
-  }, [sortFeedback]);
 
   useEffect(() => {
     if (!clearFeedback) return;
@@ -118,7 +109,7 @@ export function WeekendStudentTable({
 
   return (
     <div className="space-y-3">
-      {/* 顶部工具栏：分类预览 + 已填统计 + 自动排序按钮 */}
+      {/* 顶部工具栏：分类预览 + 已填统计（⭐ Stage 13：自动排序按钮已移除，全程自动） */}
       <div className="flex items-center justify-between gap-3 px-1 flex-wrap">
         <div className="flex items-center gap-3 text-xs text-ink-muted flex-wrap">
           <span>
@@ -139,30 +130,8 @@ export function WeekendStudentTable({
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              const { moved, total } = onAutoSort();
-              if (moved === 0) {
-                setSortFeedback(`已是排序顺序（${total} 人）`);
-              } else {
-                setSortFeedback(`✓ 已排序（移动 ${moved} / ${total} 人）`);
-              }
-            }}
-            className={`
-              inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md transition font-medium
-              ${
-                sortFeedback
-                  ? "bg-success-soft text-success-text border border-success/40"
-                  : "bg-accent-text text-white hover:bg-accent-hover shadow-sm"
-              }
-            `}
-            title={`按 ${qLabels[0] ?? "错题"} 列自动排序：有题号(数字升序) → 全对 → 网课 → 作业未交 → 留空`}
-          >
-            <span>↕️</span>
-            <span>{sortFeedback ?? "自动排序"}</span>
-          </button>
+        <div className="flex items-center gap-2 text-[11px] text-ink-subtle">
+          <span>↕️ 自动排序已开启</span>
         </div>
       </div>
 

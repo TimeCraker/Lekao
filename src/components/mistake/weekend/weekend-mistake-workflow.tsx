@@ -18,7 +18,7 @@
  * v0.2 待做：Stage 2（导出 Excel） + Stage 3（AI 反馈 batch API）
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -73,6 +73,9 @@ export function WeekendMistakeWorkflow() {
   );
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+
+  // ⭐ Stage 13：每个 sheet 的 debounce timer ref（onChange 防抖自动排序用）
+  const sortTimersRef = useRef<Record<string, ReturnType<typeof setTimeout> | null>>({});
 
   // ===== Step 1：上传 Excel =====
   const handleUpload = useCallback(async (file: File) => {
@@ -144,7 +147,51 @@ export function WeekendMistakeWorkflow() {
     [],
   );
 
-  // ===== 学生变更 =====
+  // ===== ⭐ Stage 13：自动排序（v0.2 起源 + v0.2.1 toast + Stage 13 触发策略）=====
+  //   - immediate=true: 立即排（add/delete/clearColumn/batchFeedback 用）
+  //   - immediate=false: 不主动排（onChange 走 debounceEffect 500ms 防抖）
+  const autoSortSheet = useCallback(
+    (sheetName: string, immediate = true): { moved: number; total: number } => {
+      if (!immediate) return { moved: 0, total: 0 };
+      let movedCount = 0;
+      let totalCount = 0;
+      setWorkbook((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          sheets: prev.sheets.map((s) => {
+            if (s.sheetName !== sheetName) return s;
+            const sorted = sortStudentsByCellValue(s.students);
+            totalCount = sorted.length;
+            for (let i = 0; i < sorted.length; i++) {
+              if (sorted[i].rowIndex !== s.students[i].rowIndex) {
+                movedCount++;
+              }
+            }
+            return { ...s, students: sorted };
+          }),
+        };
+      });
+      return { moved: movedCount, total: totalCount };
+    },
+    [],
+  );
+
+  // ⭐ Stage 13：onChange 防抖自动排序（500ms 内无新输入才排，避免边输入边跳位）
+  const debouncedAutoSort = useCallback(
+    (sheetName: string) => {
+      if (sortTimersRef.current[sheetName]) {
+        clearTimeout(sortTimersRef.current[sheetName]!);
+      }
+      sortTimersRef.current[sheetName] = setTimeout(() => {
+        autoSortSheet(sheetName, true);
+        sortTimersRef.current[sheetName] = null;
+      }, 500);
+    },
+    [autoSortSheet],
+  );
+
+  // ===== ⭐ Stage 13：学生变更（onChange 走 debounce 500ms 自动排序）=====
   const updateStudent = useCallback(
     (sheetName: string, rowIndex: number, patch: Partial<WeekendStudent>) => {
       setWorkbook((prev) => {
@@ -162,11 +209,14 @@ export function WeekendMistakeWorkflow() {
           }),
         };
       });
+      // 触发防抖自动排序
+      debouncedAutoSort(sheetName);
     },
-    [],
+    [debouncedAutoSort],
   );
 
   // ===== ⭐ Stage 4：在 Sheet 末尾追加一名学生 =====
+  // ===== ⭐ Stage 13：添加学生（清掉 debounce → 立即排序）=====
   const addStudent = useCallback(
     (sheetName: string) => {
       setWorkbook((prev) => {
@@ -175,8 +225,7 @@ export function WeekendMistakeWorkflow() {
           ...prev,
           sheets: prev.sheets.map((s) => {
             if (s.sheetName !== sheetName) return s;
-            if (s.students.length >= WEEKEND_STUDENT_LIMIT) return s; // 上限保护
-            // 找当前最大 rowIndex + 1（用最大避免跟原始数据冲突，rowIndex 只是标识符）
+            if (s.students.length >= WEEKEND_STUDENT_LIMIT) return s;
             const maxRow = s.students.reduce(
               (max, st) => Math.max(max, st.rowIndex),
               0,
@@ -194,11 +243,17 @@ export function WeekendMistakeWorkflow() {
           }),
         };
       });
+      // 清掉 debounce + 立即排序
+      if (sortTimersRef.current[sheetName]) {
+        clearTimeout(sortTimersRef.current[sheetName]!);
+        sortTimersRef.current[sheetName] = null;
+      }
+      autoSortSheet(sheetName, true);
     },
-    [],
+    [autoSortSheet],
   );
 
-  // ===== ⭐ Stage 4：删除指定学生 =====
+  // ===== ⭐ Stage 13：删除指定学生（清掉 debounce → 立即排序）=====
   const deleteStudent = useCallback(
     (sheetName: string, rowIndex: number) => {
       setWorkbook((prev) => {
@@ -214,11 +269,16 @@ export function WeekendMistakeWorkflow() {
           }),
         };
       });
+      if (sortTimersRef.current[sheetName]) {
+        clearTimeout(sortTimersRef.current[sheetName]!);
+        sortTimersRef.current[sheetName] = null;
+      }
+      autoSortSheet(sheetName, true);
     },
-    [],
+    [autoSortSheet],
   );
 
-  // ===== ⭐ Stage 8：整列清空（保留姓名 + 序号，只清空目标字段） =====
+  // ===== ⭐ Stage 13：整列清空（清掉 debounce → 立即排序）=====
   const clearColumn = useCallback(
     (
       sheetName: string,
@@ -231,7 +291,6 @@ export function WeekendMistakeWorkflow() {
           ...prev,
           sheets: prev.sheets.map((s) => {
             if (s.sheetName !== sheetName) return s;
-            // 只清非空字段（统计实际清空行数）
             const newStudents = s.students.map((st) => {
               const v = st[field];
               if (v && v.trim() !== "") {
@@ -244,12 +303,17 @@ export function WeekendMistakeWorkflow() {
           }),
         };
       });
+      if (sortTimersRef.current[sheetName]) {
+        clearTimeout(sortTimersRef.current[sheetName]!);
+        sortTimersRef.current[sheetName] = null;
+      }
+      autoSortSheet(sheetName, true);
       return cleared;
     },
-    [],
+    [autoSortSheet],
   );
 
-  // ===== AI 反馈回填（Stage 3） =====
+  // ===== ⭐ Stage 13：AI 反馈回填（Stage 3） — 立即排序 =====
   const applyAiFeedback = useCallback(
     (sheetName: string, results: BatchStudentResult[]) => {
       setWorkbook((prev) => {
@@ -274,8 +338,14 @@ export function WeekendMistakeWorkflow() {
           }),
         };
       });
+      // ⭐ Stage 13：AI 填完反馈后立即排序（不用手动点按钮）
+      if (sortTimersRef.current[sheetName]) {
+        clearTimeout(sortTimersRef.current[sheetName]!);
+        sortTimersRef.current[sheetName] = null;
+      }
+      autoSortSheet(sheetName, true);
     },
-    [],
+    [autoSortSheet],
   );
 
   // ===== ⭐ Stage 5.2：从 sourceSheet 复制结构，添加新 Sheet =====
@@ -328,34 +398,6 @@ export function WeekendMistakeWorkflow() {
       return { ok: true, newIdx };
     },
     [workbook],
-  );
-
-  // ===== 自动排序（v0.2 新增 · v0.2.1 修订：返回 moved/total 用于 toast 反馈）=====
-  const autoSortSheet = useCallback(
-    (sheetName: string): { moved: number; total: number } => {
-      let movedCount = 0;
-      let totalCount = 0;
-      setWorkbook((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          sheets: prev.sheets.map((s) => {
-            if (s.sheetName !== sheetName) return s;
-            const sorted = sortStudentsByCellValue(s.students);
-            // 计算实际移动人数（位置变了 = 算移动）
-            totalCount = sorted.length;
-            for (let i = 0; i < sorted.length; i++) {
-              if (sorted[i].rowIndex !== s.students[i].rowIndex) {
-                movedCount++;
-              }
-            }
-            return { ...s, students: sorted };
-          }),
-        };
-      });
-      return { moved: movedCount, total: totalCount };
-    },
-    [],
   );
 
   // ===== 自动保存草稿（编辑学生时实时）=====
@@ -478,7 +520,6 @@ export function WeekendMistakeWorkflow() {
           activeSheetIdx={activeSheetIdx}
           onSheetChange={setActiveSheetIdx}
           onStudentChange={updateStudent}
-          onAutoSort={(sheetName) => autoSortSheet(sheetName)}
           onAddStudent={addStudent}
           onDeleteStudent={deleteStudent}
           onClearColumn={(sheetName, field) => clearColumn(sheetName, field)}
@@ -841,7 +882,6 @@ function WeekendEditStudentsStep({
   activeSheetIdx,
   onSheetChange,
   onStudentChange,
-  onAutoSort,
   onAddStudent,
   onDeleteStudent,
   onClearColumn,
@@ -857,7 +897,6 @@ function WeekendEditStudentsStep({
     rowIndex: number,
     patch: Partial<WeekendStudent>,
   ) => void;
-  onAutoSort: (sheetName: string) => { moved: number; total: number };
   onAddStudent: (sheetName: string) => void;
   onDeleteStudent: (sheetName: string, rowIndex: number) => void;
   onClearColumn: (
@@ -918,7 +957,6 @@ function WeekendEditStudentsStep({
             onStudentChange={(rowIndex, patch) =>
               onStudentChange(activeSheet.sheetName, rowIndex, patch)
             }
-            onAutoSort={() => onAutoSort(activeSheet.sheetName)}
             onAddStudent={() => onAddStudent(activeSheet.sheetName)}
             onDeleteStudent={(rowIndex) =>
               onDeleteStudent(activeSheet.sheetName, rowIndex)
