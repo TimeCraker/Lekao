@@ -73,6 +73,8 @@ export function WeekendMistakeWorkflow() {
   );
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  // ⭐ Stage 14：自动排序开关（默认 ON · 用户可关掉退回手动模式）
+  const [autoSortEnabled, setAutoSortEnabled] = useState(true);
 
   // ⭐ Stage 13：每个 sheet 的 debounce timer ref（onChange 防抖自动排序用）
   const sortTimersRef = useRef<Record<string, ReturnType<typeof setTimeout> | null>>({});
@@ -147,12 +149,12 @@ export function WeekendMistakeWorkflow() {
     [],
   );
 
-  // ===== ⭐ Stage 13：自动排序（v0.2 起源 + v0.2.1 toast + Stage 13 触发策略）=====
-  //   - immediate=true: 立即排（add/delete/clearColumn/batchFeedback 用）
-  //   - immediate=false: 不主动排（onChange 走 debounceEffect 500ms 防抖）
+  // ===== ⭐ Stage 13 + 14：自动排序（v0.2 起源 + v0.2.1 toast + Stage 14 toggle）=====
+  //   - autoSortEnabled=false: gate 不排（add/delete/clearColumn/batchFeedback/onChange 都不触发）
+  //   - force=true: 跳过 gate（手动排序按钮用，不管开关状态）
   const autoSortSheet = useCallback(
-    (sheetName: string, immediate = true): { moved: number; total: number } => {
-      if (!immediate) return { moved: 0, total: 0 };
+    (sheetName: string, force = false): { moved: number; total: number } => {
+      if (!force && !autoSortEnabled) return { moved: 0, total: 0 };
       let movedCount = 0;
       let totalCount = 0;
       setWorkbook((prev) => {
@@ -174,7 +176,7 @@ export function WeekendMistakeWorkflow() {
       });
       return { moved: movedCount, total: totalCount };
     },
-    [],
+    [autoSortEnabled],
   );
 
   // ⭐ Stage 13：onChange 防抖自动排序（500ms 内无新输入才排，避免边输入边跳位）
@@ -184,9 +186,22 @@ export function WeekendMistakeWorkflow() {
         clearTimeout(sortTimersRef.current[sheetName]!);
       }
       sortTimersRef.current[sheetName] = setTimeout(() => {
-        autoSortSheet(sheetName, true);
+        autoSortSheet(sheetName, false); // gate 检查 enabled
         sortTimersRef.current[sheetName] = null;
       }, 500);
+    },
+    [autoSortSheet],
+  );
+
+  // ⭐ Stage 14：toggle 开关
+  const toggleAutoSort = useCallback(() => {
+    setAutoSortEnabled((prev) => !prev);
+  }, []);
+
+  // ⭐ Stage 14：手动排序（OFF 模式专用 · force=true 跳过 gate · 不改 toggle 状态）
+  const manualSortSheet = useCallback(
+    (sheetName: string): { moved: number; total: number } => {
+      return autoSortSheet(sheetName, true);
     },
     [autoSortSheet],
   );
@@ -248,7 +263,7 @@ export function WeekendMistakeWorkflow() {
         clearTimeout(sortTimersRef.current[sheetName]!);
         sortTimersRef.current[sheetName] = null;
       }
-      autoSortSheet(sheetName, true);
+      autoSortSheet(sheetName);
     },
     [autoSortSheet],
   );
@@ -273,7 +288,7 @@ export function WeekendMistakeWorkflow() {
         clearTimeout(sortTimersRef.current[sheetName]!);
         sortTimersRef.current[sheetName] = null;
       }
-      autoSortSheet(sheetName, true);
+      autoSortSheet(sheetName);
     },
     [autoSortSheet],
   );
@@ -307,7 +322,7 @@ export function WeekendMistakeWorkflow() {
         clearTimeout(sortTimersRef.current[sheetName]!);
         sortTimersRef.current[sheetName] = null;
       }
-      autoSortSheet(sheetName, true);
+      autoSortSheet(sheetName);
       return cleared;
     },
     [autoSortSheet],
@@ -343,7 +358,7 @@ export function WeekendMistakeWorkflow() {
         clearTimeout(sortTimersRef.current[sheetName]!);
         sortTimersRef.current[sheetName] = null;
       }
-      autoSortSheet(sheetName, true);
+      autoSortSheet(sheetName);
     },
     [autoSortSheet],
   );
@@ -526,6 +541,10 @@ export function WeekendMistakeWorkflow() {
           onBack={backToEditDate}
           uploadedFile={uploadedFile}
           onApplyAiFeedback={applyAiFeedback}
+          // ⭐ Stage 14：自动排序 toggle + 手动排序兜底
+          autoSortEnabled={autoSortEnabled}
+          onToggleAutoSort={toggleAutoSort}
+          onManualSort={manualSortSheet}
         />
       )}
     </div>
@@ -888,6 +907,10 @@ function WeekendEditStudentsStep({
   onBack,
   uploadedFile,
   onApplyAiFeedback,
+  // ⭐ Stage 14：自动排序 toggle + 手动排序兜底
+  autoSortEnabled,
+  onToggleAutoSort,
+  onManualSort,
 }: {
   workbook: WeekendWorkbook;
   activeSheetIdx: number;
@@ -906,6 +929,10 @@ function WeekendEditStudentsStep({
   onBack: () => void;
   uploadedFile: File | null;
   onApplyAiFeedback: (sheetName: string, results: BatchStudentResult[]) => void;
+  // ⭐ Stage 14：自动排序 toggle + 手动排序兜底
+  autoSortEnabled: boolean;
+  onToggleAutoSort: () => void;
+  onManualSort: (sheetName: string) => { moved: number; total: number };
 }) {
   const activeSheet = workbook.sheets[activeSheetIdx];
   const today = getThisWeekendDate();
@@ -962,6 +989,10 @@ function WeekendEditStudentsStep({
               onDeleteStudent(activeSheet.sheetName, rowIndex)
             }
             onClearColumn={(field) => onClearColumn(activeSheet.sheetName, field)}
+            // ⭐ Stage 14：自动排序 toggle + 手动排序兜底
+            autoSortEnabled={autoSortEnabled}
+            onToggleAutoSort={onToggleAutoSort}
+            onManualSort={() => onManualSort(activeSheet.sheetName)}
           />
         </motion.div>
       </AnimatePresence>

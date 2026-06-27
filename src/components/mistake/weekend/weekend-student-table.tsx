@@ -38,6 +38,10 @@ export function WeekendStudentTable({
   onAddStudent,
   onDeleteStudent,
   onClearColumn,
+  // ⭐ Stage 14：自动排序 toggle + 手动排序兜底
+  autoSortEnabled,
+  onToggleAutoSort,
+  onManualSort,
 }: {
   students: WeekendStudent[];
   /** ⭐ Stage 6：R2 表头识别的列布局（决定 UI 渲染哪些列）*/
@@ -49,14 +53,26 @@ export function WeekendStudentTable({
   onDeleteStudent: (rowIndex: number) => void;
   /** ⭐ Stage 8：整列清空回调（field: "qNumbersInput" | "qNumbersInput2" | "feedback"）*/
   onClearColumn: (field: "qNumbersInput" | "qNumbersInput2" | "feedback") => number;
+  // ⭐ Stage 14：自动排序 toggle + 手动排序兜底
+  autoSortEnabled: boolean;
+  onToggleAutoSort: () => void;
+  onManualSort: () => { moved: number; total: number };
 }) {
   const [clearFeedback, setClearFeedback] = useState<string | null>(null);
+  // ⭐ Stage 14：手动排序 toast（OFF 模式点立即排后显示反馈）
+  const [sortFeedback, setSortFeedback] = useState<string | null>(null);
 
   useEffect(() => {
     if (!clearFeedback) return;
     const t = setTimeout(() => setClearFeedback(null), 2500);
     return () => clearTimeout(t);
   }, [clearFeedback]);
+
+  useEffect(() => {
+    if (!sortFeedback) return;
+    const t = setTimeout(() => setSortFeedback(null), 2500);
+    return () => clearTimeout(t);
+  }, [sortFeedback]);
 
   /**
    * ⭐ Stage 8：整列清空（带二次确认 + toast 反馈）
@@ -109,7 +125,7 @@ export function WeekendStudentTable({
 
   return (
     <div className="space-y-3">
-      {/* 顶部工具栏：分类预览 + 已填统计（⭐ Stage 13：自动排序按钮已移除，全程自动） */}
+      {/* ⭐ Stage 14：顶部工具栏 · 分类预览 + 已填统计 + 自动排序 toggle + 手动兜底 */}
       <div className="flex items-center justify-between gap-3 px-1 flex-wrap">
         <div className="flex items-center gap-3 text-xs text-ink-muted flex-wrap">
           <span>
@@ -130,8 +146,55 @@ export function WeekendStudentTable({
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2 text-[11px] text-ink-subtle">
-          <span>↕️ 自动排序已开启</span>
+        <div className="flex items-center gap-2">
+          {/* ⭐ Stage 14：自动排序 toggle 按钮（绿色=ON，点关 · 灰色=OFF，点开） */}
+          <button
+            type="button"
+            onClick={onToggleAutoSort}
+            title={
+              autoSortEnabled
+                ? "点击关闭自动排序（关掉后所有改动都不自动排）"
+                : "点击开启自动排序（开启后填错题 0.5s 自动排）"
+            }
+            aria-label={autoSortEnabled ? "关闭自动排序" : "开启自动排序"}
+            className={`
+              inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md transition font-medium border
+              ${
+                autoSortEnabled
+                  ? "bg-success-soft text-success-text border-success/40 hover:bg-warning-soft hover:text-warning-text hover:border-warning/40"
+                  : "bg-canvas-alt text-ink-muted border-hairline hover:bg-warning-soft hover:text-warning-text hover:border-warning/40"
+              }
+            `}
+          >
+            <span>↕️</span>
+            <span>自动排序 · {autoSortEnabled ? "开" : "关"}</span>
+          </button>
+          {/* ⭐ Stage 14：手动排序按钮（OFF 模式专属 · ON 时隐藏） */}
+          {!autoSortEnabled && (
+            <button
+              type="button"
+              onClick={() => {
+                const { moved, total } = onManualSort();
+                if (moved === 0) {
+                  setSortFeedback(`已是排序顺序（${total} 人）`);
+                } else {
+                  setSortFeedback(`✓ 已手动排序（移动 ${moved} / ${total} 人）`);
+                }
+              }}
+              className={`
+                inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md transition font-medium shadow-sm
+                ${
+                  sortFeedback
+                    ? "bg-success-soft text-success-text border border-success/40"
+                    : "bg-warning-text text-white hover:bg-warning-hover"
+                }
+              `}
+              title={`按 ${qLabels[0] ?? "错题"} 列立即排序：有题号(数字升序) → 全对 → 网课 → 作业未交 → 留空`}
+            >
+              <span>↕️</span>
+              <span>{sortFeedback ?? "立即排序"}</span>
+            </button>
+          )}
         </div>
       </div>
 
