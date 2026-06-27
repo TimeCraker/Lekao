@@ -218,6 +218,37 @@ export function WeekendMistakeWorkflow() {
     [],
   );
 
+  // ===== ⭐ Stage 8：整列清空（保留姓名 + 序号，只清空目标字段） =====
+  const clearColumn = useCallback(
+    (
+      sheetName: string,
+      field: "qNumbersInput" | "qNumbersInput2" | "feedback",
+    ): number => {
+      let cleared = 0;
+      setWorkbook((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          sheets: prev.sheets.map((s) => {
+            if (s.sheetName !== sheetName) return s;
+            // 只清非空字段（统计实际清空行数）
+            const newStudents = s.students.map((st) => {
+              const v = st[field];
+              if (v && v.trim() !== "") {
+                cleared += 1;
+                return { ...st, [field]: "" } as typeof st;
+              }
+              return st;
+            });
+            return { ...s, students: newStudents };
+          }),
+        };
+      });
+      return cleared;
+    },
+    [],
+  );
+
   // ===== AI 反馈回填（Stage 3） =====
   const applyAiFeedback = useCallback(
     (sheetName: string, results: BatchStudentResult[]) => {
@@ -450,6 +481,7 @@ export function WeekendMistakeWorkflow() {
           onAutoSort={(sheetName) => autoSortSheet(sheetName)}
           onAddStudent={addStudent}
           onDeleteStudent={deleteStudent}
+          onClearColumn={(sheetName, field) => clearColumn(sheetName, field)}
           onBack={backToEditDate}
           uploadedFile={uploadedFile}
           onApplyAiFeedback={applyAiFeedback}
@@ -812,6 +844,7 @@ function WeekendEditStudentsStep({
   onAutoSort,
   onAddStudent,
   onDeleteStudent,
+  onClearColumn,
   onBack,
   uploadedFile,
   onApplyAiFeedback,
@@ -827,6 +860,10 @@ function WeekendEditStudentsStep({
   onAutoSort: (sheetName: string) => { moved: number; total: number };
   onAddStudent: (sheetName: string) => void;
   onDeleteStudent: (sheetName: string, rowIndex: number) => void;
+  onClearColumn: (
+    sheetName: string,
+    field: "qNumbersInput" | "qNumbersInput2" | "feedback",
+  ) => number;
   onBack: () => void;
   uploadedFile: File | null;
   onApplyAiFeedback: (sheetName: string, results: BatchStudentResult[]) => void;
@@ -886,6 +923,7 @@ function WeekendEditStudentsStep({
             onDeleteStudent={(rowIndex) =>
               onDeleteStudent(activeSheet.sheetName, rowIndex)
             }
+            onClearColumn={(field) => onClearColumn(activeSheet.sheetName, field)}
           />
         </motion.div>
       </AnimatePresence>

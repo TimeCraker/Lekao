@@ -38,6 +38,7 @@ export function WeekendStudentTable({
   onAutoSort,
   onAddStudent,
   onDeleteStudent,
+  onClearColumn,
 }: {
   students: WeekendStudent[];
   /** ⭐ Stage 6：R2 表头识别的列布局（决定 UI 渲染哪些列）*/
@@ -48,14 +49,43 @@ export function WeekendStudentTable({
   onAutoSort: () => { moved: number; total: number };
   onAddStudent: () => void;
   onDeleteStudent: (rowIndex: number) => void;
+  /** ⭐ Stage 8：整列清空回调（field: "qNumbersInput" | "qNumbersInput2" | "feedback"）*/
+  onClearColumn: (field: "qNumbersInput" | "qNumbersInput2" | "feedback") => number;
 }) {
   const [sortFeedback, setSortFeedback] = useState<string | null>(null);
+  const [clearFeedback, setClearFeedback] = useState<string | null>(null);
 
   useEffect(() => {
     if (!sortFeedback) return;
     const t = setTimeout(() => setSortFeedback(null), 2500);
     return () => clearTimeout(t);
   }, [sortFeedback]);
+
+  useEffect(() => {
+    if (!clearFeedback) return;
+    const t = setTimeout(() => setClearFeedback(null), 2500);
+    return () => clearTimeout(t);
+  }, [clearFeedback]);
+
+  /**
+   * ⭐ Stage 8：整列清空（带二次确认 + toast 反馈）
+   */
+  const handleClearColumn = (
+    field: "qNumbersInput" | "qNumbersInput2" | "feedback",
+    columnLabel: string,
+  ) => {
+    if (typeof window === "undefined") return;
+    const ok = window.confirm(
+      `确认清空整列「${columnLabel}」吗？\n\n该列所有 ${students.length} 个学生的数据都会清空，姓名保留。\n（草稿自动保存，不影响 Excel 源文件）`,
+    );
+    if (!ok) return;
+    const cleared = onClearColumn(field);
+    if (cleared > 0) {
+      setClearFeedback(`✓ 已清空「${columnLabel}」${cleared} 行`);
+    } else {
+      setClearFeedback(`「${columnLabel}」本来就是空的`);
+    }
+  };
 
   // ⭐ Stage 6.5：错题列标签（用 R2 原文）
   const qLabels = getQNumberLabels(fieldColumns, rawR2);
@@ -156,26 +186,57 @@ export function WeekendStudentTable({
                 <th className="px-3 py-2.5 text-left text-xs font-medium text-ink-muted w-28">
                   姓名
                 </th>
-                {/* ⭐ Stage 6.5：错题列动态渲染 */}
-                {qLabels.map((label, idx) => (
-                  <th
-                    key={`q-${idx}`}
-                    className={`px-3 py-2.5 text-left text-xs font-medium text-ink-muted ${qCount >= 2 ? "min-w-[180px]" : "min-w-[260px]"}`}
-                  >
-                    {label}
-                    <span className="ml-1 text-[10px] text-ink-subtle">
-                      ({String.fromCharCode(64 + (fieldColumns.qNumbersCols[idx] ?? 0))} 列)
-                    </span>
-                  </th>
-                ))}
+                {/* ⭐ Stage 6.5 + Stage 8：错题列动态渲染 + 表头整列清空按钮 */}
+                {qLabels.map((label, idx) => {
+                  const field = idx === 0 ? "qNumbersInput" : "qNumbersInput2";
+                  return (
+                    <th
+                      key={`q-${idx}`}
+                      className={`px-3 py-2.5 text-left text-xs font-medium text-ink-muted ${qCount >= 2 ? "min-w-[180px]" : "min-w-[260px]"} group`}
+                    >
+                      <div className="flex items-center justify-between gap-1">
+                        <span>
+                          {label}
+                          <span className="ml-1 text-[10px] text-ink-subtle">
+                            ({String.fromCharCode(64 + (fieldColumns.qNumbersCols[idx] ?? 0))} 列)
+                          </span>
+                        </span>
+                        {/* ⭐ Stage 8：表头整列清空按钮 */}
+                        <button
+                          type="button"
+                          onClick={() => handleClearColumn(field, label)}
+                          title={`清空整列「${label}」（${students.length} 人）`}
+                          aria-label={`清空整列 ${label}`}
+                          className="opacity-0 group-hover:opacity-100 w-5 h-5 rounded text-ink-subtle hover:bg-danger/10 hover:text-danger transition inline-flex items-center justify-center"
+                        >
+                          <CloseIcon className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </th>
+                  );
+                })}
                 {showFeedback && (
-                  <th className="px-3 py-2.5 text-left text-xs font-medium text-ink-muted min-w-[220px]">
-                    反馈
-                    {fieldColumns.feedback !== null && (
-                      <span className="ml-1 text-[10px] text-ink-subtle">
-                        ({String.fromCharCode(64 + fieldColumns.feedback)} 列 · Stage 3 AI 接入)
+                  <th className="px-3 py-2.5 text-left text-xs font-medium text-ink-muted min-w-[220px] group">
+                    <div className="flex items-center justify-between gap-1">
+                      <span>
+                        反馈
+                        {fieldColumns.feedback !== null && (
+                          <span className="ml-1 text-[10px] text-ink-subtle">
+                            ({String.fromCharCode(64 + fieldColumns.feedback)} 列 · Stage 3 AI 接入)
+                          </span>
+                        )}
                       </span>
-                    )}
+                      {/* ⭐ Stage 8：反馈列表头整列清空按钮 */}
+                      <button
+                        type="button"
+                        onClick={() => handleClearColumn("feedback", "反馈")}
+                        title={`清空整列「反馈」（${students.length} 人）`}
+                        aria-label="清空整列反馈"
+                        className="opacity-0 group-hover:opacity-100 w-5 h-5 rounded text-ink-subtle hover:bg-danger/10 hover:text-danger transition inline-flex items-center justify-center"
+                      >
+                        <CloseIcon className="w-3 h-3" />
+                      </button>
+                    </div>
                   </th>
                 )}
                 <th className="px-3 py-2.5 text-left text-xs font-medium text-ink-muted w-14">
@@ -214,8 +275,16 @@ export function WeekendStudentTable({
 
       {/* ⭐ Stage 7.1：底部追加学生按钮（新增后无需滚动，直接填信息） */}
       <div className="flex items-center justify-between gap-3 px-1 pt-1">
-        <span className="text-xs text-ink-subtle">
-          {atMax ? `已达 ${WEEKEND_STUDENT_LIMIT} 人上限` : `共 ${students.length} 人 · 末尾追加后可直接填写`}
+        <span className="text-xs text-ink-subtle inline-flex items-center gap-2">
+          <span>
+            {atMax ? `已达 ${WEEKEND_STUDENT_LIMIT} 人上限` : `共 ${students.length} 人 · 末尾追加后可直接填写`}
+          </span>
+          {/* ⭐ Stage 8：整列清空反馈 toast */}
+          {clearFeedback && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-success-soft text-success-text border border-success/40 text-[11px] font-medium">
+              {clearFeedback}
+            </span>
+          )}
         </span>
         <button
           type="button"
