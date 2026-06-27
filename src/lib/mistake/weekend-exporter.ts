@@ -346,7 +346,7 @@ function writeStudentRow(
     );
     ensureCellAlignment(ws, `${colLetter(fc.qNumbersCols[1])}${excelRow}`);
   }
-  // 反馈列（⭐ Stage 7.4：wrapText=true 让长反馈自动换行）
+  // 反馈列（⭐ Stage 17：垂直居中 + 水平居中 · 关掉 wrapText 避免窄行高下 WPS 把 vertical 渲染成 top）
   if (fc.feedback !== null) {
     setCellText(
       ws,
@@ -354,8 +354,8 @@ function writeStudentRow(
       student.feedback,
     );
     ensureCellAlignment(ws, `${colLetter(fc.feedback)}${excelRow}`, {
-      wrapText: true,
-      horizontal: "left", // 反馈列左对齐（中文阅读体验更好）
+      wrapText: false, // ⭐ 关闭 wrapText：避免 WPS 在窄行高 + wrapText 下把 vertical:middle 视觉渲染成 top
+      horizontal: "center", // 反馈列水平居中(跟姓名/错题列一致)
     });
   }
   // ⭐ v0.3：给所有数据列补 thin 框线
