@@ -16,9 +16,9 @@ export default function BannedPage() {
         className="w-full max-w-md rounded-2xl border border-hairline bg-white p-8 text-center shadow-sm"
       >
         <motion.div
-          className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-50 anim-error-pulse"
+          className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-danger-soft anim-error-pulse"
         >
-          <CloseIcon className="h-6 w-6 text-red-600" />
+          <CloseIcon className="h-6 w-6 text-danger-text" />
         </motion.div>
         <h1 className="text-xl font-semibold text-ink">账号已被封禁</h1>
         <p className="mt-3 text-sm text-ink-muted">

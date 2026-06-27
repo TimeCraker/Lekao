@@ -54,6 +54,8 @@ import {
   DownloadIcon,
   AddIcon,
   CloseIcon,
+  SparklesIcon,
+  ChevronDownIcon,
 } from "@/components/icons";
 import { WeekendSheetTabs } from "./weekend-sheet-tabs";
 import { WeekendStudentTable } from "./weekend-student-table";
@@ -90,6 +92,8 @@ export function WeekendMistakeWorkflow() {
   const [searchQuery, setSearchQuery] = useState("");
   // ⭐ Stage 16：搜索聚焦的 rowIndex（决定下拉 list 高亮哪一项 + 主表行闪烁）
   const [searchFocusRowIndex, setSearchFocusRowIndex] = useState<number | null>(null);
+  // ⭐ Stage 19.1：AI 反馈面板折叠状态（默认展开 · 不持久化 · 切 sheet 重置为展开）
+  const [aiOpen, setAiOpen] = useState(true);
 
   // ===== Step 1：上传 Excel =====
   const handleUpload = useCallback(async (file: File) => {
@@ -581,6 +585,8 @@ export function WeekendMistakeWorkflow() {
           // ⭐ Stage 16：切 sheet 清空搜索 query（避免跨 sheet 残留状态）
           setSearchQuery("");
           setSearchFocusRowIndex(null);
+          // ⭐ Stage 19.1：切 sheet 重置 AI 折叠态为展开（简化心智）
+          setAiOpen(true);
         }}
           onStudentChange={updateStudent}
           onAddStudent={addStudent}
@@ -610,6 +616,9 @@ export function WeekendMistakeWorkflow() {
               flashTimeoutRef.current = null;
             }, 2000);
           }}
+          // ⭐ Stage 19.1：AI 折叠态
+          aiOpen={aiOpen}
+          setAiOpen={setAiOpen}
         />
       )}
     </div>
@@ -984,6 +993,9 @@ function WeekendEditStudentsStep({
   searchFocusRowIndex,
   flashRowIndex,
   onSearchSelect,
+  // ⭐ Stage 19.1：AI 助手折叠态（默认展开，不持久化）
+  aiOpen,
+  setAiOpen,
 }: {
   workbook: WeekendWorkbook;
   activeSheetIdx: number;
@@ -1014,6 +1026,9 @@ function WeekendEditStudentsStep({
   searchFocusRowIndex: number | null;
   flashRowIndex: number | null;
   onSearchSelect: (rowIndex: number) => void;
+  // ⭐ Stage 19.1：AI 助手折叠态（默认展开，不持久化）
+  aiOpen: boolean;
+  setAiOpen: (open: boolean) => void;
 }) {
   const activeSheet = workbook.sheets[activeSheetIdx];
   const today = getThisWeekendDate();
@@ -1094,19 +1109,40 @@ function WeekendEditStudentsStep({
         <span className="text-ink-subtle">AI 反馈 (Stage 3)</span>
       </div>
 
-      {/* Stage 3 · AI 反馈生成 */}
+      {/* Stage 3 · AI 反馈生成（⭐ Stage 19.1：可折叠，默认展开，不持久化） */}
       <div className="border-t border-hairline pt-2">
-        <WeekendAiFeedbackPanel
-          sheetName={activeSheet.sheetName}
-          students={activeSheet.students.map((s) => ({
-            name: s.name,
-            qNumbersInput: s.qNumbersInput,
-          }))}
-          date={today}
-          onFeedbackReady={(results) =>
-            onApplyAiFeedback(activeSheet.sheetName, results)
-          }
-        />
+        {aiOpen ? (
+          <WeekendAiFeedbackPanel
+            sheetName={activeSheet.sheetName}
+            students={activeSheet.students.map((s) => ({
+              name: s.name,
+              qNumbersInput: s.qNumbersInput,
+            }))}
+            date={today}
+            onFeedbackReady={(results) =>
+              onApplyAiFeedback(activeSheet.sheetName, results)
+            }
+            onCollapse={() => setAiOpen(false)}
+          />
+        ) : (
+          <button
+            type="button"
+            aria-expanded={false}
+            aria-controls="ai-panel-content"
+            onClick={() => setAiOpen(true)}
+            className="w-full rounded-xl border border-hairline bg-white p-4 flex items-center justify-between hover:bg-canvas-alt transition-colors group"
+          >
+            <div className="flex items-center gap-2">
+              <SparklesIcon className="size-4 text-accent-text" />
+              <span className="text-sm font-medium text-ink">AI 反馈 (Stage 3)</span>
+              <span className="text-xs text-ink-muted">· 折叠中</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-accent-text group-hover:underline">
+              <span>点此展开 AI 助手,生成全班反馈</span>
+              <ChevronDownIcon className="size-4" />
+            </div>
+          </button>
+        )}
       </div>
 
       {/* Stage 2 · 导出 Excel 工具栏 */}

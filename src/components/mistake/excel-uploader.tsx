@@ -127,7 +127,7 @@ export function ExcelUploader({ onWorkbookReady }: ExcelUploaderProps) {
       {error && (
         <div
           role="alert"
-          className="mt-4 rounded-lg border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger"
+          className="mt-4 rounded-lg border border-danger/30 bg-danger-soft px-4 py-3 text-sm text-danger-text"
         >
           ⚠️ {error}
         </div>

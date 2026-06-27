@@ -52,7 +52,7 @@ export function CopyButton({ text, className, children }: CopyButtonProps) {
         state === "copied"
           ? "bg-success-soft text-success-text"
           : state === "error"
-          ? "bg-danger/5 text-danger"
+          ? "bg-danger-soft text-danger-text"
           : "bg-canvas-alt text-ink-mute hover:bg-hairline"
       } ${className ?? ""}`}
     >

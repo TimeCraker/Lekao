@@ -29,7 +29,9 @@ import {
   CheckIcon,
   LightbulbIcon,
   CloseIcon,
+  ChevronDownIcon,
 } from "@/components/icons";
+import { SuccessBurst } from "@/components/ui/success-burst";
 import { cn } from "@/lib/utils";
 
 // ============================================
@@ -76,6 +78,8 @@ type Props = {
   students: { name: string; qNumbersInput: string }[];
   date: string;
   onFeedbackReady: (results: BatchStudentResult[]) => void;
+  // ⭐ Stage 19：折叠控制（不持久化，默认展开）
+  onCollapse?: () => void;
 };
 
 // ============================================
@@ -105,6 +109,7 @@ export function WeekendAiFeedbackPanel({
   students,
   date,
   onFeedbackReady,
+  onCollapse,
 }: Props) {
   const [images, setImages] = useState<ImageItem[]>([]);
   const [status, setStatus] = useState<AiFeedbackStatus>({ type: "idle" });
@@ -115,6 +120,20 @@ export function WeekendAiFeedbackPanel({
   const [err, setErr] = useState<string | null>(null);
   // ⭐ Stage 18：作业总体小结字数挡位（默认 1x 标准）
   const [summaryLength, setSummaryLength] = useState<SummaryLengthValue>("1x");
+
+  // ⭐ Stage 19.2：AI 生成中 5 段假进度条（3s 一段，纯 UI 模拟，不动后端）
+  const PROGRESS_STAGES = ["读图", "识别学科", "分析错题", "生成反馈", "整理小结"] as const;
+  const [progressStage, setProgressStage] = useState(0);
+  useEffect(() => {
+    if (status.type !== "generating") {
+      setProgressStage(0);
+      return;
+    }
+    const t = setInterval(() => {
+      setProgressStage((s) => (s < PROGRESS_STAGES.length - 1 ? s + 1 : s));
+    }, 3000);
+    return () => clearInterval(t);
+  }, [status.type, PROGRESS_STAGES.length]);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
@@ -409,8 +428,8 @@ export function WeekendAiFeedbackPanel({
   const totalSize = images.reduce((sum, i) => sum + i.sizeBytes, 0);
 
   return (
-    <div className="rounded-xl border border-accent-line/60 bg-accent-soft/10 p-5 space-y-4">
-      {/* 标题 */}
+    <div id="ai-panel-content" className="rounded-xl border border-accent-line/60 bg-accent-soft/10 p-5 space-y-4">
+      {/* 标题 + 折叠按钮 */}
       <div className="flex items-center gap-2 flex-wrap">
         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-accent text-white text-xs font-semibold">
           Stage 3
@@ -419,6 +438,25 @@ export function WeekendAiFeedbackPanel({
         <span className="text-xs text-ink-muted">
           · 上传讲义图（1-5 张） → AI 综合识别 → 自动生成每位学生 D 列反馈
         </span>
+        {/* ⭐ Stage 19.1：折叠按钮（不持久化，用户点击收起整张面板） */}
+        {onCollapse && (
+          <button
+            type="button"
+            aria-expanded={true}
+            aria-controls="ai-panel-content"
+            onClick={onCollapse}
+            className="ml-auto inline-flex items-center gap-1 text-xs text-ink-muted hover:text-ink transition-colors"
+          >
+            <span>折叠</span>
+            <motion.span
+              animate={{ rotate: 180 }}
+              transition={{ duration: 0.2 }}
+              className="inline-flex"
+            >
+              <ChevronDownIcon className="size-4" />
+            </motion.span>
+          </button>
+        )}
       </div>
 
       {/* ============================================
@@ -559,7 +597,7 @@ export function WeekendAiFeedbackPanel({
 
       {/* 错误提示 */}
       {err && (
-        <div className="rounded-lg bg-danger/10 text-danger text-xs px-3 py-2">
+        <div className="rounded-lg bg-danger-soft text-danger-text text-xs px-3 py-2">
           ⚠️ {err}
         </div>
       )}
@@ -577,7 +615,7 @@ export function WeekendAiFeedbackPanel({
             反馈条目（25-55 字/条）不受影响
           </span>
         </div>
-        <div className="flex flex-wrap gap-1.5">
+        <div className="relative flex flex-wrap gap-1 p-0.5 rounded-lg bg-canvas-alt">
           {SUMMARY_LENGTH_OPTIONS.map((opt) => {
             const active = summaryLength === opt.value;
             return (
@@ -586,23 +624,28 @@ export function WeekendAiFeedbackPanel({
                 type="button"
                 onClick={() => setSummaryLength(opt.value)}
                 disabled={isReadonly}
-                className={cn(
-                  "inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition disabled:opacity-50 disabled:cursor-not-allowed",
-                  active
-                    ? "bg-accent-text text-white border-accent-text shadow-sm"
-                    : "bg-white text-ink-muted border-hairline hover:border-accent/60 hover:text-accent-text",
-                )}
                 aria-pressed={active}
                 aria-label={`作业总体小结 ${opt.label}（${opt.desc}）`}
+                className={cn(
+                  "relative z-10 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
+                  active ? "text-white" : "text-ink-muted hover:text-ink",
+                )}
               >
-                <span>{opt.label}</span>
-                <span className={cn("text-[10px]", active ? "text-white/80" : "text-ink-subtle")}>
+                {active && (
+                  <motion.span
+                    layoutId="weekend-length-indicator"
+                    className="absolute inset-0 bg-accent-text rounded-md shadow-sm"
+                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                  />
+                )}
+                <span className="relative z-10">{opt.label}</span>
+                <span className={cn("relative z-10 text-[10px]", active ? "text-white/80" : "text-ink-subtle")}>
                   {opt.desc}
                 </span>
                 {opt.tag && (
                   <span
                     className={cn(
-                      "inline-flex items-center px-1 py-0.5 rounded text-[10px] font-semibold",
+                      "relative z-10 inline-flex items-center px-1 py-0.5 rounded text-[10px] font-semibold",
                       active
                         ? "bg-white/20 text-white"
                         : opt.value === "0.5x"
@@ -661,22 +704,71 @@ export function WeekendAiFeedbackPanel({
         </button>
       </div>
 
-      {/* 状态信息 */}
-      {status.type === "error" && (
-        <div className="rounded-lg bg-danger/10 text-danger text-xs px-3 py-2">
-          ⚠️ {status.message}
-        </div>
-      )}
+      {/* ⭐ Stage 19.2：AI 生成中 5 段假进度条（纯 UI 模拟） */}
+      <AnimatePresence>
+        {status.type === "generating" && (
+          <motion.div
+            key="progress"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.25 }}
+            className="overflow-hidden space-y-1.5"
+          >
+            <div className="h-1 bg-canvas-alt rounded-full overflow-hidden">
+              <motion.div
+                className="h-full bg-accent-text"
+                initial={{ width: "0%" }}
+                animate={{
+                  width: `${Math.min(95, ((progressStage + 1) / PROGRESS_STAGES.length) * 100)}%`,
+                }}
+                transition={{ duration: 0.6, ease: "easeOut" }}
+              />
+            </div>
+            <p className="text-xs text-ink-muted">
+              {PROGRESS_STAGES[progressStage]}… · 预计还需{" "}
+              {Math.max(1, (PROGRESS_STAGES.length - 1 - progressStage) * 3)}s
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {status.type === "done" && (
-        <div className="rounded-lg bg-success-soft/30 text-success-text text-xs px-3 py-2 flex items-center gap-2">
-          <CheckIcon className="w-3.5 h-3.5 shrink-0" />
-          <span>
-            AI 反馈已生成（{status.result.subject} · {status.result.topic} · 知识点数：{status.result.keyPoints.length}）
-            {status.result.totalTokens > 0 && ` · token：${status.result.totalTokens}`}
-          </span>
-        </div>
-      )}
+      {/* 状态信息 */}
+      <AnimatePresence mode="wait">
+        {status.type === "error" && (
+          <motion.div
+            key="err"
+            initial={{ opacity: 0, x: -8 }}
+            animate={{
+              opacity: 1,
+              x: [0, -4, 4, -3, 3, 0],
+            }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.4 }}
+            className="rounded-lg bg-danger-soft text-danger-text text-xs px-3 py-2"
+          >
+            ⚠️ {status.message}
+          </motion.div>
+        )}
+
+        {status.type === "done" && (
+          <motion.div
+            key="done"
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="relative overflow-hidden rounded-lg bg-success-soft/30 text-success-text text-xs px-3 py-2 flex items-center gap-2"
+          >
+            <CheckIcon className="w-3.5 h-3.5 shrink-0" />
+            <span>
+              AI 反馈已生成（{status.result.subject} · {status.result.topic} · 知识点数：{status.result.keyPoints.length}）
+              {status.result.totalTokens > 0 && ` · token：${status.result.totalTokens}`}
+            </span>
+            <SuccessBurst show={status.type === "done"} count={6} color="var(--success)" distance={28} />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* 统计备注 */}
       <div className="text-[10px] text-ink-subtle leading-relaxed">

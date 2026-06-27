@@ -19,6 +19,7 @@
  */
 
 import { useEffect, useState, useRef } from "react";
+import { motion } from "motion/react";
 import {
   QUICK_FILL_OPTIONS,
   classifyCellValue,
@@ -28,7 +29,7 @@ import {
   type WeekendStudent,
   type FieldColumnMap,
 } from "@/lib/mistake/weekend-types";
-import { CloseIcon, AddIcon, SearchIcon } from "@/components/icons";
+import { CloseIcon, AddIcon, SearchIcon, WeekendIcon } from "@/components/icons";
 // ⭐ Stage 16：中文 + 拼音首字母 substring 搜索
 import { matchStudent } from "@/lib/mistake/student-search";
 
@@ -404,14 +405,23 @@ export function WeekendStudentTable({
             </thead>
             <tbody>
               {students.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={totalCols}
-                    className="px-3 py-8 text-center text-sm text-ink-muted"
-                  >
-                    这个 Sheet 没有学生数据 · 点上方"添加学生"或在 Excel 里准备好名单
+                <motion.tr
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.35 }}
+                >
+                  <td colSpan={totalCols} className="px-3 py-12">
+                    <div className="flex flex-col items-center justify-center gap-3 text-ink-muted">
+                      <WeekendIcon className="size-16 opacity-50" />
+                      <div className="text-center space-y-1">
+                        <p className="text-sm font-medium text-ink">这个 Sheet 还没有学生</p>
+                        <p className="text-xs">
+                          请在底部「添加学生」按钮新增,或在 Excel 模板里准备好名单再上传
+                        </p>
+                      </div>
+                    </div>
                   </td>
-                </tr>
+                </motion.tr>
               ) : (
                 students.map((student) => {
                   // ⭐ Stage 16：搜索命中判定（中文 + 拼音首字母 substring）
