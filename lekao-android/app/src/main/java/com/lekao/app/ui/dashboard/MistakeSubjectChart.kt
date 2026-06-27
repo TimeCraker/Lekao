@@ -14,22 +14,21 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
-import com.patrykandpatrick.vico.compose.cartesian.axis.rememberBottomAxis
-import com.patrykandpatrick.vico.compose.cartesian.axis.rememberStartAxis
-import com.patrykandpatrick.vico.compose.cartesian.layer.rememberColumnCartesianLayer
-import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
-import com.patrykandpatrick.vico.compose.cartesian.rememberVicoScrollState
-import com.patrykandpatrick.vico.core.cartesian.data.CartesianChartModelProducer
-import com.patrykandpatrick.vico.core.cartesian.data.columnSeries
+import com.patrykandpatrick.vico.compose.axis.horizontal.rememberBottomAxis
+import com.patrykandpatrick.vico.compose.axis.vertical.rememberStartAxis
+import com.patrykandpatrick.vico.compose.chart.Chart
+import com.patrykandpatrick.vico.core.chart.column.ColumnChart
+import com.patrykandpatrick.vico.core.entry.ChartEntryModelProducer
+import com.patrykandpatrick.vico.core.entry.entryOf
 
 /**
  * 错题集分类统计柱状图 · T55 M15
  *
  * 按学科分类展示错题数量（mock 数据 → v0.3.0 接后端 /lekao/mistake/stats）
+ *
+ * Vico 1.16.0 API
  */
 @Composable
 fun MistakeSubjectChart(
@@ -40,23 +39,11 @@ fun MistakeSubjectChart(
     val mockSubjects = remember { listOf("语文", "数学", "英语", "物理", "化学", "历史") }
     val mockCounts = remember { listOf(12, 24, 18, 7, 9, 5) }
 
-    val modelProducer = remember { CartesianChartModelProducer.build() }
+    val modelProducer = remember { ChartEntryModelProducer() }
+    val chart = remember { ColumnChart() }
 
     LaunchedEffect(refreshTrigger, mockCounts) {
-        modelProducer.tryRunTransaction {
-            columnSeries { series(mockCounts.map { it.toFloat() }) }
-        }
-    }
-
-    val columnColors = remember {
-        listOf(
-            Color(0xFF1976D2), // blue
-            Color(0xFFE65100), // orange
-            Color(0xFF2E7D32), // green
-            Color(0xFF6A1B9A), // purple
-            Color(0xFFC62828), // red
-            Color(0xFF00695C), // teal
-        )
+        modelProducer.setEntries(mockCounts.mapIndexed { idx, v -> entryOf(x = idx.toFloat(), y = v.toFloat()) })
     }
 
     Card(
@@ -77,14 +64,11 @@ fun MistakeSubjectChart(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(Modifier.height(12.dp))
-            CartesianChartHost(
-                chart = rememberCartesianChart(
-                    rememberColumnCartesianLayer(),
-                    startAxis = rememberStartAxis(),
-                    bottomAxis = rememberBottomAxis(),
-                ),
-                modelProducer = modelProducer,
-                scrollState = rememberVicoScrollState(),
+            Chart(
+                chart = chart,
+                model = modelProducer.requireModel(),
+                startAxis = rememberStartAxis(),
+                bottomAxis = rememberBottomAxis(),
                 modifier = Modifier.fillMaxWidth().height(160.dp),
             )
         }

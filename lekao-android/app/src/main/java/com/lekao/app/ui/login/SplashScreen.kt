@@ -36,6 +36,7 @@ import com.lekao.app.data.api.RetrofitClient
 import com.lekao.app.data.local.TokenStore
 import com.lekao.app.util.BiometricHelper
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 
 /**
@@ -82,7 +83,7 @@ fun SplashScreen(
             return@LaunchedEffect
         }
         // 有本地 user, 检查是否需要生物识别
-        val biometricEnabled = tokenStore.biometricEnabledFlow.collectAsState(initial = false).value
+        val biometricEnabled = tokenStore.biometricEnabledFlow.firstOrNull() ?: false
         val capability = activity?.let { BiometricHelper.checkCapability(it) } ?: BiometricHelper.Capability.NO_HARDWARE
         if (!biometricEnabled || capability == BiometricHelper.Capability.NO_HARDWARE || capability == BiometricHelper.Capability.UNSUPPORTED) {
             // 不需要生物识别

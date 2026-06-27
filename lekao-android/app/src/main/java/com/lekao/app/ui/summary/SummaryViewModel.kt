@@ -15,6 +15,7 @@ import com.lekao.app.data.api.SummarizeRequest
 import com.lekao.app.data.api.SummaryTemplate
 import com.lekao.app.data.api.UserDto
 import com.lekao.app.data.local.TokenStore
+import com.lekao.app.util.ImageCompressor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -164,8 +165,9 @@ class SummaryViewModel(
             val reader = BufferedReader(InputStreamReader(body.byteStream(), Charsets.UTF_8))
             var line: String?
             while (reader.readLine().also { line = it } != null) {
-                if (line.isNullOrBlank()) continue
-                val data = if (line.startsWith("data:")) line.removePrefix("data:").trim() else line.trim()
+                val currentLine = line ?: continue
+                if (currentLine.isBlank()) continue
+                val data = if (currentLine.startsWith("data:")) currentLine.removePrefix("data:").trim() else currentLine.trim()
                 if (data.isEmpty()) continue
                 if (data == "[DONE]") break
                 try {

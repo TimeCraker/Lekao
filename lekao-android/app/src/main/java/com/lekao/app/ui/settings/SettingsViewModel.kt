@@ -77,7 +77,7 @@ class SettingsViewModel(
         _state.update { it.copy(language = lang) }
         viewModelScope.launch {
             tokenStore.setLanguage(lang)
-            LocaleManager.setLanguage(context, lang)
+            LocaleManager.setLanguage(lang)
         }
     }
 

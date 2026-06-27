@@ -88,10 +88,13 @@ class LekaoApp : Application(), Configuration.Provider {
     companion object {
         private const val TAG = "LekaoApp"
 
+        // onCreate() 中赋值,非空 Application 实例
+        // 改为非空 lateinit 让 ViewModel factory 可以直接当 Context 用
+        // (Application.onCreate 在任何 Activity/ViewModel 之前调用)
         @Volatile
-        var instance: LekaoApp? = null
+        lateinit var instance: LekaoApp
             private set
 
-        fun get(): LekaoApp = instance ?: throw IllegalStateException("LekaoApp 未初始化")
+        fun get(): LekaoApp = instance
     }
 }

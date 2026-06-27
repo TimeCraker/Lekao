@@ -115,8 +115,9 @@ class FeedbackViewModel(
             val reader = BufferedReader(body.byteStream().reader(Charsets.UTF_8))
             var line: String?
             while (reader.readLine().also { line = it } != null) {
-                if (line.isNullOrBlank()) continue
-                val data = if (line.startsWith("data:")) line.removePrefix("data:").trim() else line.trim()
+                val currentLine = line ?: continue
+                if (currentLine.isBlank()) continue
+                val data = if (currentLine.startsWith("data:")) currentLine.removePrefix("data:").trim() else currentLine.trim()
                 if (data.isEmpty() || data == "[DONE]") continue
                 try {
                     val chunk = com.google.gson.Gson().fromJson(data, SummarizeChunk::class.java)

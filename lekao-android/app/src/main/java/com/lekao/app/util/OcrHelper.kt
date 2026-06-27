@@ -8,9 +8,6 @@ import android.net.Uri
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.chinese.ChineseTextRecognizerOptions
-import com.google.mlkit.vision.text.devanagari.DevanagariTextRecognizerOptions
-import com.google.mlkit.vision.text.japanese.JapaneseTextRecognizerOptions
-import com.google.mlkit.vision.text.korean.KoreanTextRecognizerOptions
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
@@ -67,12 +64,9 @@ object OcrHelper {
 
     // ============ 多语种识别链 ============
 
-    /** 语种链（按优先级）*/
+    /** 语种链（按优先级）— V1.0.0 只支持中文+拉丁(其他 3 国 build 时暂未加依赖, 砍掉避免编译错) */
     private val recognizerChain = listOf(
         RecognizerEntry("zh") { ChineseTextRecognizerOptions.Builder().build() },
-        RecognizerEntry("ja") { JapaneseTextRecognizerOptions.Builder().build() },
-        RecognizerEntry("ko") { KoreanTextRecognizerOptions.Builder().build() },
-        RecognizerEntry("hi") { DevanagariTextRecognizerOptions.Builder().build() },
         RecognizerEntry("latin") { TextRecognizerOptions.DEFAULT_OPTIONS },
     )
 

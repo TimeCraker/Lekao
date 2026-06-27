@@ -4,8 +4,6 @@ import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideIntoContainer
-import androidx.compose.animation.slideOutOfContainer
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -88,7 +86,7 @@ fun AppNavigation(
 
         composable(Routes.Login.path) {
             LoginScreen(
-                onNavigateToDashboard = {
+                onLoginSuccess = {
                     navController.navigate(Routes.Dashboard.path) {
                         popUpTo(Routes.Login.path) { inclusive = true }
                     }
@@ -203,7 +201,8 @@ fun AppNavigation(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToCoinLog = { navController.navigate(Routes.AdminCoinLog.path) },
                 onNavigateToAuditLog = { navController.navigate(Routes.AdminAuditLog.path) },
-                onNavigateToUserBan = { navController.navigate(Routes.AdminUserBan.path) }
+                onNavigateToUserBan = { navController.navigate(Routes.AdminUserBan.path) },
+                onNavigateToMistakeList = { navController.navigate(Routes.MistakeDrafts.path) }
             )
         }
 

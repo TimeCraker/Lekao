@@ -80,7 +80,7 @@ class SseClient(
 
                     val response = client.newCall(request).execute()
                     if (!response.isSuccessful) {
-                        val code = response.code()
+                        val code: Int = response.code
                         Log.w(TAG, "SSE 连接失败 HTTP $code")
                         onError?.let { it(java.io.IOException("SSE HTTP $code")) }
                         response.close()

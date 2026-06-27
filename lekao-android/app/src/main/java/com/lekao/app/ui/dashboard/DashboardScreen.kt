@@ -20,7 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Assignment
 import androidx.compose.material.icons.automirrored.outlined.Comment
-import androidx.compose.material.icons.automirrored.outlined.Lightbulb
+import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material.icons.outlined.AutoStories
 import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material.icons.outlined.ChevronRight
@@ -81,6 +81,7 @@ fun DashboardScreen(
     viewModel: DashboardViewModel = viewModel(factory = DashboardViewModel.factory()),
 ) {
     val state by viewModel.state.collectAsState()
+    val refreshTrigger = state.refreshTrigger
 
     Scaffold(
         topBar = {
@@ -101,6 +102,7 @@ fun DashboardScreen(
     ) { paddingValues ->
         DashboardContent(
             user = state.user,
+            refreshTrigger = refreshTrigger,
             paddingValues = paddingValues,
             onNavigateToSummary = onNavigateToSummary,
             onNavigateToFeedback = onNavigateToFeedback,
@@ -115,6 +117,7 @@ fun DashboardScreen(
 @Composable
 private fun DashboardContent(
     user: UserDto?,
+    refreshTrigger: Int,
     paddingValues: PaddingValues,
     onNavigateToSummary: () -> Unit,
     onNavigateToFeedback: () -> Unit,
@@ -145,15 +148,15 @@ private fun DashboardContent(
         }
         // T-Coin 30 天曲线 (跨 2 列)
         item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(2) }) {
-            CoinChartCard(refreshTrigger = state.refreshTrigger)
+            CoinChartCard(refreshTrigger = refreshTrigger)
         }
         // 错题分类统计柱状图 (跨 2 列 · T55 M15)
         item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(2) }) {
-            MistakeSubjectChart(refreshTrigger = state.refreshTrigger)
+            MistakeSubjectChart(refreshTrigger = refreshTrigger)
         }
         // 灵感墙趋势折线图 (跨 2 列 · T55 M15)
         item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(2) }) {
-            IdeasTrendChart(refreshTrigger = state.refreshTrigger)
+            IdeasTrendChart(refreshTrigger = refreshTrigger)
         }
         // 6 个功能入口
         items(DashboardEntry.entries) { entry ->
@@ -370,7 +373,7 @@ enum class DashboardEntry(
     IDEAS(
         labelRes = R.string.dashboard_entry_ideas,
         subtitleRes = R.string.dashboard_entry_ideas_sub,
-        icon = Icons.AutoMirrored.Outlined.Lightbulb,
+        icon = Icons.Outlined.Lightbulb,
         bgColor = Color(0xFFF3E5F5),
         iconColor = Color(0xFF6A1B9A),
     ),

@@ -19,6 +19,9 @@
 
     <!-- ============ 登录 F01/F02 ============ -->
     <string name="login_title">登录</string>
+    <string name="login_subtitle">用邮箱登录乐考 AI 助教</string>
+    <string name="login_mode_password">密码</string>
+    <string name="login_mode_code">验证码</string>
     <string name="login_email">邮箱</string>
     <string name="login_password">密码</string>
     <string name="login_password_placeholder">至少 8 位</string>
@@ -75,11 +78,6 @@
     <string name="feedback_input_hint">简要描述今天的课堂情况</string>
     <string name="feedback_generate">生成反馈</string>
 
-    <!-- ============ 课堂反馈 F05 ============ -->
-    <string name="feedback_title">家长反馈</string>
-    <string name="feedback_input_hint">简要描述今天的课堂情况</string>
-    <string name="feedback_generate">生成反馈</string>
-
     <!-- ============ 错题集 F06 ============ -->
     <string name="mistake_title">错题集</string>
     <string name="mistake_take_photo">拍照</string>
@@ -128,6 +126,7 @@
     <string name="notification_channel_idea">灵感墙</string>
     <string name="notification_channel_system">系统通知</string>
     <string name="notification_channel_comment">评论回复</string>
+    <string name="notification_group_summary">乐考通知</string>
 
     <!-- ============ 错误提示 ============ -->
     <string name="error_network">网络错误，请检查连接</string>

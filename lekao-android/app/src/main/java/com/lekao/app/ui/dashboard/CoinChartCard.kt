@@ -16,21 +16,21 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
-import com.patrykandpatrick.vico.compose.cartesian.axis.rememberBottomAxis
-import com.patrykandpatrick.vico.compose.cartesian.axis.rememberStartAxis
-import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLineCartesianLayer
-import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
-import com.patrykandpatrick.vico.compose.cartesian.rememberVicoScrollState
-import com.patrykandpatrick.vico.core.cartesian.data.CartesianChartModelProducer
-import com.patrykandpatrick.vico.core.cartesian.data.lineSeries
+import com.patrykandpatrick.vico.compose.axis.horizontal.rememberBottomAxis
+import com.patrykandpatrick.vico.compose.axis.vertical.rememberStartAxis
+import com.patrykandpatrick.vico.compose.chart.Chart
+import com.patrykandpatrick.vico.core.chart.line.LineChart
+import com.patrykandpatrick.vico.core.entry.ChartEntryModelProducer
+import com.patrykandpatrick.vico.core.entry.entryOf
 
 /**
  * T-Coin 30 天变化曲线 · T20 M15
  *
- * Vico 2.0.0-beta.1 实现
- *
- * v0.2.0 (D1-F T62) 接真实数据。当前 V1.0.0 用 mock 展示组件能渲染。
+ * Vico 1.16.0 真实 API（不是 2.0 cartesian）:
+ * - Chart composable (ChartsKt)
+ * - lineChart() factory
+ * - rememberBottomAxis / rememberStartAxis
+ * - ChartEntryModelProducer.setEntries + entryOf
  */
 @Composable
 fun CoinChartCard(
@@ -38,14 +38,13 @@ fun CoinChartCard(
     modifier: Modifier = Modifier,
 ) {
     // 30 天 mock 数据: 简单递增 + 轻微波动
-    val mockData = remember { List(30) { idx -> (idx * 6 + (idx % 4) * 11) } }
+    val mockData = remember { List(30) { idx -> (idx * 6 + (idx % 4) * 11).toFloat() } }
 
-    val modelProducer = remember { CartesianChartModelProducer.build() }
+    val modelProducer = remember { ChartEntryModelProducer() }
+    val chart = remember { LineChart() }
 
     LaunchedEffect(refreshTrigger, mockData) {
-        modelProducer.tryRunTransaction {
-            lineSeries { series(mockData.map { it.toFloat() }) }
-        }
+        modelProducer.setEntries(mockData.mapIndexed { idx, v -> entryOf(x = idx.toFloat(), y = v) })
     }
 
     Card(
@@ -70,14 +69,11 @@ fun CoinChartCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(Modifier.height(12.dp))
-            CartesianChartHost(
-                chart = rememberCartesianChart(
-                    rememberLineCartesianLayer(),
-                    startAxis = rememberStartAxis(),
-                    bottomAxis = rememberBottomAxis(),
-                ),
-                modelProducer = modelProducer,
-                scrollState = rememberVicoScrollState(),
+            Chart(
+                chart = chart,
+                model = modelProducer.requireModel(),
+                startAxis = rememberStartAxis(),
+                bottomAxis = rememberBottomAxis(),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(180.dp),
