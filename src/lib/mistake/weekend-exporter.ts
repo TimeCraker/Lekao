@@ -76,6 +76,76 @@ function ensureThinBorder(ws: ExcelJS.Worksheet, ref: string): void {
 }
 
 /**
+ * ⭐ Stage 7.4：给所有数据单元格补统一的 alignment（水平居中 + 垂直居中 + 自动换行）
+ *
+ * 用户反馈：手动新增的学生行字体大小/对齐/换行和 Excel 原行不一致
+ * 原因：原 R3-R42 单元格继承模板样式（已设好），但 R43+ 写入时是空白 cell → 无 alignment
+ * 解法：writeStudentRow 时显式设置 alignment + wrapText
+ */
+function ensureCellAlignment(
+  ws: ExcelJS.Worksheet,
+  ref: string,
+  options: { wrapText?: boolean; horizontal?: ExcelJS.Alignment["horizontal"] } = {},
+): void {
+  const cell = ws.getCell(ref);
+  const existing = cell.style || {};
+  const existingAlign = existing.alignment || {};
+  cell.style = {
+    ...existing,
+    alignment: {
+      ...existingAlign,
+      vertical: existingAlign.vertical ?? "middle",
+      horizontal: options.horizontal ?? existingAlign.horizontal ?? "center",
+      wrapText: options.wrapText ?? existingAlign.wrapText ?? true,
+    },
+  };
+}
+
+/**
+ * ⭐ Stage 7.4：按数据列内容计算合适的列宽（feedback 列按最长内容撑开）
+ *
+ * Excel 列宽单位是字符宽度（中文字符约 2 个单位）
+ * - 反馈列：取所有学生反馈的最大长度 → 25~60 之间
+ * - 错题列：固定 18（题号不超 6 字）
+ * - 姓名列：固定 14
+ * - 序号列：固定 6
+ */
+function autoAdjustColumnWidths(
+  ws: ExcelJS.Worksheet,
+  sheet: WeekendSheet,
+): void {
+  const fc = sheet.fieldColumns;
+  const cols = ws.columns;
+  if (!cols || cols.length === 0) return;
+
+  // 收集所有学生反馈长度
+  const allFeedbacks = sheet.students.map((s) => s.feedback || "");
+  const maxFeedbackLen = allFeedbacks.reduce(
+    (max, f) => Math.max(max, [...f].length),
+    0,
+  );
+  // 反馈列宽：25~60 字符（clamp 避免太窄或太宽）
+  const feedbackColWidth = Math.min(60, Math.max(25, maxFeedbackLen + 4));
+
+  // 设置各列宽度（1-based col index）
+  if (fc.serial !== null && cols[fc.serial - 1]) {
+    cols[fc.serial - 1].width = 6;
+  }
+  if (cols[fc.name - 1]) {
+    cols[fc.name - 1].width = 14;
+  }
+  for (let i = 0; i < fc.qNumbersCols.length; i++) {
+    const c = fc.qNumbersCols[i];
+    if (cols[c - 1]) {
+      cols[c - 1].width = 18;
+    }
+  }
+  if (fc.feedback !== null && cols[fc.feedback - 1]) {
+    cols[fc.feedback - 1].width = feedbackColWidth;
+  }
+}
+
+/**
  * ⭐ Stage 6：把所有数据列的列号收集出来（清空/写入/边框都用）
  */
 function getDataCols(fc: FieldColumnMap): number[] {
@@ -117,9 +187,11 @@ function writeStudentRow(
       `${colLetter(fc.serial)}${excelRow}`,
       student.serialNumber || undefined,
     );
+    ensureCellAlignment(ws, `${colLetter(fc.serial)}${excelRow}`);
   }
   // 姓名列
   setCellText(ws, `${colLetter(fc.name)}${excelRow}`, student.name);
+  ensureCellAlignment(ws, `${colLetter(fc.name)}${excelRow}`);
   // 错题列（1-N）
   if (fc.qNumbersCols[0] !== undefined) {
     setCellText(
@@ -127,6 +199,7 @@ function writeStudentRow(
       `${colLetter(fc.qNumbersCols[0])}${excelRow}`,
       student.qNumbersInput,
     );
+    ensureCellAlignment(ws, `${colLetter(fc.qNumbersCols[0])}${excelRow}`);
   }
   if (fc.qNumbersCols[1] !== undefined) {
     setCellText(
@@ -134,14 +207,19 @@ function writeStudentRow(
       `${colLetter(fc.qNumbersCols[1])}${excelRow}`,
       student.qNumbersInput2 ?? "",
     );
+    ensureCellAlignment(ws, `${colLetter(fc.qNumbersCols[1])}${excelRow}`);
   }
-  // 反馈列
+  // 反馈列（⭐ Stage 7.4：wrapText=true 让长反馈自动换行）
   if (fc.feedback !== null) {
     setCellText(
       ws,
       `${colLetter(fc.feedback)}${excelRow}`,
       student.feedback,
     );
+    ensureCellAlignment(ws, `${colLetter(fc.feedback)}${excelRow}`, {
+      wrapText: true,
+      horizontal: "left", // 反馈列左对齐（中文阅读体验更好）
+    });
   }
   // ⭐ v0.3：给所有数据列补 thin 框线
   for (const col of getDataCols(fc)) {
@@ -201,6 +279,9 @@ function updateSheetInPlace(
     const excelRow = i + 3; // R3 起
     writeStudentRow(ws, excelRow, student, sheet.fieldColumns);
   }
+
+  // ⭐ Stage 7.4：按内容长度自适应列宽（特别是反馈列）
+  autoAdjustColumnWidths(ws, sheet);
 }
 
 /** Excel 列号转字母（1=A, 2=B, ...）*/
