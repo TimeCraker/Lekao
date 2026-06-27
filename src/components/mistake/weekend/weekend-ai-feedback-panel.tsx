@@ -86,6 +86,16 @@ const ACCEPT = "image/png,image/jpeg,image/webp";
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024; // 与服务端 MAX_IMAGE_BYTES 一致
 const MAX_IMAGES = 5; // 与服务端 MAX_IMAGES_PER_REQUEST 一致
 
+// ⭐ Stage 18：作业总体小结字数挡位（5 档 · 1x 默认 = 至少 2 倍旧基准）
+const SUMMARY_LENGTH_OPTIONS = [
+  { value: "0.5x", label: "0.5x", desc: "75-150 字", tag: "压缩" },
+  { value: "1x", label: "1x", desc: "150-300 字", tag: "标准" },
+  { value: "1.5x", label: "1.5x", desc: "225-450 字", tag: "" },
+  { value: "2x", label: "2x", desc: "300-600 字", tag: "" },
+  { value: "3x", label: "3x", desc: "450-900 字", tag: "" },
+] as const;
+type SummaryLengthValue = (typeof SUMMARY_LENGTH_OPTIONS)[number]["value"];
+
 // ============================================
 // 组件
 // ============================================
@@ -103,6 +113,8 @@ export function WeekendAiFeedbackPanel({
   const [isProcessing, setIsProcessing] = useState(false);
   const [pasteHint, setPasteHint] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  // ⭐ Stage 18：作业总体小结字数挡位（默认 1x 标准）
+  const [summaryLength, setSummaryLength] = useState<SummaryLengthValue>("1x");
 
   const inputRef = useRef<HTMLInputElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
@@ -324,6 +336,7 @@ export function WeekendAiFeedbackPanel({
             name: s.name,
             qNumbersInput: s.qNumbersInput,
           })),
+          summaryLength,
         }),
       });
 
@@ -355,7 +368,7 @@ export function WeekendAiFeedbackPanel({
         message: err instanceof Error ? err.message : "网络错误，请重试",
       });
     }
-  }, [images, students, sheetName, date, onFeedbackReady]);
+  }, [images, students, sheetName, date, summaryLength, onFeedbackReady]);
 
   // ============================================
   // 复制反馈（保留兼容，但本次组件内未用到）
@@ -530,6 +543,61 @@ export function WeekendAiFeedbackPanel({
           ⚠️ {err}
         </div>
       )}
+
+      {/* ============================================
+          ⭐ Stage 18：作业总体小结字数挡位（5 档 · 1x 标准默认）
+          ============================================ */}
+      <div className="rounded-lg border border-hairline bg-canvas-alt/40 px-3 py-2.5">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-1.5 text-xs font-medium text-ink-muted">
+            <LightbulbIcon className="w-3.5 h-3.5 text-accent-text" />
+            作业总体小结字数
+          </div>
+          <span className="text-[10px] text-ink-subtle">
+            反馈条目（25-55 字/条）不受影响
+          </span>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {SUMMARY_LENGTH_OPTIONS.map((opt) => {
+            const active = summaryLength === opt.value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setSummaryLength(opt.value)}
+                disabled={isReadonly}
+                className={cn(
+                  "inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition disabled:opacity-50 disabled:cursor-not-allowed",
+                  active
+                    ? "bg-accent-text text-white border-accent-text shadow-sm"
+                    : "bg-white text-ink-muted border-hairline hover:border-accent/60 hover:text-accent-text",
+                )}
+                aria-pressed={active}
+                aria-label={`作业总体小结 ${opt.label}（${opt.desc}）`}
+              >
+                <span>{opt.label}</span>
+                <span className={cn("text-[10px]", active ? "text-white/80" : "text-ink-subtle")}>
+                  {opt.desc}
+                </span>
+                {opt.tag && (
+                  <span
+                    className={cn(
+                      "inline-flex items-center px-1 py-0.5 rounded text-[10px] font-semibold",
+                      active
+                        ? "bg-white/20 text-white"
+                        : opt.value === "0.5x"
+                          ? "bg-ink-subtle/15 text-ink-muted"
+                          : "bg-accent-soft text-accent-text",
+                    )}
+                  >
+                    {opt.tag}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
       {/* ============================================
           统计预览 + 生成按钮

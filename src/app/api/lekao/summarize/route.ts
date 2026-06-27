@@ -151,7 +151,7 @@ type RequestBody = {
   date: string;
   feedbackCount?: number;
   feedbackLength?: never; // 已废弃（2026-06-22）：改用 summaryLength
-  summaryLength?: "standard" | "1.5x" | "2x" | "3x";
+  summaryLength?: "0.5x" | "1x" | "1.5x" | "2x" | "3x";
   contentSections?: number;
   requirementCount?: number;
   showFeedback?: boolean;

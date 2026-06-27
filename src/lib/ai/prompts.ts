@@ -122,7 +122,7 @@ export function buildFeedbackPrompt({
   className = "超火1班",
   date,
   feedbackCount = 20,
-  summaryLength = "standard",
+  summaryLength = "1x",
 }: {
   subject: string;
   topic: string;
@@ -131,32 +131,41 @@ export function buildFeedbackPrompt({
   date: string;
   feedbackCount?: number;
   /**
-   * 作业总体小结字数挡位（2026-06-22 用户决策 4 挡）
+   * 作业总体小结字数挡位（2026-06-27 扩为 5 挡）
+   * - "0.5x" = 75-150 字（原来"标准"的旧基准，等比压缩）
+   * - "1x"   = 150-300 字（默认，等于原"标准"）
+   * - "1.5x" = 225-450 字
+   * - "2x"   = 300-600 字
+   * - "3x"   = 450-900 字
    * 只控制"作业总体小结"段落的字数，反馈条目（一条条的）固定 25-55 字/条
    */
-  summaryLength?: "standard" | "1.5x" | "2x" | "3x";
+  summaryLength?: "0.5x" | "1x" | "1.5x" | "2x" | "3x";
 }): string {
   const kp = keyPoints.length > 0 ? keyPoints.join("、") : "本节课内容";
 
-  // ⭐ 2026-06-22：4 挡字数 — 只控"作业总体小结"
+  // ⭐ 2026-06-27：5 挡字数 — 只控"作业总体小结"
   // 反馈条目（一条条的）固定 25-55 字（不按挡位变）
   const summaryLengthGuide =
-    summaryLength === "1.5x"
-      ? "225-450 字"
-      : summaryLength === "2x"
-        ? "300-600 字"
-        : summaryLength === "3x"
-          ? "450-900 字"
-          : "150-300 字";
+    summaryLength === "0.5x"
+      ? "75-150 字"
+      : summaryLength === "1.5x"
+        ? "225-450 字"
+        : summaryLength === "2x"
+          ? "300-600 字"
+          : summaryLength === "3x"
+            ? "450-900 字"
+            : "150-300 字"; // 1x 或缺省
 
   const summaryLengthLabel =
-    summaryLength === "1.5x"
-      ? "×1.5"
-      : summaryLength === "2x"
-        ? "×2"
-        : summaryLength === "3x"
-          ? "×3"
-          : "标准";
+    summaryLength === "0.5x"
+      ? "×0.5"
+      : summaryLength === "1.5x"
+        ? "×1.5"
+        : summaryLength === "2x"
+          ? "×2"
+          : summaryLength === "3x"
+            ? "×3"
+            : "标准"; // 1x 或缺省
 
   return `你是一位助教。根据以下信息，生成作业/堂测反馈（作业总体小结字数：${summaryLengthLabel}）。
 
@@ -197,7 +206,7 @@ export const TEXT_PROMPT = ({
   className?: string;
   date: string;
   feedbackCount?: number;
-  summaryLength?: "standard" | "1.5x" | "2x" | "3x";
+  summaryLength?: "0.5x" | "1x" | "1.5x" | "2x" | "3x";
   contentSections?: number;
   requirementCount?: number;
   showFeedback?: boolean;
@@ -236,6 +245,7 @@ export function buildBatchFeedbackPrompt({
   students,
   sheetName,
   date,
+  summaryLength = "1x",
 }: {
   subject: string;
   topic: string;
@@ -243,12 +253,25 @@ export function buildBatchFeedbackPrompt({
   students: { name: string; qNumbers: string }[];
   sheetName: string;
   date: string;
+  summaryLength?: "0.5x" | "1x" | "1.5x" | "2x" | "3x";
 }): string {
   const kp = keyPoints.length > 0 ? keyPoints.join("\n- ") : "本节课内容";
 
   const studentList = students
     .map((s) => `  ${s.name}：${s.qNumbers}`)
     .join("\n");
+
+  // ⭐ Stage 18：作业总体小结字数挡位（5 挡 · 1x 默认 = 150-300 字）
+  const summaryLengthGuide =
+    summaryLength === "0.5x"
+      ? "75-150 字"
+      : summaryLength === "1.5x"
+        ? "225-450 字"
+        : summaryLength === "2x"
+          ? "300-600 字"
+          : summaryLength === "3x"
+            ? "450-900 字"
+            : "150-300 字"; // 1x 或缺省
 
   return `你是一位经验丰富的助教。请根据以下讲义知识点和每个学生的错题，生成个性化的课后反馈。
 
@@ -267,7 +290,7 @@ ${studentList}
    - 每条反馈 25-55 字，语气像老师批改后的真实评语
 2. 每条反馈以"巩固/加强/掌握/熟练/注意/理解/强化"开头
 3. 不同学生之间开头不要重复
-4. 另外生成一段「本次${ subject }作业总体小结」（3-5 句，包含整体表现 + 典型问题 + 鼓励）
+4. 另外生成一段「本次${ subject }作业总体小结」（${summaryLengthGuide}，包含整体表现 + 典型问题 + 鼓励）
 
 输出格式（严格 JSON，不要 Markdown 代码块标记）：
 {

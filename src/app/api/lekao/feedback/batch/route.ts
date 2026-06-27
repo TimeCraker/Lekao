@@ -16,7 +16,7 @@ import { NextRequest } from "next/server";
 import { getServerSession } from "next-auth";
 import { randomUUID } from "node:crypto";
 import { authOptions } from "@/lib/auth";
-import { generateBatchFeedbacks } from "@/lib/ai/batch-feedback";
+import { generateBatchFeedbacks, DEFAULT_SUMMARY_LENGTH, type SummaryLength } from "@/lib/ai/batch-feedback";
 import { deductCoin } from "@/lib/coin";
 
 export const runtime = "nodejs";
@@ -30,6 +30,9 @@ const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
 const MAX_IMAGES_PER_REQUEST = 5;
 const MAX_STUDENTS_PER_REQUEST = 60;
 
+// ⭐ Stage 18：作业总体小结字数挡位（5 挡 · 1x 默认 = 至少 2 倍旧 0.5x 基准）
+const VALID_SUMMARY_LENGTHS: readonly SummaryLength[] = ["0.5x", "1x", "1.5x", "2x", "3x"];
+
 // ============================================
 // 主路由
 // ============================================
@@ -40,6 +43,7 @@ type RequestBody = {
   sheetName: string;
   date: string;
   students: { name: string; qNumbersInput: string }[];
+  summaryLength?: string;
 };
 
 export async function POST(req: NextRequest) {
@@ -112,6 +116,22 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // ⭐ Stage 18：summaryLength 字数挡位校验（默认 1x = 至少 2 倍旧基准）
+  let summaryLength: SummaryLength = DEFAULT_SUMMARY_LENGTH;
+  if (body.summaryLength !== undefined) {
+    if (
+      typeof body.summaryLength !== "string" ||
+      !VALID_SUMMARY_LENGTHS.includes(body.summaryLength as SummaryLength)
+    ) {
+      return jsonError(
+        400,
+        `summaryLength 必须是 ${VALID_SUMMARY_LENGTHS.join(" / ")} 之一`,
+        correlationId,
+      );
+    }
+    summaryLength = body.summaryLength as SummaryLength;
+  }
+
   // 4. 扣费（1 币/Sheet）
   const deductResult = await deductCoin(userId);
   if (!deductResult.success) {
@@ -128,6 +148,7 @@ export async function POST(req: NextRequest) {
       body.students,
       body.sheetName,
       body.date,
+      summaryLength,
     );
 
     return Response.json({

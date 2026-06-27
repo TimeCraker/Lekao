@@ -17,6 +17,10 @@ import { recognizeHandout } from "./vision";
 import { buildBatchFeedbackPrompt, ALL_CORRECT_TEMPLATES } from "./prompts";
 import { classifyCellValue, shouldSkipAiFeedback } from "@/lib/mistake/weekend-types";
 
+/** Stage 18：作业总体小结字数挡位（与 prompts.ts 保持一致） */
+export type SummaryLength = "0.5x" | "1x" | "1.5x" | "2x" | "3x";
+export const DEFAULT_SUMMARY_LENGTH: SummaryLength = "1x";
+
 // ============================================
 // 类型
 // ============================================
@@ -72,6 +76,7 @@ export async function generateBatchFeedbacks(
   students: BatchStudentInput[],
   sheetName: string,
   date: string,
+  summaryLength: SummaryLength = DEFAULT_SUMMARY_LENGTH,
 ): Promise<BatchFeedbackResult> {
   if (lectureImages.length === 0) {
     throw new Error("至少需要 1 张讲义图");
@@ -120,6 +125,7 @@ export async function generateBatchFeedbacks(
       students: batch.map((s) => ({ name: s.name, qNumbers: s.qNumbersInput })),
       sheetName,
       date,
+      summaryLength,
     });
     summary = result.summary; // 取最后一次的小结
     totalTokens += result.tokens;
@@ -194,6 +200,7 @@ async function callBatchAI({
   students,
   sheetName,
   date,
+  summaryLength = DEFAULT_SUMMARY_LENGTH,
 }: {
   subject: string;
   topic: string;
@@ -201,6 +208,7 @@ async function callBatchAI({
   students: { name: string; qNumbers: string }[];
   sheetName: string;
   date: string;
+  summaryLength?: SummaryLength;
 }): Promise<{
   feedbacks: { studentName: string; feedback: string }[];
   summary: string;
@@ -217,6 +225,7 @@ async function callBatchAI({
     students,
     sheetName,
     date,
+    summaryLength,
   });
 
   const response = await getClient().chat.completions.create({

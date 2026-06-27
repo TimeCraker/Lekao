@@ -62,7 +62,7 @@ export function SummaryWorkflow({ template }: Props) {
   const [className, setClassName] = useState("超火1班");
   const [date, setDate] = useState(todayStr);
   const [feedbackCount, setFeedbackCount] = useState(20);
-  const [summaryLength, setSummaryLength] = useState<"standard" | "1.5x" | "2x" | "3x">("standard");
+  const [summaryLength, setSummaryLength] = useState<"1x" | "1.5x" | "2x" | "3x">("1x");
   const [contentSections, setContentSections] = useState(1);
   const [requirementCount, setRequirementCount] = useState(3);
   const [showFeedback, setShowFeedback] = useState(false);
@@ -406,7 +406,7 @@ export function SummaryWorkflow({ template }: Props) {
             <label className="text-xs sm:text-sm text-ink-muted font-medium">作业小结字数</label>
             <div className="flex rounded-lg border border-hairline overflow-hidden">
               {([
-                { value: "standard" as const, label: "标准", sub: "150-300 字" },
+                { value: "1x" as const, label: "标准", sub: "150-300 字" },
                 { value: "1.5x" as const, label: "×1.5", sub: "225-450 字" },
                 { value: "2x" as const, label: "×2", sub: "300-600 字" },
                 { value: "3x" as const, label: "×3", sub: "450-900 字" },
