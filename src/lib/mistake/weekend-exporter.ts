@@ -139,11 +139,18 @@ function ensureCellAlignment(
 }
 
 /**
- * ⭐ Stage 7.4：按数据列内容计算合适的列宽（feedback 列按最长内容撑开）
+ * ⭐ Stage 7.4 + 10：按数据列内容计算合适的列宽
  *
- * Excel 列宽单位是字符宽度（中文字符约 2 个单位）
- * - 反馈列：取所有学生反馈的最大长度 → 25~60 之间
- * - 错题列：固定 18（题号不超 6 字）
+ * Excel 列宽单位是"字符宽度"——中文字符算 2 个单位，全角符号同理。
+ *
+ * 反馈列：合并两数据源（Stage 10 修复）：
+ *   1. sheet.students[].feedback（浏览器里编辑 / AI 填的）
+ *   2. sheet.rawRows[R3+][feedbackCol-1]（用户在原 Excel 里手填的）—— 不合并会算漏，列宽偏小
+ *
+ * 行高：若反馈长 ≥ 20 单位（≈ 10 个汉字）→ 行高 60；否则 22。
+ *
+ * - 反馈列：clamp 18~70
+ * - 错题列：固定 18
  * - 姓名列：固定 14
  * - 序号列：固定 6
  */
@@ -155,16 +162,39 @@ function autoAdjustColumnWidths(
   const cols = ws.columns;
   if (!cols || cols.length === 0) return;
 
-  // 收集所有学生反馈长度
-  const allFeedbacks = sheet.students.map((s) => s.feedback || "");
-  const maxFeedbackLen = allFeedbacks.reduce(
-    (max, f) => Math.max(max, [...f].length),
+  // 1) 收集所有反馈来源（Stage 10：合并浏览器编辑 + 原 Excel 手填）
+  const feedbackSources: string[] = sheet.students.map((s) => s.feedback || "");
+  if (fc.feedback !== null) {
+    for (let r = 2; r < sheet.rawRows.length; r++) {
+      // rawRows[0]=R1 标题, [1]=R2 表头, [2]=R3 起（0-based）
+      const v = sheet.rawRows[r]?.[fc.feedback - 1];
+      if (v != null) feedbackSources.push(String(v));
+    }
+  }
+
+  // 2) 计算"列宽单位"长度（中文 ×2，全角符号 ×2）
+  const visualLen = (s: string): number => {
+    let n = 0;
+    for (const ch of s) {
+      // CJK Unified Ideographs + 全角 ASCII + 全角标点
+      const code = ch.codePointAt(0) ?? 0;
+      if (code > 0x2e80) n += 2; // CJK + 全角范围（含中文日文韩文）
+      else n += 1;
+    }
+    return n;
+  };
+  const maxFeedbackLen = feedbackSources.reduce(
+    (max, f) => Math.max(max, visualLen(f)),
     0,
   );
-  // 反馈列宽：25~60 字符（clamp 避免太窄或太宽）
-  const feedbackColWidth = Math.min(60, Math.max(25, maxFeedbackLen + 4));
 
-  // 设置各列宽度（1-based col index）
+  // 3) 反馈列宽：clamp 18~70（Stage 10 放宽 + 中文加权后更准）
+  const feedbackColWidth = Math.min(70, Math.max(18, maxFeedbackLen + 4));
+
+  // 4) 行高：长反馈（≥ 20 单位 ≈ 10 个汉字）→ 60；否则 22
+  const feedbackRowHeight = maxFeedbackLen >= 20 ? 60 : 22;
+
+  // 5) 设置各列宽度（1-based col index）
   if (fc.serial !== null && cols[fc.serial - 1]) {
     cols[fc.serial - 1].width = 6;
   }
@@ -179,6 +209,12 @@ function autoAdjustColumnWidths(
   }
   if (fc.feedback !== null && cols[fc.feedback - 1]) {
     cols[fc.feedback - 1].width = feedbackColWidth;
+  }
+
+  // 6) 数据行行高（从 R3 起）
+  for (let r = 3; r < 3 + sheet.students.length; r++) {
+    const row = ws.getRow(r);
+    row.height = feedbackRowHeight;
   }
 }
 
