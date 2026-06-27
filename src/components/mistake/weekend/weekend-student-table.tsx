@@ -18,7 +18,7 @@
  * 自动排序逻辑见 weekend-types.ts: sortStudentsByCellValue()
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   QUICK_FILL_OPTIONS,
   classifyCellValue,
@@ -28,7 +28,9 @@ import {
   type WeekendStudent,
   type FieldColumnMap,
 } from "@/lib/mistake/weekend-types";
-import { CloseIcon, AddIcon } from "@/components/icons";
+import { CloseIcon, AddIcon, SearchIcon } from "@/components/icons";
+// ⭐ Stage 16：中文 + 拼音首字母 substring 搜索
+import { matchStudent } from "@/lib/mistake/student-search";
 
 export function WeekendStudentTable({
   students,
@@ -44,6 +46,12 @@ export function WeekendStudentTable({
   onManualSort,
   // ⭐ Stage 15：新加学生 rowIndex（UI 显示"新"角标）
   newRowIndex,
+  // ⭐ Stage 16：学生搜索(query + 下拉点击)
+  searchQuery,
+  onSearchChange,
+  searchFocusRowIndex,
+  flashRowIndex,
+  onSearchSelect,
 }: {
   students: WeekendStudent[];
   /** ⭐ Stage 6：R2 表头识别的列布局（决定 UI 渲染哪些列）*/
@@ -61,6 +69,12 @@ export function WeekendStudentTable({
   onManualSort: () => { moved: number; total: number };
   // ⭐ Stage 15：新加学生 rowIndex（UI 显示"新"角标 3s）
   newRowIndex: number | null;
+  // ⭐ Stage 16：学生搜索(query + 下拉点击)
+  searchQuery: string;
+  onSearchChange: (q: string) => void;
+  searchFocusRowIndex: number | null;
+  flashRowIndex: number | null;
+  onSearchSelect: (rowIndex: number) => void;
 }) {
   const [clearFeedback, setClearFeedback] = useState<string | null>(null);
   // ⭐ Stage 14：手动排序 toast（OFF 模式点立即排后显示反馈）
@@ -127,8 +141,116 @@ export function WeekendStudentTable({
   // ⭐ 表格总列数（min-w 同步调整）
   const totalCols = (showSerial ? 1 : 0) + 1 + qCount + (showFeedback ? 1 : 0) + 1;
 
+  // ⭐ Stage 16：搜索命中列表（中文 + 拼音首字母 substring）· 最多展示 8 个
+  const searchHits = searchQuery.trim()
+    ? students.filter((s) => matchStudent(s.name, searchQuery)).slice(0, 8)
+    : [];
+  const totalHits = searchQuery.trim()
+    ? students.filter((s) => matchStudent(s.name, searchQuery)).length
+    : 0;
+
+  // ⭐ Stage 16：行 anchor refs（搜索聚焦时 scrollIntoView 目标）
+  const rowAnchorRefsRef = useRef<Record<number, HTMLTableRowElement | null>>({});
+  const rowAnchorRefs = rowAnchorRefsRef.current;
+  // ⭐ Stage 16：搜索聚焦后自动 scroll 到目标行
+  useEffect(() => {
+    if (searchFocusRowIndex === null) return;
+    const el = rowAnchorRefs[searchFocusRowIndex];
+    if (el && typeof el.scrollIntoView === "function") {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [searchFocusRowIndex, rowAnchorRefs]);
+
   return (
     <div className="space-y-3">
+      {/* ⭐ Stage 16：搜索框（顶部第一行 · 默认展开下拉）*/}
+      <div className="relative">
+        <div className="flex items-center gap-2 rounded-lg border border-hairline bg-white px-3 py-2 focus-within:border-accent focus-within:ring-1 focus-within:ring-accent/30 transition">
+          <SearchIcon className="w-4 h-4 text-ink-muted shrink-0" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => onSearchChange(e.target.value)}
+            onKeyDown={(e) => {
+              // ⭐ Enter：跳到第一个命中（focus + scroll + 2s 闪烁）
+              if (e.key === "Enter" && searchHits.length > 0) {
+                e.preventDefault();
+                const target = searchHits[0];
+                onSearchSelect(target.rowIndex);
+              }
+              // ⭐ Esc：清空 query
+              if (e.key === "Escape" && searchQuery) {
+                e.preventDefault();
+                onSearchChange("");
+              }
+            }}
+            placeholder="搜学生姓名（中文或拼音首字母，如 张 / zs / oyf）"
+            className="flex-1 text-sm bg-transparent focus:outline-none placeholder:text-ink-subtle"
+          />
+          {searchQuery.trim() && (
+            <span
+              className={`text-xs font-medium ${
+                totalHits === 0
+                  ? "text-danger"
+                  : "text-success-text"
+              }`}
+            >
+              {totalHits === 0
+                ? "无匹配"
+                : `${totalHits} 个匹配`}
+            </span>
+          )}
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => onSearchChange("")}
+              title="清空搜索"
+              aria-label="清空搜索"
+              className="text-ink-muted hover:text-danger transition"
+            >
+              <CloseIcon className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+
+        {/* ⭐ Stage 16：搜索下拉列表（实时显示命中 · 点击跳转）*/}
+        {searchQuery.trim() && (
+          <div className="absolute left-0 right-0 top-full mt-1 z-20 rounded-lg border border-hairline bg-white shadow-lg max-h-72 overflow-y-auto">
+            {searchHits.length === 0 ? (
+              <div className="px-4 py-3 text-xs text-ink-muted">
+                无匹配 · 试试拼音首字母（如 zs = 张三）
+              </div>
+            ) : (
+              <>
+                {searchHits.map((s, idx) => (
+                  <button
+                    key={s.rowIndex}
+                    type="button"
+                    onClick={() => onSearchSelect(s.rowIndex)}
+                    className="w-full flex items-center gap-3 px-4 py-2 text-left hover:bg-accent-soft/40 border-b border-hairline last:border-b-0 transition"
+                  >
+                    <span className="text-xs text-ink-subtle w-6 shrink-0">
+                      {idx + 1}
+                    </span>
+                    <span className="text-sm font-medium text-ink w-24 shrink-0 truncate">
+                      {s.name || "（未命名）"}
+                    </span>
+                    <span className="text-xs text-ink-muted truncate flex-1">
+                      {s.qNumbersInput.trim() || "—"}
+                    </span>
+                  </button>
+                ))}
+                {totalHits > 8 && (
+                  <div className="px-4 py-2 text-xs text-ink-subtle bg-canvas-alt/30 border-t border-hairline">
+                    还有 {totalHits - 8} 个匹配未展示 · 缩窄关键词精确查找
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* ⭐ Stage 14：顶部工具栏 · 分类预览 + 已填统计 + 自动排序 toggle + 手动兜底 */}
       <div className="flex items-center justify-between gap-3 px-1 flex-wrap">
         <div className="flex items-center gap-3 text-xs text-ink-muted flex-wrap">
@@ -291,19 +413,38 @@ export function WeekendStudentTable({
                   </td>
                 </tr>
               ) : (
-                students.map((student) => (
-                  <WeekendStudentRow
-                    key={student.rowIndex}
-                    student={student}
-                    qLabels={qLabels}
-                    fieldColumns={fieldColumns}
-                    onChange={(patch) =>
-                      onStudentChange(student.rowIndex, patch)
-                    }
-                    onDelete={() => onDeleteStudent(student.rowIndex)}
-                    newRowIndex={newRowIndex}
-                  />
-                ))
+                students.map((student) => {
+                  // ⭐ Stage 16：搜索命中判定（中文 + 拼音首字母 substring）
+                  const isHit =
+                    searchQuery.trim().length > 0 &&
+                    matchStudent(student.name, searchQuery);
+                  const isDimmed =
+                    searchQuery.trim().length > 0 && !isHit;
+                  return (
+                    <WeekendStudentRow
+                      key={student.rowIndex}
+                      student={student}
+                      qLabels={qLabels}
+                      fieldColumns={fieldColumns}
+                      onChange={(patch) =>
+                        onStudentChange(student.rowIndex, patch)
+                      }
+                      onDelete={() => onDeleteStudent(student.rowIndex)}
+                      newRowIndex={newRowIndex}
+                      // ⭐ Stage 16：搜索命中态(黄底) + 闪烁态(2s 脉冲)
+                      isHit={isHit}
+                      isDimmed={isDimmed}
+                      isFlashing={flashRowIndex === student.rowIndex}
+                      scrollAnchorRef={
+                        searchFocusRowIndex === student.rowIndex
+                          ? (el: HTMLTableRowElement | null) => {
+                              rowAnchorRefs[student.rowIndex] = el;
+                            }
+                          : null
+                      }
+                    />
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -346,6 +487,11 @@ function WeekendStudentRow({
   onDelete,
   // ⭐ Stage 15：新加学生 rowIndex（用于显示"新"角标）
   newRowIndex,
+  // ⭐ Stage 16：搜索命中态 + 闪烁态 + scroll anchor
+  isHit,
+  isDimmed,
+  isFlashing,
+  scrollAnchorRef,
 }: {
   student: WeekendStudent;
   qLabels: string[];
@@ -353,6 +499,10 @@ function WeekendStudentRow({
   onChange: (patch: Partial<WeekendStudent>) => void;
   onDelete: () => void;
   newRowIndex: number | null;
+  isHit: boolean;
+  isDimmed: boolean;
+  isFlashing: boolean;
+  scrollAnchorRef?: ((el: HTMLTableRowElement | null) => void) | null;
 }) {
   const category = classifyCellValue(student.qNumbersInput);
   const skipAi = shouldSkipAiFeedback(category);
@@ -377,7 +527,13 @@ function WeekendStudentRow({
 
   return (
     <tr
-      className={`relative border-b border-hairline last:border-b-0 hover:bg-canvas-alt/20 transition border-l-4 ${rowStyle}`}
+      ref={scrollAnchorRef ?? undefined}
+      className={`
+        relative border-b border-hairline last:border-b-0 hover:bg-canvas-alt/20 transition border-l-4 ${rowStyle}
+        ${isDimmed ? "opacity-40" : ""}
+        ${isHit ? "bg-warning-soft/40" : ""}
+        ${isFlashing ? "animate-row-flash" : ""}
+      `}
     >
       {/* ⭐ Stage 15：新加学生角标（3s 自动消失）· 浮在行左上角 */}
       {isNewlyAdded && (

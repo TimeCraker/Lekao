@@ -59,6 +59,8 @@ import { WeekendSheetTabs } from "./weekend-sheet-tabs";
 import { WeekendStudentTable } from "./weekend-student-table";
 import { WeekendAiFeedbackPanel } from "./weekend-ai-feedback-panel";
 import type { BatchStudentResult } from "./weekend-ai-feedback-panel";
+// ⭐ Stage 16：学生搜索(中文 + 拼音首字母 substring)
+import { findFirstMatch } from "@/lib/mistake/student-search";
 
 export function WeekendMistakeWorkflow() {
   const [step, setStep] = useState<WeekendStep>("upload");
@@ -84,6 +86,10 @@ export function WeekendMistakeWorkflow() {
 
   // ⭐ Stage 13：每个 sheet 的 debounce timer ref（onChange 防抖自动排序用）
   const sortTimersRef = useRef<Record<string, ReturnType<typeof setTimeout> | null>>({});
+  // ⭐ Stage 16：搜索 query（默认空 = 不过滤 · 切 sheet 时清空）
+  const [searchQuery, setSearchQuery] = useState("");
+  // ⭐ Stage 16：搜索聚焦的 rowIndex（决定下拉 list 高亮哪一项 + 主表行闪烁）
+  const [searchFocusRowIndex, setSearchFocusRowIndex] = useState<number | null>(null);
 
   // ===== Step 1：上传 Excel =====
   const handleUpload = useCallback(async (file: File) => {
@@ -570,7 +576,12 @@ export function WeekendMistakeWorkflow() {
         <WeekendEditStudentsStep
           workbook={workbook}
           activeSheetIdx={activeSheetIdx}
-          onSheetChange={setActiveSheetIdx}
+          onSheetChange={(idx) => {
+          setActiveSheetIdx(idx);
+          // ⭐ Stage 16：切 sheet 清空搜索 query（避免跨 sheet 残留状态）
+          setSearchQuery("");
+          setSearchFocusRowIndex(null);
+        }}
           onStudentChange={updateStudent}
           onAddStudent={addStudent}
           onDeleteStudent={deleteStudent}
@@ -584,6 +595,21 @@ export function WeekendMistakeWorkflow() {
           onManualSort={manualSortSheet}
           // ⭐ Stage 15：行高亮 + 新加学生角标
           newRowIndex={newRowIndex}
+          // ⭐ Stage 16：学生搜索(query + 下拉点击跳转)
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          searchFocusRowIndex={searchFocusRowIndex}
+          flashRowIndex={flashRowIndex}
+          onSearchSelect={(rowIndex) => {
+            setSearchFocusRowIndex(rowIndex);
+            // ⭐ 复用 Stage 15 flashRowIndex 做 2s 行闪烁
+            if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current);
+            setFlashRowIndex(rowIndex);
+            flashTimeoutRef.current = setTimeout(() => {
+              setFlashRowIndex(null);
+              flashTimeoutRef.current = null;
+            }, 2000);
+          }}
         />
       )}
     </div>
@@ -952,6 +978,12 @@ function WeekendEditStudentsStep({
   onManualSort,
   // ⭐ Stage 15：新加学生 rowIndex（UI 显示"新"角标 3s）
   newRowIndex,
+  // ⭐ Stage 16：学生搜索
+  searchQuery,
+  onSearchChange,
+  searchFocusRowIndex,
+  flashRowIndex,
+  onSearchSelect,
 }: {
   workbook: WeekendWorkbook;
   activeSheetIdx: number;
@@ -976,6 +1008,12 @@ function WeekendEditStudentsStep({
   onManualSort: (sheetName: string) => { moved: number; total: number };
   // ⭐ Stage 15：新加学生 rowIndex
   newRowIndex: number | null;
+  // ⭐ Stage 16：学生搜索(query + 下拉点击跳转)
+  searchQuery: string;
+  onSearchChange: (q: string) => void;
+  searchFocusRowIndex: number | null;
+  flashRowIndex: number | null;
+  onSearchSelect: (rowIndex: number) => void;
 }) {
   const activeSheet = workbook.sheets[activeSheetIdx];
   const today = getThisWeekendDate();
@@ -1038,6 +1076,12 @@ function WeekendEditStudentsStep({
             onManualSort={() => onManualSort(activeSheet.sheetName)}
             // ⭐ Stage 15：新加学生 rowIndex（UI 角标）
             newRowIndex={newRowIndex}
+            // ⭐ Stage 16：学生搜索(query + 下拉点击)
+            searchQuery={searchQuery}
+            onSearchChange={onSearchChange}
+            searchFocusRowIndex={searchFocusRowIndex}
+            flashRowIndex={flashRowIndex}
+            onSearchSelect={onSearchSelect}
           />
         </motion.div>
       </AnimatePresence>
