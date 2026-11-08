@@ -1,0 +1,10 @@
+# 对暂存文件跑 prettier --write + eslint --fix（lint-staged）
+pnpm exec lint-staged
+
+# docs:auto-hook:start
+docs_previous_status=$?
+[ "$docs_previous_status" -eq 0 ] || exit "$docs_previous_status"
+if [ -f '../config/workspace-tools/scripts/docs.mjs' ]; then
+  node '../config/workspace-tools/scripts/docs.mjs' guard --staged --hook --repo . || exit $?
+fi
+# docs:auto-hook:end

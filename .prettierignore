@@ -1,0 +1,17 @@
+# dependencies / build artifacts
+node_modules
+.next
+out
+build
+coverage
+*.tsbuildinfo
+
+# generated
+next-env.d.ts
+pnpm-lock.yaml
+
+# archived one-off debug scripts (不参与构建、无代码依赖)
+scripts/archive
+
+# native app（独立构建体系，不归 prettier 管）
+lekao-android

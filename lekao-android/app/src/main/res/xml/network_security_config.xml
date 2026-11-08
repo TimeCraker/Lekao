@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- ============ 默认禁用明文（HTTP）============ -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <!-- ============ Lekao 公网域名（HTTPS · cleartext false）============ -->
+    <!--
+      ⭐ T82 HOTFIX (2026-06-27)
+      之前配的 pin 是 placeholder, 跟真实证书对不上
+      → 任何 HTTPS 请求都被 Android SSL pinning 拒绝
+      → 表现: "网络错误" / "Pin verification failed"
+      现在用 openssl s_client 拉的真实证书公钥 SHA-256
+      两根 pin 互相 backup: leaf 换了还能用 intermediate
+    -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">lekao.asterforge.top</domain>
+        <domain includeSubdomains="true">asterforge.top</domain>
+        <pin-set expiration="2027-06-27">
+            <!-- 实际 leaf cert 公钥 SHA-256 (CN=lekao.asterforge.top) -->
+            <pin digest="SHA-256">++PtWWQLW5w8yfi8QndwYzfaVwpMTk6KuWz0kKBzo+o=</pin>
+            <!-- 实际 intermediate cert 公钥 SHA-256 (Let's Encrypt YE2) -->
+            <pin digest="SHA-256">s/tdAOmUzd8syaTuqfgGvFcn6DzA5Cmb+Vby1ST+U3Y=</pin>
+        </pin-set>
+    </domain-config>
+
+    <!-- ============ 开发环境（debug only · 允许 HTTP）============ -->
+    <debug-overrides>
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </debug-overrides>
+</network-security-config>

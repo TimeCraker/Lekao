@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- ============ 启动屏主题（M07 SplashScreen）============ -->
+    <style name="Theme.Lekao.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/lekao_canvas</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_logo</item>
+        <item name="postSplashScreenTheme">@style/Theme.Lekao.Main</item>
+        <item name="windowSplashScreenAnimationDuration">400</item>
+    </style>
+
+    <!-- ============ 主主题 ============ -->
+    <style name="Theme.Lekao.Main" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:statusBarColor">@color/lekao_canvas</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:navigationBarColor">@color/lekao_canvas</item>
+        <item name="android:windowLightNavigationBar">true</item>
+
+        <item name="colorPrimary">@color/lekao_blue</item>
+        <item name="colorOnPrimary">@color/lekao_white</item>
+        <item name="colorPrimaryContainer">@color/lekao_blue_text</item>
+        <item name="colorOnPrimaryContainer">@color/lekao_white</item>
+
+        <item name="colorSecondary">@color/lekao_signal</item>
+        <item name="colorOnSecondary">@color/lekao_white</item>
+
+        <item name="android:colorBackground">@color/lekao_canvas</item>
+        <item name="colorSurface">@color/lekao_white</item>
+        <item name="colorOnSurface">@color/lekao_ink</item>
+
+        <item name="colorError">@color/lekao_error</item>
+    </style>
+
+    <!-- ============ Dialog / BottomSheet 主题 ============ -->
+    <style name="Theme.Lekao.BottomSheet" parent="Theme.Material3.DayNight.BottomSheetDialog">
+        <item name="bottomSheetStyle">@style/Widget.Lekao.BottomSheet</item>
+    </style>
+
+    <style name="Widget.Lekao.BottomSheet" parent="Widget.Material3.BottomSheet">
+        <item name="backgroundTint">@color/lekao_white</item>
+        <item name="shapeAppearance">@style/ShapeAppearance.Lekao.LargeRounded</item>
+    </style>
+
+    <style name="ShapeAppearance.Lekao.LargeRounded" parent="ShapeAppearance.Material3.Corner.ExtraLarge">
+        <item name="cornerSize">24dp</item>
+    </style>
+</resources>

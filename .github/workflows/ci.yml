@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # pnpm 默认不跑 @prisma/client postinstall，必须显式生成 client，
+      # 否则 typecheck 缺类型（TS7006 等）失败
+      - name: Generate Prisma Client
+        run: pnpm db:generate
+
+      # lint 已是硬门槛（2026-10：react-hooks 22 error + 3 warning 债务清零）
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+        env:
+          # 最小占位 env（非真实密钥）：构建期不连库、不调 AI，仅满足模块级 env 引用
+          DATABASE_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder?connection_limit=4&pool_timeout=20
+          NEXTAUTH_SECRET: ci-placeholder-not-a-real-secret
+          NEXTAUTH_URL: http://localhost:3007

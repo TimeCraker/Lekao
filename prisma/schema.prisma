@@ -1,0 +1,291 @@
+// ============================================
+// Lekao - Prisma schema (PRD §3.4)
+// ============================================
+// ⚠️ 共享 users 表归 ResumeAIX 管，Lekao 只读引用
+// ⚠️ 绝不能 prisma db push --force (会误删 ResumeAIX 用户数据)
+// ⚠️ 部署只用 prisma migrate deploy (带历史 migration 文件)
+//
+// DB: PostgreSQL :5434/resumeaix (与 ResumeAIX 共享实例)
+// .env DATABASE_URL 必须带 ?connection_limit=4&pool_timeout=20
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// ⚠️ 只读引用 (ResumeAIX 管, Lekao 永远不 migrate)
+// ============================================
+
+// PG 共享 enum (ResumeAIX 定义, Lekao 引用一致以避免转换错)
+enum UserRole {
+  USER
+  ADMIN
+
+  @@map("UserRole")
+}
+
+model User {
+  id              String   @id @default(cuid())
+  email           String   @unique
+  password        String? // bcrypt hash
+  name            String?
+  role            UserRole @default(USER) @map("role") // PG enum "UserRole" (USER/ADMIN)
+  t_coin          Int      @default(0) @map("tCoin") // 充值 T-Coin (ResumeAIX/Lekao 共享) · PG 列名 tCoin
+  lekao_gift_coin Int      @default(-1) @map("lekaoGiftCoin") // ⭐ Lekao 赠送 (默认 -1, signIn 延迟初始化为 5) · PG 列名 lekaoGiftCoin
+  banned          Boolean  @default(false) @map("banned") // ⭐ P0#3 admin 封禁 (true = 封禁, 默认 false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // 反向关系 (Lekao 业务表挂在 userId 上)
+  classSummaries   LekaoClassSummary[]
+  classFeedbacks   LekaoClassFeedback[]
+  coinLogs         LekaoCoinLog[]          @relation("CoinLogUser")
+  coinLogsByAdmin  LekaoCoinLog[]          @relation("CoinLogAdmin")
+  auditLogsTarget  AuditLog[]              @relation("AuditLogTarget")
+  auditLogsByAdmin AuditLog[]              @relation("AuditLogAdmin")
+  checkins         LekaoCheckin[]
+  generationCharges LekaoGenerationCharge[]
+
+  @@map("users")
+}
+
+// ============================================
+// Lekao 业务表 (Lekao 自己的 migration)
+// ============================================
+
+// 课堂小结历史 (付费数据, 必须落盘防客诉)
+model LekaoClassSummary {
+  id           String   @id @default(cuid())
+  userId       String
+  subject      String // 学科: 数学 / 物理 / 化学
+  topic        String // 精准提炼的专题名称
+  feedbackText String   @db.Text // 10 条建议
+  summaryText  String   @db.Text // 总体小结
+  tCoinUsed    Int      @default(1)
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+  @@map("lekao_class_summaries")
+}
+
+// 课堂反馈历史 (付费数据, 必须落盘防客诉)
+model LekaoClassFeedback {
+  id           String   @id @default(cuid())
+  userId       String
+  subject      String
+  topic        String
+  description  String?  @db.Text // 助教简单描述
+  feedbackText String   @db.Text // AI 生成的反馈
+  tCoinUsed    Int      @default(1)
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+  @@map("lekao_class_feedbacks")
+}
+
+// 模板 (平台预设 + 用户自定义)
+model LekaoTemplate {
+  id        String   @id @default(cuid())
+  userId    String? // null 表示平台预设
+  name      String
+  type      String // summary | feedback
+  subject   String? // 适用学科 (null 表示通用)
+  content   String   @db.Text
+  isPublic  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, type])
+  @@map("lekao_templates")
+}
+
+// 验证码记录 (防刷)
+model VerificationCode {
+  id        String   @id @default(cuid())
+  email     String
+  code      String? // ⭐ 已废弃: 新数据只存 codeHash, 老数据可读兼容
+  codeHash  String? // bcrypt(code, cost=10) 哈希值 (DB 泄露也不暴露明文)
+  attempts  Int      @default(0) // 失败计数, 5 次后锁定 1 小时
+  purpose   String // register | login | reset
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([email, purpose, expiresAt])
+  @@map("verification_codes")
+}
+
+// 邀请码
+model InvitationCode {
+  id             String    @id @default(cuid())
+  code           String    @unique // 邀请码 (大写字母 + 数字)
+  used           Boolean   @default(false)
+  usedByUserId   String?   // 使用者的 userId
+  usedAt         DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@map("invitation_codes")
+}
+
+// ============================================
+// P0 三件套 (2026-06-22) — admin 后台关键缺口补齐
+// ============================================
+
+// T-Coin 调币流水 (P0#1) — 客诉可查, 调币审计
+model LekaoCoinLog {
+  id          String   @id @default(cuid())
+  userId      String   // 被调币用户
+  adminId     String   // 操作 admin
+  amount      Int      // 正数=增加, 负数=扣除
+  beforeGift  Int      // 调前赠送币
+  beforePaid  Int      // 调前充值币
+  afterGift   Int      // 调后赠送币
+  afterPaid   Int      // 调后充值币
+  reason      String?  // 调币原因
+  createdAt   DateTime @default(now())
+
+  user        User     @relation("CoinLogUser", fields: [userId], references: [id])
+  admin       User     @relation("CoinLogAdmin", fields: [adminId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([adminId, createdAt])
+  @@map("lekao_coin_log")
+}
+
+// admin 操作审计日志 (P0#2) — 谁在什么时候干了什么
+model AuditLog {
+  id         String   @id @default(cuid())
+  adminId    String   // 操作的 admin
+  targetUserId String? // 操作对象 (用户) — 可空 (如邀请码生成无 target)
+  action     String   // tcoin_adjust | user_update | user_ban | user_unban | invite_create | ...
+  details    String?  @db.Text // JSON 详情 (改了什么字段 / 改前改后值)
+  ip         String?  // 操作 IP (from req.headers)
+  createdAt  DateTime @default(now())
+
+  admin      User     @relation("AuditLogAdmin", fields: [adminId], references: [id])
+  targetUser User?    @relation("AuditLogTarget", fields: [targetUserId], references: [id])
+
+  @@index([adminId, createdAt])
+  @@index([action, createdAt])
+  @@map("audit_log")
+}
+
+// ============================================
+// v2.2.0 · 灵感墙（用户共建功能）
+// ============================================
+
+// 灵感墙主表 — 用户提的功能想法
+model LekaoIdea {
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String    @map("user_id")
+  userEmail   String    @map("user_email")        // 冗余存，避免每次 join users
+  title       String    @db.VarChar(50)
+  description String    @db.VarChar(500)
+  status      String    @default("open") @db.VarChar(20)  // 'open' | 'planned' | 'done'
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  likes    LekaoIdeaLike[]
+  comments LekaoIdeaComment[]
+
+  @@index([userId])
+  @@index([createdAt(sort: Desc)])
+  @@index([status])
+  @@map("lekao_ideas")
+}
+
+// 灵感点赞表 — 联合主键天然防重复
+model LekaoIdeaLike {
+  ideaId    String   @map("idea_id") @db.Uuid
+  userId    String   @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  idea LekaoIdea @relation(fields: [ideaId], references: [id], onDelete: Cascade)
+
+  @@id([ideaId, userId])           // 联合主键天然防重复点赞
+  @@index([userId])
+  @@map("lekao_idea_likes")
+}
+
+// 灵感评论表 — 每用户对每个灵感最多 1 条活跃评论（决策 #10）
+// 用 partial unique index (migration 手写) 配合 status='visible' 实现"删了 = 永久禁"
+model LekaoIdeaComment {
+  id        String   @id @default(uuid()) @db.Uuid
+  ideaId    String   @map("idea_id") @db.Uuid
+  userId    String   @map("user_id")
+  userEmail String   @map("user_email")
+  content   String   @db.VarChar(200)
+  status    String   @default("visible") @db.VarChar(20)  // 'visible' | 'hidden' | 'banned'
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  idea LekaoIdea @relation(fields: [ideaId], references: [id], onDelete: Cascade)
+
+  @@index([ideaId, userId])        // API 查询用
+  @@index([ideaId, createdAt])
+  @@index([status])
+  @@map("lekao_idea_comments")
+}
+
+// ============================================
+// v2.4.0 · 每日签到 (七日递增循环奖励)
+// ============================================
+
+// 每日签到记录 — dayKey 唯一约束防同日重复签到
+model LekaoCheckin {
+  id        String   @id @default(cuid())
+  userId    String
+  dayKey    String   // Asia/Shanghai 自然日 YYYY-MM-DD (防同日重复)
+  streakDay Int      // 本次是连续第几天 (1-7)
+  award     Int      // 本次奖励币数
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, dayKey]) // ⭐ 同一用户同一自然日只能签一次
+  @@index([userId, createdAt])
+  @@map("lekao_checkins")
+}
+
+// ============================================
+// S01 T-002 · T-Coin 收费请求账本（reserved -> settled | released）
+// ============================================
+// - 幂等键 (userId, idempotencyKey) 唯一：同一逻辑请求重试不会二次扣币
+// - reserve 扣币时记录 source(gift|paid)，release 按原池精确返还（不按当前余额猜）
+// - settled 不可 release，released 不可 settle：非法迁移返回冲突
+
+enum LekaoChargeState {
+  reserved
+  settled
+  released
+}
+
+model LekaoGenerationCharge {
+  id             String           @id @default(cuid())
+  userId         String
+  idempotencyKey String // 客户端生成（UUID），同一逻辑请求重试复用
+  operation      String // summarize | batch-feedback
+  amount         Int              @default(1)
+  source         String? // gift | paid（reserve 成功时写入）
+  state          LekaoChargeState @default(reserved)
+  correlationId  String
+  reason         String? // release 原因（AI 失败/超时/取消）
+  createdAt      DateTime         @default(now())
+  settledAt      DateTime?
+  releasedAt     DateTime?
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, idempotencyKey])
+  @@index([userId, createdAt])
+  @@index([state, createdAt])
+  @@map("lekao_generation_charges")
+}

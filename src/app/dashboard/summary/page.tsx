@@ -1,0 +1,39 @@
+import Link from "next/link";
+import { SummaryWorkflow } from "@/components/summary/summary-workflow";
+import { TopBar } from "@/components/dashboard/sidebar";
+import { CoinIcon } from "@/components/icons";
+import { UsageGuideButton } from "@/components/usage-guide/trigger-button";
+
+export default function SummaryPage() {
+  return (
+    <>
+      <TopBar
+        title="课堂小结"
+        description="上传讲义图片，自动识别学科和知识点，生成课堂小结"
+        rightExtra={
+          <div className="flex items-center gap-2">
+            <span className="hidden md:inline-flex items-center gap-1 px-2.5 py-1 bg-accent-soft text-accent-ink text-xs font-semibold rounded-full border border-accent/20">
+              <CoinIcon className="w-3 h-3" />1 币 / 次
+            </span>
+            <UsageGuideButton module="summary" />
+          </div>
+        }
+      />
+
+      <div className="px-8 md:px-12 py-8 max-w-4xl">
+        <div className="mt-8">
+          <SummaryWorkflow template="summary" />
+        </div>
+
+        <div className="mt-12 pt-6 border-t border-hairline">
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center gap-1 py-1 -my-1 text-sm text-ink-muted hover:text-ink transition"
+          >
+            ← 返回控制台
+          </Link>
+        </div>
+      </div>
+    </>
+  );
+}

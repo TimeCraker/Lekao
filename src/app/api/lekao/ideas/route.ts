@@ -1,0 +1,342 @@
+// ============================================
+// Lekao · 灵感墙 API · GET 列表 + POST 提交 (v2.2.0)
+// ============================================
+// 安全：banned 拦截 + IP 限频 + 敏感词 + 每日 1 次 + 重复标题 + 长度校验
+// GET 支持：tab (all/mine/liked) + q (搜索) + sort (likes/latest) + limit
+
+import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { containsSensitiveWords } from "@/lib/sensitive-words";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+// 限制常量
+const TITLE_MAX = 50;
+const DESCRIPTION_MAX = 500;
+const LIMIT_MAX = 100;
+const LIMIT_DEFAULT = 50;
+
+// ============================================
+// ⭐ IP 限频（2026-06-25 · 防刷提交灵感）
+// stage spec T2: 沿用 send-code 模式（60s 1 次 + 1 分钟 5 次）
+// 安全：x-real-ip 唯一源 + LRU 10k + anon hash
+// 单实例 in-memory 够用（lekao 单进程），多实例时再换 Redis
+// ============================================
+const IP_COOLDOWN_MS = 60 * 1000;
+const IP_WINDOW_MS = 60 * 1000;
+const IP_WINDOW_MAX = 5;
+const IP_STORE_MAX_KEYS = 10_000;
+const ipRateStore = new Map<string, number[]>();
+const ipAccessOrder = new Map<string, number>();
+
+function getClientIp(req: Request): string {
+  // ⭐ 安全：只信 nginx 设的 X-Real-IP（= $remote_addr, 攻击者改不动）
+  // 不要读 X-Forwarded-For：攻击者可注入首段伪造 IP 绕过限频
+  const realIp = req.headers.get("x-real-ip")?.trim();
+  if (realIp) return realIp;
+  // 缺失 header 视为配置错误（不应该发生, nginx 一定会设）
+  // 用 anon + IP 子网 hash 避免所有无头客户端共享一个 key
+  const xff = req.headers.get("x-forwarded-for");
+  const fallback = xff?.split(",").pop()?.trim();
+  if (fallback) return `xff_${fallback}`;
+  return `_anon_${Date.now() % 1000}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function checkIpRateLimit(
+  ip: string,
+): { ok: true } | { ok: false; retryAfter: number } {
+  const now = Date.now();
+
+  // ⭐ LRU 淘汰：超 10k keys 时清空最老 20%
+  if (ipRateStore.size > IP_STORE_MAX_KEYS) {
+    const entries = Array.from(ipAccessOrder.entries()).sort(
+      (a, b) => a[1] - b[1],
+    );
+    const evictCount = Math.floor(IP_STORE_MAX_KEYS * 0.2);
+    for (let i = 0; i < evictCount; i++) {
+      const k = entries[i]?.[0];
+      if (k) {
+        ipRateStore.delete(k);
+        ipAccessOrder.delete(k);
+      }
+    }
+  }
+
+  const timestamps = (ipRateStore.get(ip) || []).filter(
+    (t) => now - t < IP_WINDOW_MS,
+  );
+  ipAccessOrder.set(ip, now);
+
+  // 60s 内已发过 → 拒绝
+  if (timestamps.length > 0) {
+    const latest = Math.max(...timestamps);
+    const since = now - latest;
+    if (since < IP_COOLDOWN_MS) {
+      return {
+        ok: false,
+        retryAfter: Math.ceil((IP_COOLDOWN_MS - since) / 1000),
+      };
+    }
+  }
+
+  // 窗口内超 5 次 → 拒绝
+  if (timestamps.length >= IP_WINDOW_MAX) {
+    const oldest = Math.min(...timestamps);
+    return {
+      ok: false,
+      retryAfter: Math.ceil((oldest + IP_WINDOW_MS - now) / 1000),
+    };
+  }
+
+  timestamps.push(now);
+  ipRateStore.set(ip, timestamps);
+  return { ok: true };
+}
+
+/**
+ * 判定 UTC+8 当日起始（北京时间当天 00:00:00 的 UTC 时间）
+ */
+function todayStartUtc(): Date {
+  const now = new Date();
+  // 北京时间 = UTC+8 → 北京当天 00:00 = UTC (前一天的) 16:00
+  const beijingMs = now.getTime() + 8 * 3600 * 1000;
+  const beijingNow = new Date(beijingMs);
+  const startOfDayBeijing = new Date(
+    Date.UTC(
+      beijingNow.getUTCFullYear(),
+      beijingNow.getUTCMonth(),
+      beijingNow.getUTCDate(),
+    ),
+  );
+  // 转回 UTC
+  return new Date(startOfDayBeijing.getTime() - 8 * 3600 * 1000);
+}
+
+// ============================================
+// GET · 列表
+// ============================================
+export async function GET(req: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id || !session.user.email) {
+      return NextResponse.json({ error: "未登录" }, { status: 401 });
+    }
+    const userId = session.user.id;
+
+    const { searchParams } = new URL(req.url);
+    const tab = (searchParams.get("tab") ?? "all").toLowerCase();
+    const q = (searchParams.get("q") ?? "").trim();
+    const sort = (searchParams.get("sort") ?? "likes").toLowerCase();
+    const limit = Math.min(
+      LIMIT_MAX,
+      Math.max(1, parseInt(searchParams.get("limit") ?? String(LIMIT_DEFAULT))),
+    );
+
+    // tab=loved → 先取 user 赞过的 idea_id，再 IN 查询
+    let scopedIdeaIds: string[] | null = null;
+    if (tab === "loved") {
+      const liked = await prisma.lekaoIdeaLike.findMany({
+        where: { userId },
+        select: { ideaId: true },
+      });
+      scopedIdeaIds = liked.map((l) => l.ideaId);
+      if (scopedIdeaIds.length === 0) {
+        return NextResponse.json({ ideas: [], total: 0 });
+      }
+    }
+
+    // 拼 where
+    const where: Record<string, unknown> = {};
+    if (tab === "mine") where.userId = userId;
+    if (scopedIdeaIds) where.id = { in: scopedIdeaIds };
+    if (q) {
+      // ILIKE 模糊匹配（title 或 description 任一命中）
+      where.OR = [
+        { title: { contains: q, mode: "insensitive" } },
+        { description: { contains: q, mode: "insensitive" } },
+      ];
+    }
+
+    // 主查询：JOIN 点赞数 + 评论数 + 我是否赞过
+    const ideas = await prisma.lekaoIdea.findMany({
+      where,
+      orderBy:
+        sort === "latest" ? { createdAt: "desc" } : [{ createdAt: "desc" }], // 点赞数排序在 SQL 层做（GROUP BY）成本高，量小 OK 时降级到内存排序
+      take: limit,
+      include: {
+        _count: {
+          select: {
+            likes: true,
+            comments: { where: { status: "visible" } },
+          },
+        },
+        likes: {
+          where: { userId },
+          select: { ideaId: true },
+          take: 1,
+        },
+      },
+    });
+
+    // 计算 likeCount + myLiked
+    const enriched = ideas.map((i) => ({
+      id: i.id,
+      userId: i.userId,
+      userEmail: i.userEmail,
+      title: i.title,
+      description: i.description,
+      status: i.status,
+      createdAt: i.createdAt,
+      updatedAt: i.updatedAt,
+      likeCount: i._count.likes,
+      commentCount: i._count.comments,
+      myLiked: i.likes.length > 0,
+      myOwn: i.userId === userId,
+    }));
+
+    // 排序：likes → 按 likeCount desc + createdAt desc
+    if (sort !== "latest") {
+      enriched.sort((a, b) => {
+        if (b.likeCount !== a.likeCount) return b.likeCount - a.likeCount;
+        return (
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+      });
+    }
+
+    const total = await prisma.lekaoIdea.count({ where });
+
+    return NextResponse.json({ ideas: enriched, total, limit });
+  } catch (e) {
+    console.error("[lekao/ideas GET] error:", e);
+    return NextResponse.json({ error: "服务器错误" }, { status: 500 });
+  }
+}
+
+// ============================================
+// POST · 提交
+// ============================================
+export async function POST(req: NextRequest) {
+  try {
+    // 0. ⭐ IP 限频（最先做, 越早 reject 越省 DB）
+    const ip = getClientIp(req);
+    const ipCheck = checkIpRateLimit(ip);
+    if (!ipCheck.ok) {
+      console.warn(
+        `[lekao/ideas POST] IP 限频: ${ip} retryAfter=${ipCheck.retryAfter}s`,
+      );
+      return NextResponse.json(
+        { error: `请求过于频繁，请 ${ipCheck.retryAfter} 秒后再试` },
+        {
+          status: 429,
+          headers: { "Retry-After": String(ipCheck.retryAfter) },
+        },
+      );
+    }
+
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id || !session.user.email) {
+      return NextResponse.json({ error: "未登录" }, { status: 401 });
+    }
+    if (session.user.banned === true) {
+      return NextResponse.json({ error: "账号已被封禁" }, { status: 403 });
+    }
+    const userId = session.user.id;
+    const userEmail = session.user.email;
+
+    let body: { title?: unknown; description?: unknown };
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json(
+        { error: "请求体不是合法 JSON" },
+        { status: 400 },
+      );
+    }
+
+    const title = typeof body.title === "string" ? body.title.trim() : "";
+    const description =
+      typeof body.description === "string" ? body.description.trim() : "";
+
+    if (!title) {
+      return NextResponse.json({ error: "标题不能为空" }, { status: 422 });
+    }
+    if (title.length > TITLE_MAX) {
+      return NextResponse.json(
+        { error: `标题不能超过 ${TITLE_MAX} 字` },
+        { status: 422 },
+      );
+    }
+    if (!description) {
+      return NextResponse.json({ error: "描述不能为空" }, { status: 422 });
+    }
+    if (description.length > DESCRIPTION_MAX) {
+      return NextResponse.json(
+        { error: `描述不能超过 ${DESCRIPTION_MAX} 字` },
+        { status: 422 },
+      );
+    }
+
+    // 敏感词校验
+    if (containsSensitiveWords(title)) {
+      return NextResponse.json(
+        { error: "标题含敏感词，请修改后重试" },
+        { status: 422 },
+      );
+    }
+    if (containsSensitiveWords(description)) {
+      return NextResponse.json(
+        { error: "描述含敏感词，请修改后重试" },
+        { status: 422 },
+      );
+    }
+
+    // 每日 1 次：北京时间当天
+    const todayStart = todayStartUtc();
+    const todayCount = await prisma.lekaoIdea.count({
+      where: { userId, createdAt: { gte: todayStart } },
+    });
+    if (todayCount > 0) {
+      return NextResponse.json(
+        { error: "今天已经提过啦，明天再来 💡" },
+        { status: 429 },
+      );
+    }
+
+    // 同日重复标题检测
+    const dupTitle = await prisma.lekaoIdea.findFirst({
+      where: {
+        userId,
+        title: { equals: title, mode: "insensitive" },
+        createdAt: { gte: todayStart },
+      },
+    });
+    if (dupTitle) {
+      return NextResponse.json(
+        { error: "今天已经提过相同标题了" },
+        { status: 429 },
+      );
+    }
+
+    const created = await prisma.lekaoIdea.create({
+      data: { userId, userEmail, title, description },
+      select: {
+        id: true,
+        userId: true,
+        userEmail: true,
+        title: true,
+        description: true,
+        status: true,
+        createdAt: true,
+      },
+    });
+
+    return NextResponse.json({ idea: created });
+  } catch (e) {
+    console.error("[lekao/ideas POST] error:", e);
+    return NextResponse.json({ error: "提交失败" }, { status: 500 });
+  }
+}

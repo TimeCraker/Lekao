@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ============ Lekao 主题色（与 Color.kt 对应）============ -->
+    <color name="lekao_blue">#FF3B82F6</color>
+    <color name="lekao_blue_text">#FF1D4ED8</color>
+    <color name="lekao_blue_ink">#FF1E40AF</color>
+    <color name="lekao_canvas">#FFFAFBFC</color>
+    <color name="lekao_canvas_alt">#FFF5F5F4</color>
+    <color name="lekao_parchment">#FFF5F5F4</color>
+    <color name="lekao_signal">#FFFB7185</color>
+    <color name="lekao_signal_text">#FFE11D48</color>
+    <color name="lekao_ink">#FF1F2937</color>
+    <color name="lekao_ink_muted">#FF6B7280</color>
+    <color name="lekao_ink_subtle">#FF9CA3AF</color>
+    <color name="lekao_hairline">#FFE5E7EB</color>
+    <color name="lekao_success">#FF10B981</color>
+    <color name="lekao_success_text">#FF047857</color>
+    <color name="lekao_success_soft">#FFD1FAE5</color>
+    <color name="lekao_error">#FFEF4444</color>
+    <color name="lekao_warning">#FFF59E0B</color>
+    <color name="lekao_white">#FFFFFFFF</color>
+
+    <!-- ============ Dark 模式（备用）============ -->
+    <color name="lekao_canvas_dark">#FF111827</color>
+    <color name="lekao_ink_dark">#FFF9FAFB</color>
+    <color name="lekao_hairline_dark">#FF374151</color>
+</resources>

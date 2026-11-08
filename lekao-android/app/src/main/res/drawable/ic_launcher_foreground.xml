@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Lekao Android launcher icon · 前景区 (foreground)
+  与 Web 端 src/app/icon.tsx 品牌一致:
+  - 黑色圆形底 (background) + L 字 (前景) + signal coral 圆点 (右上角)
+  - Android 8+ adaptive icon: launcher 自动按 mask 裁剪 background,
+    foreground 在 108×108 viewport 中心 66×66 安全区内 (即 22-86 坐标范围)
+
+  颜色: 与 web 端 100% 一致
+  - L 字: #faf8f3 (cream)
+  - 圆点: #e85a3c (signal coral)
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- L 字 (粗笔画 path, stroke 12dp) -->
+    <path
+        android:fillColor="#faf8f3"
+        android:pathData="M 22,22 L 34,22 L 34,50 L 62,50 L 62,62 L 22,62 Z" />
+
+    <!-- signal coral 圆点 (右上角) -->
+    <path
+        android:fillColor="#e85a3c"
+        android:pathData="M 56,17 A 5,5 0 1,0 56.001,17 Z" />
+
+</vector>

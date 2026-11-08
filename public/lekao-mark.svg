@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <!-- 圆形底盘：墨色 -->
+  <circle cx="32" cy="32" r="30" fill="#1a1a1a"/>
+  <!-- L 字符几何化：奶油色，45°斜角让 L 看起来更现代 -->
+  <path d="M22 18 L22 42 L42 42 L42 36 L28 36 L28 18 Z" fill="#faf8f3"/>
+  <!-- signal coral 强调点：L 底脚右端 -->
+  <circle cx="42" cy="42" r="4" fill="#e85a3c"/>
+</svg>

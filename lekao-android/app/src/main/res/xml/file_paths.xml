@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- 内部缓存（M01 拍照 / M05 docx / M03 分享）-->
+    <cache-path name="cache" path="." />
+    <files-path name="files" path="." />
+
+    <!-- 外部缓存（PhotoPicker / ucrop 输出）-->
+    <external-cache-path name="external_cache" path="." />
+    <external-files-path name="external_files" path="." />
+
+    <!-- 临时文件（M09 草稿箱 · WorkManager 上传）-->
+    <root-path name="root" path="/data/data/com.lekao.app/" />
+</paths>

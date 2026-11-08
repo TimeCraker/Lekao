@@ -1,0 +1,2 @@
+# Conventional Commits 校验（中英对照「type(scope): 中文 / english」格式兼容）
+pnpm exec commitlint --edit "$1"

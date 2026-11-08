@@ -1,0 +1,47 @@
+# ===========================
+# Gradle
+# ===========================
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# ===========================
+# Android Studio / IntelliJ
+# ===========================
+.idea/
+*.iml
+*.ipr
+*.iws
+local.properties
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# ===========================
+# Output APKs
+# ===========================
+*.apk
+output.json
+release/
+
+# ===========================
+# OS
+# ===========================
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ===========================
+# Logs
+# ===========================
+*.log
+
+# ===========================
+# Misc
+# ===========================
+*.hprof
+.kotlin/

@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ============ App 基本信息 ============ -->
+    <string name="app_name">乐考 AI 助教</string>
+    <string name="app_tagline">让助教从抄写里解放出来</string>
+
+    <!-- ============ 通用 ============ -->
+    <string name="common_loading">加载中…</string>
+    <string name="common_empty">暂无数据</string>
+    <string name="common_error">出错了，请稍后重试</string>
+    <string name="common_retry">重试</string>
+    <string name="common_cancel">取消</string>
+    <string name="common_confirm">确认</string>
+    <string name="common_save">保存</string>
+    <string name="common_delete">删除</string>
+    <string name="common_edit">编辑</string>
+    <string name="common_share">分享</string>
+    <string name="common_back">返回</string>
+
+    <!-- ============ 登录 F01/F02 ============ -->
+    <string name="login_title">登录</string>
+    <string name="login_subtitle">用邮箱登录乐考 AI 助教</string>
+    <string name="login_mode_password">密码</string>
+    <string name="login_mode_code">验证码</string>
+    <string name="login_email">邮箱</string>
+    <string name="login_password">密码</string>
+    <string name="login_password_placeholder">至少 8 位</string>
+    <string name="login_code">6 位验证码</string>
+    <string name="login_send_code">发送验证码</string>
+    <string name="login_resend_code">重新发送</string>
+    <string name="login_password_tab">密码登录</string>
+    <string name="login_code_tab">验证码登录</string>
+    <string name="login_submit">登录</string>
+    <string name="login_register">注册新账号</string>
+    <string name="login_forgot_password">忘记密码？</string>
+    <string name="login_invite_code_label">邀请码</string>
+    <string name="login_invite_code_hint">选填，填了送 15 枚代币</string>
+    <string name="login_terms_agreement">登录即同意</string>
+    <string name="login_terms_service">服务条款</string>
+    <string name="login_terms_and">和</string>
+    <string name="login_terms_privacy">隐私政策</string>
+    <string name="login_biometric_title">使用指纹/Face ID 解锁</string>
+    <string name="login_biometric_subtitle">确认是你本人</string>
+    <string name="login_biometric_negative">使用密码登录</string>
+
+    <!-- ============ 注册 T82b ============ -->
+    <string name="register_title">注册新账号</string>
+    <string name="register_subtitle">填写邮箱和密码创建账号</string>
+    <string name="register_name">昵称（可选）</string>
+    <string name="register_name_placeholder">比如 张老师</string>
+    <string name="register_confirm_password">确认密码</string>
+    <string name="register_submit">注册并登录</string>
+
+    <!-- ============ Dashboard F03 ============ -->
+    <string name="dashboard_title">工作台</string>
+    <string name="dashboard_guest">访客</string>
+    <string name="dashboard_coin_balance">T-Coin 余额</string>
+    <string name="dashboard_tcoin_total">T-Coin 总余额</string>
+    <string name="dashboard_tcoin_breakdown">赠送 %1$d · 付费 %2$d</string>
+    <string name="dashboard_entry_summary">课堂小结</string>
+    <string name="dashboard_entry_summary_sub">拍照讲义一键生成</string>
+    <string name="dashboard_entry_feedback">课堂反馈</string>
+    <string name="dashboard_entry_feedback_sub">写给家长的反馈</string>
+    <string name="dashboard_entry_mistake">错题集</string>
+    <string name="dashboard_entry_mistake_sub">拍照自动归档</string>
+    <string name="dashboard_entry_ideas">灵感墙</string>
+    <string name="dashboard_entry_ideas_sub">提交需求 · 看 TOP 3</string>
+    <string name="dashboard_entry_settings">个人中心</string>
+    <string name="dashboard_entry_settings_sub">主题 · 语言 · 通知</string>
+    <string name="dashboard_entry_admin">管理后台</string>
+    <string name="dashboard_entry_admin_sub">审计 · 调币 · 封禁</string>
+
+    <!-- ============ 课堂小结 F04 ============ -->
+    <string name="summary_title">课堂小结</string>
+    <string name="summary_upload_hint">拖拽讲义图片到这里 / 点击选择</string>
+    <string name="summary_upload_formats">支持 PNG / JPG / JPEG（自动压缩到 2MB）</string>
+    <string name="summary_pick_gallery">从相册选</string>
+    <string name="summary_take_photo">拍照</string>
+    <string name="summary_template_summary">课堂小结</string>
+    <string name="summary_template_feedback">课堂反馈</string>
+    <string name="summary_description_label">补充描述（可选）</string>
+    <string name="summary_description_hint">今天上课的关键点 / 难点 / 学生表现…</string>
+    <string name="summary_generate">一键生成</string>
+    <string name="summary_copy_feedback">复制反馈（贴 Excel 用）</string>
+    <string name="summary_copy_summary">复制小结（发家长群用）</string>
+    <string name="summary_insufficient_coin">T-Coin 余额不足，请充值</string>
+
+    <!-- ============ 课堂反馈 F05 ============ -->
+    <string name="feedback_title">家长反馈</string>
+    <string name="feedback_subject_label">科目</string>
+    <string name="feedback_subject_hint">数学 / 语文 / 英语 / 物理 / 化学</string>
+    <string name="feedback_input_hint">简要描述今天的课堂情况</string>
+    <string name="feedback_generate">生成反馈</string>
+
+    <!-- ============ 错题集 F06 ============ -->
+    <string name="mistake_title">错题集</string>
+    <string name="mistake_take_photo">拍照</string>
+    <string name="mistake_pick_images">从相册选择</string>
+    <string name="mistake_export_docx">导出 docx</string>
+    <string name="mistake_share">分享</string>
+    <string name="mistake_drafts">草稿箱</string>
+    <string name="mistake_subject_math">数学</string>
+    <string name="mistake_subject_physics">物理</string>
+    <string name="mistake_subject_chemistry">化学</string>
+    <string name="mistake_subject_english">英语</string>
+    <string name="mistake_subject_chinese">语文</string>
+
+    <!-- ============ 灵感墙 F07 ============ -->
+    <string name="ideas_title">灵感墙</string>
+    <string name="ideas_submit">提个灵感</string>
+    <string name="ideas_top3">本周 TOP 3</string>
+    <string name="ideas_like">点赞</string>
+    <string name="ideas_comment">评论</string>
+    <string name="ideas_comment_hint">说点什么…</string>
+    <string name="ideas_title_hint">一句话描述你的想法（最多 50 字）</string>
+    <string name="ideas_description_hint">详细说明（最多 500 字）</string>
+
+    <!-- ============ 个人中心 F08 ============ -->
+    <string name="settings_title">个人中心</string>
+    <string name="settings_profile">个人资料</string>
+    <string name="settings_nickname">昵称</string>
+    <string name="settings_email">邮箱</string>
+    <string name="settings_appearance">外观</string>
+    <string name="settings_theme_light">浅色</string>
+    <string name="settings_theme_dark">深色</string>
+    <string name="settings_theme_system">跟随系统</string>
+    <string name="settings_language">语言</string>
+    <string name="settings_language_zh">中文</string>
+    <string name="settings_language_en">English</string>
+    <string name="settings_notification">推送通知</string>
+    <string name="settings_signout">退出登录</string>
+
+    <!-- ============ Admin F10 ============ -->
+    <string name="admin_title">后台管理</string>
+    <string name="admin_coin_log">T-Coin 流水</string>
+    <string name="admin_audit_log">审计日志</string>
+    <string name="admin_user_ban">封禁查询</string>
+
+    <!-- ============ 通知类型（M12 FCM）============ -->
+    <string name="notification_channel_idea">灵感墙</string>
+    <string name="notification_channel_system">系统通知</string>
+    <string name="notification_channel_comment">评论回复</string>
+    <string name="notification_group_summary">乐考通知</string>
+
+    <!-- ============ 错误提示 ============ -->
+    <string name="error_network">网络错误，请检查连接</string>
+    <string name="error_server">服务器错误，请稍后重试</string>
+    <string name="error_unauthorized">登录已过期，请重新登录</string>
+    <string name="error_banned">账号已被封禁，请联系管理员</string>
+    <string name="error_rate_limit">操作太频繁，请稍后再试</string>
+    <string name="error_insufficient_coin">T-Coin 余额不足</string>
+
+    <!-- ============ 快捷方式（M08 App Shortcuts）============ -->
+    <string name="shortcut_summary">做小结</string>
+    <string name="shortcut_summary_long">快速做课堂小结</string>
+    <string name="shortcut_feedback">写反馈</string>
+    <string name="shortcut_feedback_long">快速写家长反馈</string>
+    <string name="shortcut_ideas">看灵感</string>
+    <string name="shortcut_ideas_long">查看灵感墙</string>
+</resources>

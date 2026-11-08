@@ -1,0 +1,544 @@
+@import "tailwindcss";
+
+/* ============================================
+ * Fraunces 衬线展示字（杂志风标题/大数字）· 本地 woff2
+ * 英文/数字走 Fraunces，中文回退无衬线（保持正文一致）
+ * ============================================ */
+@font-face {
+  font-family: "Fraunces";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/fraunces-latin-400-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Fraunces";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/fraunces-latin-600-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Fraunces";
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/fraunces-latin-400-italic.woff2") format("woff2");
+}
+
+/* ============================================
+ * PRD §2.2 Color Tokens · 浅蓝白主题
+ * ============================================ */
+:root {
+  /* ─── Canvas + Paper + Ink ─── 冷蓝纸张折中（Editorial Intelligence §3）*/
+  --canvas: #f8f6f1; /* 主背景 · 微暖纸白（纸张感）*/
+  --canvas-alt: #f1eee6; /* 次背景 · 略深暖纸（sidebar/分区）*/
+  --paper: #fffefb; /* 工作纸/卡片白（新增 · 对齐 spec --paper）*/
+  --ink: #111722; /* 主文字 · 对齐 spec（原 #0a0f1a）*/
+  --ink-mute: #1e293b; /* 次文字 */
+  --ink-muted: #475569; /* 辅助文字 · slate-600 */
+  --ink-subtle: #5a6b80; /* 弱化文字 · 蓝灰（canvas 5.05:1 / canvas-alt 4.70:1 / paper ≥4.5，原 #64748b 在浅底仅 4.1-4.4）*/
+
+  /* ─── Hairline + Divider ─── */
+  --hairline: #e2e8f0; /* slate-200 */
+  --divider: #cbd5e1; /* slate-300 */
+
+  /* ─── 动效 ─── 全站权威曲线（DESIGN.md §1.2；TS 侧见 src/lib/motion-tokens.ts）─── */
+  --ease-editorial: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* ─── 印刷装饰辅助线（DESIGN.md §0 仲裁：冷灰继续做 UI 分隔，暖灰专供装饰词）─── */
+  --hairline-warm: #e3dfd5;
+
+  /* ─── Accent · 钴蓝主色（对齐 spec --signal #3157F6）─── */
+  --accent: #3157f6; /* 钴蓝 · 装饰/border/小色块 · 唯一主动作色 */
+  --accent-hover: #2547d8; /* 钴蓝深一档 · hover */
+  --accent-soft: #e4eafd; /* 钴蓝淡 · 标签背景 */
+  --accent-ink: #1e3a8a; /* 钴蓝深 · 大字标签 */
+  --accent-text: #2552e5; /* CTA 按钮底色 · 白字 WCAG AA · 对齐钴蓝系 */
+  --accent-line: rgba(49, 87, 246, 0.32);
+
+  /* ─── Annotation · 珊瑚批注色（对齐 spec --annotation #F06449）─── */
+  --annotation: #f06449; /* 批注/注意 · 不作大面积背景 */
+  --annotation-soft: #fee4de; /* 批注淡 · chip 背景 */
+  --annotation-text: #c24130; /* 批注文字 · WCAG AA on white */
+
+  /* ─── 语义色 ─── */
+  --success: #10b981; /* green-500 · 装饰/border */
+  --success-text: #047857; /* green-700 · 5.94:1 vs white · Tag 文字 (WCAG AA) */
+  --success-soft: #d1fae5; /* green-100 · Tag 背景 */
+  --warning: #f59e0b; /* amber-500 */
+  --warning-text: #b45309; /* amber-700 · 5.21:1 vs white · warning chip 文字 (WCAG AA) */
+  --warning-soft: #fef3c7; /* amber-100 · warning chip 背景 */
+  --danger: #ef4444; /* red-500 · 主色:装饰/icon/border */
+  --danger-text: #b91c1c; /* red-700 · 文字专用:5.21:1 vs white · WCAG AA */
+  --danger-soft: #fee2e2; /* red-100 · 背景专用 */
+
+  /* ─── 暗色区域 ─── */
+  --page-dark: #0f172a; /* slate-900 */
+  --surface-dark-1: #1e293b; /* slate-800 */
+  --surface-dark-2: #334155; /* slate-700 */
+  --hairline-dark: rgba(248, 250, 252, 0.08);
+  --ink-on-dark: #f8fafc;
+  --ink-on-dark-muted: #cbd5e1;
+
+  /* ─── 阴影 · 纸张感（tinted to canvas warm hue，非纯黑冷调）─── */
+  --shadow-sm: 0 1px 2px rgba(60, 52, 36, 0.05);
+  --shadow-md: 0 2px 8px rgba(60, 52, 36, 0.06);
+  --shadow-lg: 0 6px 24px rgba(60, 52, 36, 0.08);
+  --shadow-card-hover: 0 8px 20px rgba(60, 52, 36, 0.1);
+
+  /* ─── 圆角 · 对齐 spec（控件10 / 容器14 / 舞台20）─── */
+  --radius-sm: 10px; /* 控件（按钮/输入/标签）*/
+  --radius-md: 14px; /* 容器（卡片/面板）*/
+  --radius-lg: 20px; /* 重要舞台（Hero/大卡）*/
+  --radius-xl: 24px; /* 特殊大舞台（保留）*/
+}
+
+/* ============================================
+ * Tailwind 4 @theme (把 CSS vars 暴露给 utilities)
+ * bg-canvas / text-ink / border-hairline 等
+ * ============================================ */
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-canvas-alt: var(--canvas-alt);
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-ink-mute: var(--ink-mute);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-subtle: var(--ink-subtle);
+  --color-hairline: var(--hairline);
+  --color-divider: var(--divider);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-text: var(--accent-text);
+  --color-annotation: var(--annotation);
+  --color-annotation-soft: var(--annotation-soft);
+  --color-annotation-text: var(--annotation-text);
+  --color-success: var(--success);
+  --color-success-text: var(--success-text);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-text: var(--warning-text);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-text: var(--danger-text);
+  --color-danger-soft: var(--danger-soft);
+  --color-page-dark: var(--page-dark);
+  --color-surface-dark-1: var(--surface-dark-1);
+  --color-surface-dark-2: var(--surface-dark-2);
+  --color-ink-on-dark: var(--ink-on-dark);
+  --color-ink-on-dark-muted: var(--ink-on-dark-muted);
+  --color-hairline-dark: var(--hairline-dark);
+
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+    "PingFang SC", "Helvetica Neue", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", "Menlo", "Cascadia Code", monospace;
+  --font-serif:
+    "Fraunces", -apple-system, BlinkMacSystemFont, "SF Pro Display",
+    "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+/* ============================================
+ * PRD §2.3 字体系统
+ * ============================================ */
+body {
+  font-family: var(--font-sans);
+  font-feature-settings: "ss01", "ss02";
+  -webkit-font-smoothing: antialiased;
+  background: var(--canvas);
+  color: var(--ink);
+  line-height: 1.625; /* 正文默认行高；组件用 leading-* 覆盖 */
+}
+
+/* ============================================
+ * 排版基础（Editorial Intelligence §3）
+ * 标题平衡换行（修孤行）+ 选区钴蓝高亮
+ * ⚠️ :not(.truncate) 豁免：text-wrap:balance 的 text-wrap-mode:wrap
+ *    会按源顺序压过 truncate/whitespace-nowrap 的 nowrap（无论层级），
+ *    导致标题类截断折行失效——截断标题无需 balance
+ * ============================================ */
+h1:not(.truncate),
+h2:not(.truncate),
+h3:not(.truncate),
+h4:not(.truncate) {
+  text-wrap: balance;
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+
+/* 自定义滚动条（纸张感配色，纤细统一）*/
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--divider);
+  border-radius: 5px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ink-subtle);
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+  font-feature-settings: "ss01", "ss02";
+}
+
+.font-serif {
+  font-family: var(--font-serif);
+  font-feature-settings: "ss01";
+}
+
+/* ============================================
+ * Stagger entrance · QuickCard fadeUp
+ * inline style: animation-delay 由 index 计算
+ * ============================================ */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============================================
+ * 每日签到 · 今日格子脉冲（2026-09-29 收编：blue-500 裸值 → accent 令牌）
+ * 唯一登记的循环发光动画；btnGlow 已删（全站零引用）
+ * ============================================ */
+@keyframes pulseGlow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 var(--accent-line);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(49, 87, 246, 0);
+    transform: scale(1.04);
+  }
+}
+
+/* ============================================
+ * prefers-reduced-motion 守卫（CSS 层 · 四清单结构 2026-09-29）
+ * JS 层：src/lib/hooks/motion.ts 自制 useReducedMotion + MotionConfig 门
+ * 清单一：时长/迭代/滚动钳制兜底
+ * 清单二：delay 归零——防「隐形 N 秒再瞬现」（.anim-fade-up 的 --anim-delay 等 fill:both 场景）
+ * ============================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+    animation-delay: 0.01ms !important;
+    transition-delay: 0.01ms !important;
+  }
+}
+
+/* 全站默认缓动兜底：未显式指定曲线的 transition 一律走权威曲线 */
+*,
+*::before,
+*::after {
+  transition-timing-function: var(--ease-editorial);
+}
+
+/* ============================================
+ * 细节动效 · 登记活体（2026-09-29 收编：死类 7 个 / 死 keyframes 8 个已清）
+ * 活体登记：shakeX(表单错误) · errorPulse(封禁徽标) · rowFlash(周末表命中)
+ *           fadeUp / pulseGlow（见上方区块）—— 全部登记于 DESIGN.md §4
+ * 纪律：新增动效一律走登记类，禁止 inline style={{ animation }} 挂载
+ * ============================================ */
+@keyframes shakeX {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-6px);
+  }
+  40% {
+    transform: translateX(6px);
+  }
+  60% {
+    transform: translateX(-4px);
+  }
+  80% {
+    transform: translateX(4px);
+  }
+}
+
+@keyframes errorPulse {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 8px color-mix(in srgb, var(--danger) 8%, transparent);
+  }
+}
+
+/* 工具类（直接挂 className；delay 走 --anim-delay 自定义属性，reduce 下被钳制归零） */
+.anim-shake {
+  animation: shakeX 0.4s ease-in-out;
+}
+.anim-error-pulse {
+  animation: errorPulse 2s ease-in-out infinite;
+}
+.anim-fade-up {
+  animation: fadeUp 0.5s var(--ease-editorial) both;
+  animation-delay: var(--anim-delay, 0s);
+}
+.anim-pulse-glow {
+  animation: pulseGlow 1.6s ease-in-out infinite;
+}
+
+/* 表格行左侧色条 (table-row 上下文，::before 在 td 上) */
+.tbl-row-stripe > td {
+  position: relative;
+  transition: background-color 0.15s ease-out;
+}
+.tbl-row-stripe > td:first-child::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--accent-text);
+  transform: scaleY(0);
+  transform-origin: center;
+  transition: transform 0.18s ease-out;
+}
+.tbl-row-stripe:hover > td {
+  background-color: color-mix(in srgb, var(--accent-soft) 40%, transparent);
+}
+.tbl-row-stripe:hover > td:first-child::before {
+  transform: scaleY(1);
+}
+
+/* ⭐ Stage 16：周末错题表 · 搜索命中行 2s 黄色脉冲（3 次）→ 2026-09-29 令牌化 */
+@keyframes rowFlash {
+  0%,
+  100% {
+    box-shadow: inset 0 0 0 0 rgba(245, 158, 11, 0);
+  }
+  33%,
+  66% {
+    box-shadow: inset 0 0 0 3px
+      color-mix(in srgb, var(--warning) 65%, transparent);
+  }
+}
+.animate-row-flash {
+  animation: rowFlash 0.65s ease-in-out 3;
+}
+
+/* ============================================
+ * 2026-07-17 性能优化：content-visibility 非首屏 section
+ * 让浏览器跳过视口外 section 的渲染/布局/绘制（纯渲染层，不改 DOM/内容/动效）
+ * 滚到时才渲染，contain-intrinsic-size 占位防布局抖动。仅非首屏 section 用，Hero 不加。
+ * ============================================ */
+.cv-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 800px;
+}
+
+/* ============================================
+ * 质感层 + 印刷装饰词汇（2026-09-29 立法 · DESIGN.md §3 白名单 ORN-01~11）
+ * 纪律：新装饰词先登记 DESIGN.md 再使用；每类头部注释带 ORN 编号
+ * ============================================ */
+
+/* ORN-09 纸纹质感 · 全站唯一实现（fixed 伪元素 + grain 0.03；深色舞台自带实底自动遮罩） */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ORN-01 帽线图注 · 字型档（延伸线在标记里用 flex + h-px bg-hairline 组合） */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--ink-subtle);
+}
+
+/* ORN-02 点线价目行 · 中缝（名目—数值；首行强调在标记里加深值侧字色） */
+.leader-dots {
+  flex: 1;
+  min-width: 24px;
+  border-bottom: 1px dotted color-mix(in srgb, var(--divider) 60%, transparent);
+  transform: translateY(-3px);
+}
+
+/* ORN-03 状态徽章 · 六档语义浅底 + 前置圆点（档位映射见 DESIGN.md §7） */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 5px;
+  padding: 3px 9px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+.badge::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 9999px;
+  background: currentColor;
+}
+.badge-neutral {
+  background: var(--canvas-alt);
+  color: var(--ink-subtle);
+}
+.badge-progress {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+.badge-waiting {
+  background: var(--warning-soft);
+  color: var(--warning-text);
+}
+.badge-success {
+  background: var(--success-soft);
+  color: var(--success-text);
+}
+.badge-danger {
+  background: var(--danger-soft);
+  color: var(--danger-text);
+}
+.badge-fee {
+  background: var(--annotation-soft);
+  color: var(--annotation-text);
+}
+
+/* ORN-04 图钉便签 · 公告/提醒（微旋转走 --pin-rot，±0.4deg 内） */
+.pin-note {
+  position: relative;
+  background: var(--canvas-alt);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  transform: rotate(var(--pin-rot, 0deg));
+}
+.pin-note::before {
+  content: "";
+  position: absolute;
+  top: -7px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 12px;
+  height: 12px;
+  border-radius: 9999px;
+  background: var(--accent);
+  box-shadow:
+    inset 0 -2px 0 rgba(17, 23, 34, 0.18),
+    0 1px 2px rgba(60, 52, 36, 0.25);
+}
+
+/* ORN-05 制图角标 · 四角 L 形（span 配角位类，aria-hidden） */
+.corner-mark {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  pointer-events: none;
+}
+.corner-mark-tl {
+  top: 10px;
+  left: 10px;
+  border-top: 1px solid var(--hairline-warm);
+  border-left: 1px solid var(--hairline-warm);
+}
+.corner-mark-tr {
+  top: 10px;
+  right: 10px;
+  border-top: 1px solid var(--hairline-warm);
+  border-right: 1px solid var(--hairline-warm);
+}
+.corner-mark-bl {
+  bottom: 10px;
+  left: 10px;
+  border-bottom: 1px solid var(--hairline-warm);
+  border-left: 1px solid var(--hairline-warm);
+}
+.corner-mark-br {
+  bottom: 10px;
+  right: 10px;
+  border-bottom: 1px solid var(--hairline-warm);
+  border-right: 1px solid var(--hairline-warm);
+}
+
+/* ORN-06 引线注记 · 从锚点引出的发丝线（线 + 端点圆） */
+.leader-line {
+  position: relative;
+  height: 1px;
+  background: var(--hairline-warm);
+}
+.leader-line::before {
+  content: "";
+  position: absolute;
+  left: -3px;
+  top: -2px;
+  width: 5px;
+  height: 5px;
+  border-radius: 9999px;
+  background: var(--accent-line);
+}
+
+/* ORN-08 folio 边码 · 竖排页码/步骤码 */
+.folio {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--ink-subtle);
+  writing-mode: vertical-rl;
+}
+
+/* ORN-11 点阵纹理 · 深色舞台专用（浅底页面用 ORN-09 grain，二者互斥） */
+.dot-grid-dark {
+  background-image: radial-gradient(
+    rgba(248, 250, 252, 0.1) 1px,
+    transparent 1px
+  );
+  background-size: 24px 24px;
+}
+
+/* ORN-07 检讫章 · 完成态一次性动效（0.5s EXPRESSIVE；无 delay，reduce 下钳制即达终态） */
+@keyframes stampIn {
+  0% {
+    transform: scale(1.6) rotate(-8deg);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(0.95) rotate(1.5deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+.stamp-in {
+  animation: stampIn 0.5s var(--ease-editorial) both;
+}
