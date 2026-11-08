@@ -1,11 +1,21 @@
-# LeKao · AI 智能助教助手
+<div align="center">
 
-> 让培训机构助教从"抄错题、写小结、写反馈"的重复工作里解放出来，每次课省 1-2 小时。
+<img src="docs/banner.svg" alt="LeKao banner" width="920"/>
 
-[![在线体验](https://img.shields.io/badge/在线体验-lekao.asterforge.top-blue)](https://lekao.asterforge.top)
-[![技术栈](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org)
-[![Prisma](https://img.shields.io/badge/Prisma-6-2D3748)](https://prisma.io)
-[![License](https://img.shields.io/badge/license-Private-red)](<>)
+<br/>
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-3A7D44.svg?style=flat-square)](LICENSE)
+[![在线体验](https://img.shields.io/badge/在线体验-lekao.asterforge.top-2D5A88?style=flat-square)](https://lekao.asterforge.top)
+[![技术栈](https://img.shields.io/badge/Next.js-16%20%7C%20React%2019-111111?style=flat-square&logo=nextdotjs&logoColor=white)](https://nextjs.org)
+[![Prisma](https://img.shields.io/badge/Prisma-6-2D3748?style=flat-square&logo=prisma&logoColor=white)](https://prisma.io)
+
+<br/>
+
+**让培训机构助教从"抄错题、写小结、写反馈"的繁复工作里解放出来，每次课省 1-2 小时。**
+
+[🌐 在线体验](https://lekao.asterforge.top) · [📝 功能介绍](#-项目定位) · [🛠 技术架构](#-技术栈)
+
+</div>
 
 ---
 
